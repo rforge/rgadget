@@ -47,15 +47,18 @@
 #' \item{H}{H for the maximum consumption}
 #' \item{otherfrac}{the fraction of otherfood that is eaten}
 #' \item{otherfood}{maxratioconsumed}{The maximum portion consumed, in Gadget it is 0.95, this is known as understaocking in Gadget}
-#' \item{survstep}{timestep for the survey}
+#' \item{survstep}{timestep(s) for the survey}
+#' \item{commstep}{timestep(s) for the commercial effort}
 #' \item{salphasurv}{for the suitability function - survey}
 #' \item{sbetasurv}{for the suitability function - survey}
 #' \item{survfleettype}{Fleettype for the survey}
 #' \item{survmultiplicative}{For the fleettype}
 #' \item{Fysurv}{Fishing effort of the survey}
+#' \item{surv.catches}{What stocks does the survey fleet catch from}
 #' \item{salphacomm}{for the suitability function - commerical catch}
 #' \item{sbetacomm}{for the suitability function - commercial catch}
 #' \item{commfleettype}{Fleettype for the commercial catch}
+#' \item{comm.catches}{What stocks does the commercial fleet catch from}
 #' \item{commmultiplicative}{For the fleettype}
 #' \item{Fycomm}{Fishing effort of the commercial catch}
 #' \item{calcindex}{output survey index likelihood file}
@@ -94,7 +97,9 @@ gadget.options <- function(){
               doeseat=1,
               
               doescatchsurv=1,
+              surv.catches=c('imm','mat'),
               doescatchcomm=1,
+              comm.catches=c('imm','mat'),
 # Migration
               doesmigrateimm = 1,
               doesmigratemat = 1,
@@ -213,8 +218,9 @@ gadget.options <- function(){
 # Variables for the catch
 #
               
-# timestep for the survey
+# timesteps for the fleets:
               survstep = 2,
+              commstep = 1:4,
 
 #alpha and beta for the suitability function - survey
               salphasurv= -4.5,
@@ -311,6 +317,10 @@ derivedOptions <- function(opt){
 #
 # lengthoftimesteps is the length of each timestep
   opt$lengthoftimesteps <- 12/opt$numoftimesteps
+  if(length(opt$probarea)<opt$numofareas){
+    opt$probarea <- rep(1,opt$numofareas)/opt$numofareas
+    warning('length(opt$probarea)<opt$numofareas - equal initial area probabilites assumed')
+  }
 #################################
 #
 # Variables for the the initial stock
@@ -534,7 +544,7 @@ distr <- function(mu,sigma,l)
 #' The suitability function for predation used in the \R model is:
 #' \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
 #' With one predator, one prey and otherfood the equation becomes:
-#' \deqn{C_{L,l}&=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
+#' \deqn{C_{L,l}=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
 #' \deqn{=N_{L}M_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA+HA}}
 #' where O is the density of otherfood.
 #' @param PreyInArea Number of prey items in the area

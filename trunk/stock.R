@@ -247,47 +247,55 @@ Rgadget <- function(opt=gadget.options()){
       
   ############
   # Catch calculations
-      if(sum(opt$doescatchcomm) > 0)
-        {
-
-          immCcomm[commAreas,,,i] <-
-            catch(immNumRec[commAreas,,,i],
-                  i,
-                  opt$Fycomm,
-                  opt$salphacomm,
-                  opt$sbetacomm,
-                  opt$numoftimesteps,
-                  opt)
-          matCcomm[commAreas,,,i] <-
-            catch(matNumRec[commAreas,,,i],
-                  i,
-                  opt$Fycomm,
-                  opt$salphacomm,
-                  opt$sbetacomm,
-                  opt$numoftimesteps,
-                  opt)
-  }
-
-      if(num==opt$survstep) # only have survey in one timestep of the year
+      if(num %in% opt$commstep){
+        if(sum(opt$doescatchcomm) > 0)
+          {
+            if('imm' %in% opt$comm.catches){
+              immCcomm[commAreas,,,i] <-
+                catch(immNumRec[commAreas,,,i],
+                      i,
+                      opt$Fycomm,
+                      opt$salphacomm,
+                      opt$sbetacomm,
+                      opt$numoftimesteps,
+                      opt)
+            }
+            if('mat' %in% opt$comm.catches){
+              matCcomm[commAreas,,,i] <-
+                catch(matNumRec[commAreas,,,i],
+                      i,
+                      opt$Fycomm,
+                      opt$salphacomm,
+                      opt$sbetacomm,
+                      opt$numoftimesteps,
+                      opt)
+            }
+          }
+      }
+      if(num %in% opt$survstep) 
         {
           if(sum(opt$doescatchsurv) > 0)
             {
-              immCsurv[surveyAreas,,,i] <-
-                catch(immNumRec[surveyAreas,,,i],
-                      i,
-                      opt$Fysurv,
-                      opt$salphasurv,
-                      opt$sbetasurv,
-                      1,
-                      opt)
-              matCsurv[surveyAreas,,,i] <-
-                catch(matNumRec[surveyAreas,,,i],
-                      i,
-                      opt$Fysurv,
-                      opt$salphasurv,
-                      opt$sbetasurv,
-                      1,
-                      opt)
+              if('imm' %in% opt$surv.catches){
+                immCsurv[surveyAreas,,,i] <-
+                  catch(immNumRec[surveyAreas,,,i],
+                        i,
+                        opt$Fysurv,
+                        opt$salphasurv,
+                        opt$sbetasurv,
+                        1,
+                        opt)
+              }
+              if('mat' %in% opt$surv.catches){
+                matCsurv[surveyAreas,,,i] <-
+                  catch(matNumRec[surveyAreas,,,i],
+                        i,
+                        opt$Fysurv,
+                        opt$salphasurv,
+                        opt$sbetasurv,
+                        1,
+                        opt)
+              }
             }
         }
 
@@ -336,6 +344,9 @@ Rgadget <- function(opt=gadget.options()){
       }
   ###########
   # Recruits
+      if(opt$doesmove!=1){
+        matNumRec[,,1,i]<-matNumRec[,,1,i]+Rec[,,i]
+      }
       immNumRec[,,1,i]<-immNumRec[,,1,i]+Rec[,,i]
     }
 

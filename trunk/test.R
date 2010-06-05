@@ -170,3 +170,23 @@ migfunc <- function(){
   return(printfiles)  
 }
 
+##' R-Gadget testcase
+##'
+##' R-Gadget test-case as an ecosystem simulator
+ecoSim <- function(){
+  opt <- gadget.options()
+  opt$stock <- c('predator','prey')
+  opt$doeseat <- 1
+  opt$numofareas <- 2
+  opt$doescatchcomm <- 1:2
+  opt$doescatchsurv <- 1:2
+  opt$doesmove <- 0
+  opt$immminage <- 1
+  opt$matminage <- 1
+  opt$immmaxage <- 10
+  opt$matmatxage <- 10
+  opt$probarea <- c(1,3)/4
+  opt$comm.catches <- 'imm'
+  sim <- Rgadget(opt)
+  
+}
