@@ -40,12 +40,7 @@
 #' \item{matMort}{Natural mortality for the mature stock}
 #' \item{opt}{Gadget options list used in the simulation}
 Rgadget <- function(opt=gadget.options()){
-  ## Use the prefix imm for immature and mat for mature.
-  ## In the comments the prefix pre tokens either one of these prefixs.
-
-
-  ## initialize the necessary variables
-  
+  ## initialize the necessary variables  
   opt <- derivedOptions(opt)
   ## what areas are commercially exploited
   commAreas <- 1:opt$numofareas %in% opt$doescatchcomm

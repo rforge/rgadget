@@ -174,6 +174,7 @@ migfunc <- function(){
 ##'
 ##' R-Gadget test-case as an ecosystem simulator
 ecoSim <- function(){
+  library(lattice)
   opt <- gadget.options()
   opt$stock <- c('predator','prey')
   opt$doeseat <- 1
@@ -186,7 +187,10 @@ ecoSim <- function(){
   opt$immmaxage <- 10
   opt$matmatxage <- 10
   opt$probarea <- c(1,3)/4
-  opt$comm.catches <- 'imm'
+  opt$comm.catches <- ''
+ 
   sim <- Rgadget(opt)
+  imm <- as.data.frame.table(sim$immNumRec)
+  mat <- as.data.frame.table(sim$matNumRec)
   
 }

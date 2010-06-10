@@ -875,3 +875,45 @@ suitability <- function(salpha,
                       sprintf('Prey_length_%s',l))
   return(S)
 }
+
+#' Format RGadget
+#'
+#' This function formats the output from RGadget to a dataframe and adds some 
+#' trivial calculated values
+#' @param sim the results from RGadget
+#' @return A dataframe 
+format.RGadget <- function(sim){
+  imm <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
+  names(imm)[length(names(imm))] <- 'Num.indiv'
+  mat <- as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE)
+  names(mat)[length(names(mat))] <- 'Num.indiv'
+  catch.C.imm <- as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE)
+  names(catch.C.imm)[length(names(catch.C.imm))] <- 'Commercial.catch'
+  catch.C.mat <- as.data.frame.table(sim$matCcomm,stringsAsFactors=FALSE)
+  names(catch.C.mat)[length(names(catch.C.mat))] <- 'Commercial.catch'
+  catch.S.imm <- as.data.frame.table(sim$immCsurv,stringsAsFactors=FALSE)
+  names(catch.S.imm)[length(names(catch.S.imm))] <- 'Survey.catch'
+  catch.S.mat <- as.data.frame.table(sim$matCsurv,stringsAsFactors=FALSE)
+  names(catch.S.mat)[length(names(catch.S.mat))] <- 'Survey.catch'
+  Rec.imm <- as.data.frame.table(sim$Rec,stringsAsFactors=FALSE)
+  Rec.mat <- Rec.imm
+  names(Rec.imm)[length(Rec.imm)] <- 'Recruits'
+  Rec.imm$age <- '1'
+  tmp.imm <- merge(imm,catch.C.imm,all=TRUE)
+  tmp.imm <- merge(tmp.imm,catch.S.imm,all=TRUE)
+  tmp.imm <- merge(tmp.imm,Rec.imm,all=TRUE)
+  tmp.imm$year <- sapply(strsplit(tmp.imm$time,'_'),function(x) as.numeric(x[2]))
+  tmp.imm$step <- sapply(strsplit(tmp.imm$time,'_'),function(x) as.numeric(x[4]))
+  tmp.imm$length <- as.numeric(tmp.imm$length)
+  tmp.imm$age <- as.numeric(tmp.imm$age)
+  tmp.imm$weight <- opt$a*tmp.imm$length^tmp$b
+  tmp.mat <- merge(mat,catch.C.mat,all=TRUE)
+  tmp.mat <- merge(tmp.mat,catch.S.mat,all=TRUE)
+  tmp.mat <- merge(tmp.mat,Rec.mat,all=TRUE)
+  tmp.mat$year <- sapply(strsplit(tmp.mat$time,'_'),function(x) as.numeric(x[2]))
+  tmp.mat$step <- sapply(strsplit(tmp.mat$time,'_'),function(x) as.numeric(x[4]))
+  tmp.mat$length <- as.numeric(tmp.mat$length)
+  tmp.mat$age <- as.numeric(tmp.mat$age)
+  tmp.mat$weight <- opt$a*tmp.mat$length^tmp$b
+  
+}
