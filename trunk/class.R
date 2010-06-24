@@ -14,7 +14,7 @@ setClass(
            num.of.stocks = "integer",
            num.of.fleets = "integer" 
            )
-         
+         #package="rgadget"
          )
 setMethod(f = "initialize",
           signature = "Gadget.setup",
@@ -91,7 +91,12 @@ setClass(
            minlength = "integer",
            maxlength = "integer",
            l = "integer",
+           lt = "numeric",
            lengthgrouplen = "integer",
+           numoflgroups = "integer",
+           weight  = "numeric",
+           mu = "numeric",
+           sigma = "numeric",
            ## migration
            doesmigrate = "integer",
            migrationP = "array",
@@ -120,6 +125,7 @@ setClass(
            maxrationconsumed = "numeric",
            maxConsumption = "numeric",
            ## number of indivuals consumed and alive
+           Eat = "array",
            consumed = "array",
            stock = "array",
            ## natural mortality
@@ -134,85 +140,94 @@ setMethod(
           definition = function(.Object,
             name,
             livesonareas,
-            probarea,
-            minage,
-            maxage,
-            minlength,
-            maxlength,
-            dl,
+            ## other setup
+            opt,
+            probarea = 1,
+            minage = 1,
+            maxage = 10,
+            minlength = 5,
+            maxlength = 90,
+            lengthgrouplen = 1,
             ## migration
-            doesmigrate,
-            migrationP,
+            doesmigrate = 1,
+            migrationP = array(c(1,0.6,0.6,1,0.6,1,1,0.6),c(4,2)),
             doesfuncmigrate = 0,
-            diffusion = NULL,
-            driftx = NULL,
-            lambda = NULL,
+            diffusion = 0,
+            driftx = 0,
+            lambda = 0,
             ## recruitment
-            doesmove,
-            doesrenew,
+            doesmove = 0,
+            doesrenew = 1,
             ## growth parameters
-            doesgrow,
-            growthfunction,
-            lsup,
-            k,
-            binn,
-            beta,
+            doesgrow = 1,
+            growthfunction = 'lengthvbsimple',
+            lsup = 115,
+            k = 0.09,
+            binn = 15,
+            beta = 200,
             recruitment.length = NULL,
+            sigma = c(2.2472, 2.8982, 4.0705, 4.9276,
+              5.5404, 5.8072, 6.0233, 8, 9, 9),
             ## consumption
-            doeseat,
-            stocks.eaten,
-            s.alpha,
-            s.beta,
+            doeseat = 0,
+            stocks.eaten = '',
+            s.alpha = 0,
+            s.beta = 0,
             
             ## maximum consumption
-            m0,
-            m3,
-            H,
-            maxrationconsumed,
+            m0 = 10^(-2),
+            m3 = 3,
+            H = 4000,
+            maxratioconsumed = 0.95,
             ## weight parameters
-            a,
-            b,
-            ## number of indivuals consumed and alive
-            consumed,
-            stock,
+            a = 10^(-5),
+            b = 3,
             ## natural mortality
-            z,
-            ## other setup
-            opt
+            z=0.2
+            
             ){
             .Object@name <- name
             .Object@livesonareas <- livesonareas
+            if(length(probarea) < length(livesonareas)){
+              warning('length(probarea) < length(livesonareas) - even distribution assumed')
+              probarea <- rep(1,length(livesonareas))/livesonareas
+              }
             .Object@probarea <- probarea
-            .Object@minage <- minage
-            .Object@maxage <- maxage
-            .Object@minlength <- minlength
-            .Object@maxlength <- maxlength
-            .Object@lengthgrouplen <- lengthgrouplen
-            .Object@doesmigrate <- doesmigrate
-            .Object@doesfuncmigrate <- doesfuncmigrate
+            .Object@minage <- as.integer(minage)
+            .Object@maxage <- as.integer(maxage)
+            .Object@minlength <- as.integer(minlength)
+            .Object@maxlength <- as.integer(maxlength)
+            .Object@lengthgrouplen <- as.integer(lengthgrouplen)
+            .Object@numoflgroups <- length(.Object@l)
+            .Object@doesmigrate <- as.integer(doesmigrate)
+            .Object@doesfuncmigrate <- as.integer(doesfuncmigrate)
             .Object@diffusion <- diffusion
             .Object@driftx <- driftx
             .Object@lambda <- lambda
-            .Object@migrationR <- migrationR
-            .Object@doesmove <- doesmove
-            .Object@doesrenew <- doesrenew
-            .Object@doesgrow <- doesgrow
+            .Object@migrationP <- migrationP
+            .Object@doesmove <- as.integer(doesmove)
+            .Object@doesrenew <- as.integer(doesrenew)
+            .Object@doesgrow <- as.integer(doesgrow)
             .Object@growthfunction <- growthfunction
-            .Object@doeseat <- doeseat
+            .Object@doeseat <- as.integer(doeseat)
             tmp <- data.frame(stocks=stocks.eaten,
-                              s.alpha=alpha,
-                              s.beta=beta,
+                              s.alpha=s.alpha,
+                              s.beta=s.beta,
                               suitability='exponential')
             .Object@suitability <- tmp
-            .Object@z <- c(rep(z,maxage-1),0.5)
-            .Object@l <-  seq(minlen,maxlen,lengthgrouplen)
-            .Object@maxConsumption <- m0*lt^m3*12*opt@dt
+            .Object@z <- z # c(rep(z,maxage-1),0.5)
+            .Object@l <-  as.integer(seq(minlength,maxlength,lengthgrouplen))
+            .Object@lt <- (.Object@l[2:length(.Object@l)]+
+                           .Object@l[1:(length(.Object@l)-1)])/2
+            .Object@numoflgroups <- length(.Object@l)
+            .Object@maxConsumption <- m0*.Object@lt^m3*12*opt@dt
             .Object@maxrationconsumed <- maxratioconsumed
             .Object@weight <- a*.Object@lt^b
             ## mu[i] mean length at age i
             .Object@mu <- lsup*(1-exp(-k*1:maxage))
             if(!is.null(recruitment.length))
               .Object@mu[1] <- recruitment.length
+            .Object@sigma <- sigma
             G <- growthprob(.Object@lt,
                             beta,
                             lsup,
@@ -224,12 +239,12 @@ setMethod(
             
 
             .Object@stock <- array(0,c(opt@numofareas,
-                         numoflgroups,
-                         maxage - minage +1,
-                         (opt@numobs*opt@numoftimesteps)))
+                                       .Object@numoflgroups,
+                                       maxage - minage +1,
+                                       (opt@numobs*opt@numoftimesteps)))
             dimnames(.Object@stock) <-
               list(area=opt@areas,
-                   length=minlen:(maxlen-1),
+                   length=.Object@l,
                    age=minage:maxage,
                    time=paste(sprintf('Year_%s',rep(1:opt@numobs,
                      each=opt@numoftimesteps)
@@ -238,13 +253,13 @@ setMethod(
                                            opt@numobs)),
                      sep='_'))
             .Object@consumed <- array(0,c(opt@numofareas,
-                                          numoflgroups,
+                                          .Object@numoflgroups,
                                           maxage - minage +1,
                                           (opt@numobs*opt@numoftimesteps),
                                           opt@num.of.fleets))
             dimnames(.Object@consumed) <-
               list(area=opt@areas,
-                   length=minlen:(maxlen-1),
+                   length=.Object@l,
                    age=minage:maxage,
                    time=paste(sprintf('Year_%s',rep(1:opt@numobs,
                      each=opt@numoftimesteps)
@@ -253,13 +268,23 @@ setMethod(
                                            opt@numobs)),
                      sep='_'),
                    fleet=1:opt@num.of.fleets)
+            .Object@Eat <- .Object@stock
             return(.Object)
           }
           
           )
 
+setMethod(f = "firststep",
+          signature = "Stock",
+          definition = function(.Object,
+            n){
+            start <- firststep(
+          }
+          )
+
 
 
 ##### test
-opt <-new('Gadget.setup','Iceland',1:10,100,10,4,5,8000,2,2)
-surv <- new('Fleet','survey',2, '', 0.1, 2:5, c('cod','haddock'), 0.1, 0.1)
+opt <-new('Gadget.setup','Iceland',1:2,100,10,4,5,8000,2,2)
+surv <- new('Fleet','survey',2, '', 0.1, 1:2, c('cod','haddock'), 0.1, 0.1)
+imm <- new('Stock','cod',1:2,opt) 

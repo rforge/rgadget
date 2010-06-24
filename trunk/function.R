@@ -639,8 +639,8 @@ firststep <- function(n,
   num.agegroup <- n[1]*exp(-(0:(maxage-1))*z)
   
   if(maxage!=length(sigma)) {
-    print("Error - the number of age groups for sigma doesnt match the maximum age")
-    return('Error')
+    stop("Error - the number of age groups for sigma doesnt match the maximum age")
+   # return('Error')
   }
     
   temp <- distr(mu,sigma,l)*rep(num.agegroup,each=numoflgroups)
@@ -649,8 +649,8 @@ firststep <- function(n,
   # assign the distribution to areas according to the probability of being in
   # that area
   if(length(probarea)!=numofareas){
-    print("Error - the area probabilities do not match the number of areas")
-    return('Error')
+    stop("Error - the area probabilities do not match the number of areas")
+    #return('Error')
   }
   initial.distribution <- array(rep(temp,each=numofareas),
                                 c(numofareas,dim(temp)))*probarea
