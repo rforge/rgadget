@@ -190,7 +190,7 @@ setMethod(
             .Object@livesonareas <- livesonareas
             if(length(probarea) < length(livesonareas)){
               warning('length(probarea) < length(livesonareas) - even distribution assumed')
-              probarea <- rep(1,length(livesonareas))/livesonareas
+              probarea <- rep(1,length(livesonareas))/length(livesonareas)
               }
             .Object@probarea <- probarea
             .Object@minage <- as.integer(minage)
@@ -219,7 +219,7 @@ setMethod(
             .Object@l <-  as.integer(seq(minlength,maxlength,lengthgrouplen))
             .Object@lt <- (.Object@l[2:length(.Object@l)]+
                            .Object@l[1:(length(.Object@l)-1)])/2
-            .Object@numoflgroups <- length(.Object@l)
+            .Object@numoflgroups <- as.integer(length(.Object@l) - 1)
             .Object@maxConsumption <- m0*.Object@lt^m3*12*opt@dt
             .Object@maxrationconsumed <- maxratioconsumed
             .Object@weight <- a*.Object@lt^b
@@ -244,7 +244,7 @@ setMethod(
                                        (opt@numobs*opt@numoftimesteps)))
             dimnames(.Object@stock) <-
               list(area=opt@areas,
-                   length=.Object@l,
+                   length=.Object@l[-1],
                    age=minage:maxage,
                    time=paste(sprintf('Year_%s',rep(1:opt@numobs,
                      each=opt@numoftimesteps)
@@ -259,7 +259,7 @@ setMethod(
                                           opt@num.of.fleets))
             dimnames(.Object@consumed) <-
               list(area=opt@areas,
-                   length=.Object@l,
+                   length=.Object@l[-1],
                    age=minage:maxage,
                    time=paste(sprintf('Year_%s',rep(1:opt@numobs,
                      each=opt@numoftimesteps)
@@ -274,17 +274,70 @@ setMethod(
           
           )
 
-setMethod(f = "firststep",
+setGeneric('Init.pop',
+           function(.Object,n){standardGeneric('Init.pop')}
+           )
+
+setMethod(f = "Init.pop",
           signature = "Stock",
           definition = function(.Object,
             n){
-            start <- firststep(
+            start <- firststep(n,
+                               .Object@mu,
+                               .Object@sigma,
+                               .Object@l,
+                               .Object@z,
+                               length(.Object@livesonareas),
+                               .Object@probarea,
+                               .Object@minage,
+                               .Object@maxage
+                      )
+            if(.Object@doesmove == 1){
+              .Object@stock[.Object@livesonareas,,-1,1] <-
+                start[,,(.Object@minage+1):.Object@maxage]
+            } else { 
+              .Object@stock[.Object@livesonareas,,,1] <-
+                start[,,.Object@minage:.Object@maxage]
+            }
+            return(.Object)
           }
           )
 
 
-
+setGeneric('as.data.frame.Stock',
+           function(.Object,n){standardGeneric('as.data.frame.Stock')}
+           )
+setMethod("as.data.frame.Stock",
+          signature = "Stock",
+          function(.Object){
+            stock.table <- as.data.frame.table(.Object@stock,
+                                               stringsAsFactors=FALSE)
+            names(stock.table)[length(names(stock.table))] <- 'Num.indiv'
+            catch <- as.data.frame.table(.Object@consumed,
+                                         stringsAsFactors=FALSE)
+            names(catch)[length(names(catch))] <- 'Catch'
+            stock.table <- merge(stock.table,catch,all=TRUE)
+            stock.table$year <- sapply(strsplit(stock.table$time,'_'),function(x) as.numeric(x[2]))
+            stock.table$step <- sapply(strsplit(stock.table$time,'_'),function(x) as.numeric(x[4]))
+            stock.table$length <- as.numeric(stock.table$length)
+            stock.table$age <- as.numeric(stock.table$age)
+            stock.table$weight <- .Object@weight[stock.table$length]  
+            return(stock.table)
+          }
+)
 ##### test
-opt <-new('Gadget.setup','Iceland',1:2,100,10,4,5,8000,2,2)
+opt <- new('Gadget.setup','Iceland',1:2,100,10,4,5,8000,2,2)
 surv <- new('Fleet','survey',2, '', 0.1, 1:2, c('cod','haddock'), 0.1, 0.1)
 imm <- new('Stock','cod',1:2,opt) 
+imm <- Init.pop(imm,1e6)
+
+#blu <- as.data.frame(imm)
+#rest <- blu$step==1&blu$year==1
+#tmp <- aggregate(Num.indiv~length + area,blu[rest,],sum)
+#xyplot(Num.indiv~length|area,blu,type='l',
+#       panel=function(x,y,...){
+#         tmp <- aggregate(y,by=list(x),sum)
+#         names(tmp) <- c('x','y')
+#         panel.xyplot(tmp$x,tmp$y,...)
+#       }
+#        ) 
