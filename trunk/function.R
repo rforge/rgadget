@@ -432,7 +432,7 @@ adjustconsumption <- function(C,
                               S=NULL,
                               E=NULL,
                               N,
-                              opt)
+                              maxratioconsumed)
 {
   if(is.null(S))
     S <- array(0,dim(C))
@@ -447,13 +447,13 @@ adjustconsumption <- function(C,
   }
   ratio <- apply(C+S+E,c(1,2),sum)/apply(N,c(1,2),sum)
   ratio <- ifelse(is.infinite(ratio)|is.nan(ratio),0,ratio)
-  index <- ratio > opt$maxratioconsumed
+  index <- ratio > maxratioconsumed
   if(sum(index)>0)
     print("Warning - understocking has occured")
   index2 <- array(index,c(dim(index),dim(C)[3]))
-  C[index2] <- (opt$maxratioconsumed/ratio[index])*C[index2]
-  S[index2] <- (opt$maxratioconsumed/ratio[index])*S[index2]
-  E[index2] <- (opt$maxratioconsumed/ratio[index])*E[index2]
+  C[index2] <- (maxratioconsumed/ratio[index])*C[index2]
+  S[index2] <- (maxratioconsumed/ratio[index])*S[index2]
+  E[index2] <- (maxratioconsumed/ratio[index])*E[index2]
   return(list(C=C,S=S,E=E))
 }
 
@@ -473,7 +473,7 @@ adjustconsumption <- function(C,
 #' @param salpha suitability constant for the fleet
 #' @param sbeta suitability constant for the fleet
 #' @param numperyear number of catch timesteps
-#' @param opt gadget options list
+#' @param numobs number of observation years
 #' @return Total catches of the fleet
 catch <- function(N,
                   timestep,
@@ -481,19 +481,19 @@ catch <- function(N,
                   salpha,
                   sbeta,
                   numperyear,
-                  opt)
+                  numobs)
 {
   #The suitability for the catch
   temp<-suitability(salpha,sbeta,0,1,opt$lt)
   Sl<-temp[1,]
-  Fy <- rep(Fy/numperyear,each=opt$numobs)
+  Fy <- rep(Fy/numperyear,each=numobs)
   
   #Proportion caught each year
   
   Fly<-Sl*Fy[timestep]
   if(length(dimnames(N)$area)>0)
     Fly <- rep(Fly,each=dim(N)[1]) 
-  C<-Fly*N
+  C<-Fly*N 
   
   return(C)
 }
