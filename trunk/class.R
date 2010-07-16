@@ -1,3 +1,15 @@
+#' Migration matrix
+#'
+#' Helper function for migrate
+#' @param opt gadget options list
+#' @return Migration array
+migMat <- function(P1,P2,numofareas,numoftimesteps){
+  P <- array(rbind(P1,1-P1,1-P2,P2),
+             c(numofareas,numofareas,numoftimesteps))
+  return(P)
+}
+
+
 setClass(
          Class = "Gadget.setup",
          representation = representation(
@@ -11,8 +23,9 @@ setClass(
            numofareas = "integer",
            area.temperature = "numeric",
            otherfood = "array",
-           num.of.stocks = "integer",
-           num.of.fleets = "integer",
+           otherfrac = "numeric",
+           stocknames = "character",
+           fleetnames = "character",
            lengthoftimesteps = "numeric",
            H = "numeric"
            )
@@ -22,7 +35,8 @@ setMethod(f = "initialize",
           signature = "Gadget.setup",
           definition = function(.Object, name, areas, areasize,
             numobs, numoftimesteps, 
-            area.temperature, otherfood,num.of.stocks, num.of.fleets,H){
+            area.temperature, otherfood,otherfrac,
+            stocknames, fleetnames,H){
             .Object@name <-  name
             .Object@areas <- as.integer(areas)
             .Object@numofareas <- as.integer(length(areas))
@@ -34,11 +48,18 @@ setMethod(f = "initialize",
               array(rep(otherfood,
                         numobs*numoftimesteps*.Object@numofareas),
                     c(.Object@numofareas,numobs*numoftimesteps))
-            .Object@num.of.stocks <- as.integer(num.of.stocks)
-            .Object@num.of.fleets <- as.integer(num.of.fleets)
+            .Object@otherfrac <- otherfrac
+            .Object@stocknames <- stocknames
+            .Object@fleetnames <- fleetnames
             .Object@dt <- 1/numoftimesteps
             .Object@lengthoftimesteps <- 12/numoftimesteps
             .Object@H <- H
+            if(length(areasize) != .Object@numofareas){
+              warning("Gadget.setup - length(areasize)!=numofares")
+              .Object@areasize <- rep(areasize[1],.Object@numofareas)
+            } else { 
+              .Object@areasize <- areasize
+            }
             return(.Object)
           }
           
@@ -112,6 +133,7 @@ setClass(
            lambda = "numeric",
            ## recruitment
            doesmove = "integer",
+           movesTo = "character",
            doesrenew = "integer",
            recruitment.step = "integer",
            BH.R_0 = "numeric", ## Beverton Holt recruitment
@@ -131,7 +153,7 @@ setClass(
            #m0 = "numeric",
            #m3 = "numeric",
            #H = "numeric",
-           maxrationconsumed = "numeric",
+           maxratioconsumed = "numeric",
            maxConsumption = "numeric",
            ## number of indivuals consumed and alive
            Eat = "array",
@@ -159,13 +181,14 @@ setMethod(
             lengthgrouplen = 1,
             ## migration
             doesmigrate = 1,
-            migrationP = array(c(1,0.6,0.6,1,0.6,1,1,0.6),c(4,2)),
+            migrationP = migMat(c(1,0.6,0.6,1),c(0.6,1,1,0.6),2,4),
             doesfuncmigrate = 0,
             diffusion = 0,
             driftx = 0,
             lambda = 0,
             ## recruitment
             doesmove = 0,
+            movesTo = "",
             doesrenew = 1,
             recruitment.step = 1,
             n = 1e6,
@@ -184,7 +207,8 @@ setMethod(
             stocks.eaten = '',
             s.alpha = 0,
             s.beta = 0,
-            
+            s.delta = 0,
+            s.gamma = 0,
             ## maximum consumption
             m0 = 10^(-2),
             m3 = 3,
@@ -216,6 +240,7 @@ setMethod(
             .Object@lambda <- lambda
             .Object@migrationP <- migrationP
             .Object@doesmove <- as.integer(doesmove)
+            .Object@movesTo <- movesTo
             .Object@doesrenew <- as.integer(doesrenew)
             .Object@recruitment.step <- as.integer(recruitment.step)
             .Object@BH.R_0 <- (1+n/exp(-2*z))
@@ -226,6 +251,8 @@ setMethod(
             tmp <- data.frame(stocks=stocks.eaten,
                               s.alpha=s.alpha,
                               s.beta=s.beta,
+                              s.gamma=s.gamma,
+                              s.delta=s.delta,
                               suitability='exponential')
             .Object@suitability <- tmp
             .Object@z <- z # c(rep(z,maxage-1),0.5)
@@ -239,20 +266,20 @@ setMethod(
                            .Object@l[1:(length(.Object@l)-1)])/2
             .Object@numoflgroups <- as.integer(length(.Object@l) - 1)
             .Object@maxConsumption <- m0*.Object@lt^m3*12*opt@dt
-            .Object@maxrationconsumed <- maxratioconsumed
+            .Object@maxratioconsumed <- maxratioconsumed
             .Object@weight <- a*.Object@lt^b
             ## mu[i] mean length at age i
-            .Object@mu <- lsup*(1-exp(-k*1:maxage))
+            .Object@mu <- lsup*(1-exp(-k*minage:maxage))
             if(!is.null(recruitment.length))
               .Object@mu[1] <- recruitment.length
             .Object@sigma <- sigma
-            G <- growthprob(.Object@lt,
-                            beta,
-                            lsup,
-                            k,
-                            opt@dt,
-                            .Object@lengthgrouplen,
-                            binn)
+            .Object@G <- growthprob(.Object@lt,
+                                    beta,
+                                    lsup,
+                                    k,
+                                    opt@dt,
+                                    .Object@lengthgrouplen,
+                                    binn)
             ## stock arrays
             
 
@@ -274,7 +301,7 @@ setMethod(
                                           .Object@numoflgroups,
                                           maxage - minage +1,
                                           (opt@numobs*opt@numoftimesteps),
-                                          opt@num.of.fleets))
+                                          length(opt@fleetnames)))
             dimnames(.Object@consumed) <-
               list(area=opt@areas,
                    length=.Object@l[-1],
@@ -285,7 +312,7 @@ setMethod(
                      sprintf('Step_%s',rep(1:opt@numoftimesteps,
                                            opt@numobs)),
                      sep='_'),
-                   fleet=1:opt@num.of.fleets)
+                   fleet=opt@fleetnames)
             .Object@Eat <- .Object@stock
             return(.Object)
           }
@@ -322,10 +349,10 @@ setMethod(f = "firststep.Stock",
             }
             if(.Object@doesmove == 1){
               .Object@stock[.Object@livesonareas,,-1,1] <-
-                start[,,(.Object@minage+1):.Object@maxage]
+                start[,,as.character((.Object@minage+1):.Object@maxage)]
             } else { 
               .Object@stock[.Object@livesonareas,,,1] <-
-                start[,,.Object@minage:.Object@maxage]
+                start[,,as.character(.Object@minage:.Object@maxage)]
             }
             return(.Object)
           }
@@ -344,9 +371,14 @@ setMethod("as.data.frame.Stock",
             catch <- as.data.frame.table(.Object@consumed,
                                          stringsAsFactors=FALSE)
             names(catch)[length(names(catch))] <- 'Catch'
+            catch <- reshape(catch,timevar='fleet',
+                             direction='wide',
+                             idvar=names(catch)[1:4])
             stock.table <- merge(stock.table,catch,all=TRUE)
-            stock.table$year <- sapply(strsplit(stock.table$time,'_'),function(x) as.numeric(x[2]))
-            stock.table$step <- sapply(strsplit(stock.table$time,'_'),function(x) as.numeric(x[4]))
+            stock.table$year <- sapply(strsplit(stock.table$time,'_'),
+                                       function(x) as.numeric(x[2]))
+            stock.table$step <- sapply(strsplit(stock.table$time,'_'),
+                                       function(x) as.numeric(x[4]))
             stock.table$length <- as.numeric(stock.table$length)
             stock.table$age <- as.numeric(stock.table$age)
             stock.table$weight <- .Object@weight[stock.table$length]  
@@ -371,13 +403,13 @@ setGeneric('recruits.Stock',
 setMethod(f = "recruits.Stock",
           signature = "Stock",
           definition = function(.Object,year,step){
-
             ## n_{t+1} = \frac{R_0 n_t}{1+ n_t/M}
-            tmp <- get(.Object,year,step)
+            tmp <- get.Stock(.Object,year,step)
             n <- apply(tmp,3,sum)[2]
+            n <- .Object@BH.R_0*n/(1+n/exp(-.Object@z))
             #rec <- recruits(n,.Object@mu,.Object@sigma,.Object@l,
             #                length(.Object@l),.Object@probarea)
-            Temp <- distr(.Object@mu,.Object@sigma,.Object@l)*n
+            Temp <- distr(.Object@mu[1],.Object@sigma[1],.Object@l)*n
             numofareas <- length(.Object@livesonareas)
             query <- sprintf('Year_%s_Step_%s',year,step)
             .Object@stock[,,as.character(.Object@minage),query] <-
@@ -404,8 +436,10 @@ setGeneric('updateAge.Stock',
 setMethod(f = 'updateAge.Stock',
           signature = "Stock",
           definition = function(.Object,i){
-            .Object@stock[,,-as.character(.Object@minage),i] <-
-              .Object@stock[,,-as.character(.Object@maxage),i-1]
+            minage.res <- !(.Object@minage:.Object@maxage %in% .Object@minage)
+            maxage.res <- !(.Object@minage:.Object@maxage %in% .Object@maxage)
+            .Object@stock[,,minage.res,i] <-
+              .Object@stock[,,maxage.res,i-1]
             if(.Object@doesmove!=1){
               .Object@stock[,,as.character(.Object@maxage),i] <-
                 .Object@stock[,,as.character(.Object@maxage),i] +
@@ -422,7 +456,7 @@ setMethod(f = 'move.Stock',
           definition = function(mat,imm,i){
             mat@stock[,,as.character(mat@minage),i] <-
               mat@stock[,,as.character(mat@minage),i] +
-                imm@stock[,,as.character(imm@minage),i-1]
+                imm@stock[,,as.character(imm@maxage),i-1]
             return(mat)
           }
           )
@@ -449,16 +483,16 @@ setMethod(f = 'migrate.Stock',
 
 
 setGeneric('eat.Stock',
-           function(Prey,Pred,step){standardGeneric('eat.Stock')}
+           function(Prey,Pred,opt,step){standardGeneric('eat.Stock')}
            )
 setMethod(f = 'eat.Stock',
           signature = "Stock",
-          definition = function(Prey,Pred,step){
+          definition = function(Prey,Pred,opt,step){
             Eat <- array(0,c(opt@numofareas,Prey@numoflgroups,
                              Prey@maxage - Prey@minage +1))
             tmp <- Pred@suitability[Pred@suitability$stocks==Prey@name,] 
-            Spred<-suitability(tmp$s.alpha,tmp$s.pbeta,tmp$opt$spgamma,
-                              tmp$s.delta,Prey@l,Pred@L)
+            Spred<-suitability(tmp$s.alpha,tmp$s.beta,tmp$s.gamma,
+                              tmp$s.delta,Prey@lt,Pred@lt)
             ## Food = S(L,l)*N_l
             Food<-array(0,c(Prey@numoflgroups,Pred@numoflgroups,
                             Prey@maxage - Prey@minage +1))
@@ -489,143 +523,157 @@ setGeneric('catch.Stock',
            function(Fleet,Prey,opt,num,step){standardGeneric('catch.Stock')}
            )
 setMethod(f = 'catch.Stock',
-          signature = "Stock",
+          signature = c("Fleet","Stock"),
           definition = function(Fleet,Prey,opt,num,step){
             tmp <- Fleet@suitability[Fleet@suitability$stock == Prey@name,]
             mutual.areas <-
-              Fleet@livesonareas[Fleet@livesonares %in% stock@livesonareas]
-            Prey@consumed[mutual.areas,,,step] <-
+              Fleet@livesonareas[Fleet@livesonareas %in% Prey@livesonareas]
+            
+            Prey@consumed[mutual.areas,,,step,Fleet@name] <-
               catch(Prey@stock[mutual.areas,,,step],
                     num,
                     Fleet@fy,
                     tmp$alpha,
                     tmp$beta,
                     length(Fleet@timesteps),
-                    opt@numobs)
+                    opt@numobs,
+                    Prey@lt)
             
             return(Prey)
           }
           )
 setGeneric('adjust.update.con.Stock',
-           function(Fleet,Prey,opt,num,step){standardGeneric('adjust.update.con.Stock')}
+           function(.Object,opt,i){standardGeneric('adjust.update.con.Stock')}
            )
 setMethod(f = 'adjust.update.con.Stock',
           signature = "Stock",
-          definition = function(.Object,i){
+          definition = function(.Object,opt,i){
             catch <- apply(.Object@consumed,1:4,sum)
             tmp <- adjustconsumption(C = catch[,,,i],
                                      S = NULL,
                                      E = .Object@Eat[,,,i],
                                      N = .Object@stock[,,,i],
-                                     .Object@maxratioconsumed)
+                                     .Object@maxratioconsumed,
+                                     opt@numofareas)
             .Object@stock[,,,i] <- .Object@stock[,,,i] - tmp$E - tmp$C
             return(.Object)
           }
           
           )
 
-setGeneric('UpdateLength.Stock',
-           function(.Object,i){standardGeneric('UpdateLength.Stock')}
+setGeneric('updateLength.Stock',
+           function(.Object,i){standardGeneric('updateLength.Stock')}
            )
-setMethod(f ='UpdateLength.Stock',
+setMethod(f ='updateLength.Stock',
           signature = "Stock",
           definition = function(.Object,i){
             if(.Object@doesgrow==1){
-              M <- diag(exp(-opt$mort*opt$dt))
-              immMort <- M[opt$immminage:opt$immmaxage,
-                           opt$immminage:opt$immmaxage]
               for(area in .Object@livesonareas){
                 .Object@stock[area,,,i] <-
-                  t(.Object@G)%*%.Object@stock[area,,,i]%*%M
+                  t(.Object@G)%*%.Object@stock[area,,,i]%*%.Object@M
               }
             }
             return(.Object)
           }
 )
-RGadget <- function(stocks,fleets,opt){
-   for(i in 1:(opt@numobs*opt@numoftimesteps))
-    {
-      num<-i%%opt@numoftimesteps
-      if(num==0)
-        num <- opt@numoftimesteps
-      if(num!=1){      ############## if we are not in timestep 1  #########
+RGadget.Stock <- function(stocks,fleets,opt) {
+  
+  for(year in 1:opt@numobs) {
+    for(timestep in 1:opt@numoftimesteps) {
+      i <- (year - 1)*opt@numoftimesteps + timestep
+      if(timestep!=1){ ########### if we are not in timestep 1  #########
         for(stock in names(stocks)){
-          stocks[[stock]] <- nextstep(stocks[[stock]],i)
+          stocks[[stock]] <- nextstep.Stock(stocks[[stock]],i)
         }
       } else if(i==1){ ### we have a special update in the 1st timestep ###
         for(stock in names(stocks)){
-          stocks[[stock]] <- firststep(stocks[[stock]])
+          stocks[[stock]] <- firststep.Stock(stocks[[stock]])
         }
       } else { ###### if we are in timestep 1 we have to update age ######
         
-    #############
-    # Age update
-    # NOTE this is the last step of the
-    # calculations done in previous timestep
+#############
+        ## Age update
+        ## NOTE this is the last step of the
+        ## calculations done in previous timestep
         for(stock in names(stocks)){
-          stocks[[stock]] <- updateAge(stocks[[stock]],i)
+          stocks[[stock]] <- updateAge.Stock(stocks[[stock]],i)
         }
+        
         ## Adding the ones which have moved between stocks
         for(stock in names(stocks)){
           if(stocks[[stock]]@doesmove==1){
             stocks[[stocks[[stock]]@movesTo]] <-
-              move(stocks[[stocks[[stock]]@movesTo]],stocks[[stock]],i)
+              move.Stock(stocks[[stocks[[stock]]@movesTo]],stocks[[stock]],i)
           }
         }
-        
+      }
 ############
-         ## Migration 
-        for(stock in stocks){
-          if(stocks[[stock]]@doesmigrate==1){
-            stocks[[stock]] <- migrate(stocks[[stock]],num,i)
-          }
+      ## Migration 
+      for(stock in names(stocks)){
+        if(stocks[[stock]]@doesmigrate==1){
+          stocks[[stock]] <- migrate.Stock(stocks[[stock]],timestep,i)
         }
+      }
 ############
-        ## Consumption calculations
-        for(stock in stocks){
-          if(stocks[[stock]]@doeseat==1){
-            for(prey in stocks[[stock]]@suitability$stocks){
-              stocks[[prey]] <- eat(stocks[[prey]],stocks[[stock]],opt,i) 
-            }
+      ## Consumption calculations
+      for(stock in names(stocks)){
+        if(stocks[[stock]]@doeseat==1){
+          for(prey in stocks[[stock]]@suitability$stocks){
+            stocks[[prey]] <- eat.Stock(stocks[[prey]],stocks[[stock]],opt,i)
           }
         }
-        
-  ############
-        ## Catch calculations
-        for(fleet in fleets){
-          if(num %in% fleets[[fleet]]@timesteps){
-            for(stock in fleets[[fleet]]@stocks){
-              stocks[[stock]] <- catch(fleet[[fleet]],stocks[[stock]],i)
-            }
+      }
+      
+############
+      ## Catch calculations
+      for(fleet in names(fleets)){
+        if(timestep %in% fleets[[fleet]]@timesteps){
+          for(stock in fleets[[fleet]]@suitability$stocks){
+            stocks[[stock]] <- catch.Stock(fleets[[fleet]],stocks[[stock]],opt,timestep,i)
           }
         }
-
-  #############
-  # Overconsumption check
-        for(stock in stocks){
-          stocks[[stock]] <- adjust.update.con(stocks[[stock]])
-        }
- 
-
-  ###########
-  # Length update and natural mortality
-        for(stock in stocks){
-          stocks[[stock]] <- updateLength(stocks[[stock]],i)
-          stocks[[stock]] <- recruits(stock[[stock]],i)
-        }
-        }
-
+      }
+      
+#############
+                                        # Overconsumption check
+      for(stock in names(stocks)){
+        stocks[[stock]] <- adjust.update.con.Stock(stocks[[stock]],opt,i)
+        stocks[[stock]] <- updateLength.Stock(stocks[[stock]],i)
+        stocks[[stock]] <- recruits.Stock(stocks[[stock]],year,timestep)
+      } 
     }
-   return(list(stocks=stocks,fleets=fleets,opt=opt))
- }
+  }
+  return(list(stocks=stocks,fleets=fleets,opt=opt))
+}
 
 
-opt <- new('Gadget.setup','Iceland',1:2,100,10,4,5,8000,2,2)
-surv <- new('Fleet','survey',2, '', 0.1, 1:2, c('cod','haddock'), 0.1, 0.1)
-imm <- new('Stock','cod',1:2,opt) 
-imm <- firststep.Stock(imm)
+opt <- new('Gadget.setup','Iceland',1:2,c(2e5,2e5),
+           10,4,5,8000,0.8,c('imm','mat'),
+           c('surv','comm'),1)
+surv <- new('Fleet','surv',2, '', 0.1, 1:2, c('imm','mat'), -4.5, 0.3)
+comm <- new('Fleet','comm',1:4, '', 0.7, 1:2, c('imm','mat'), -8, 0.22)
+sigma <- c(2.2472, 2.8982, 4.0705, 4.9276,
+           5.5404, 5.8072, 6.0233, 8, 9, 9)
+imm <- new('Stock','imm',1:2,opt,movesTo = "mat",doesmove = 1,maxage=3,
+           sigma=sigma[1:3])
+mat <- new('Stock','mat',1:2,opt,doeseat = 1,
+           stocks.eaten='imm', s.alpha=4.5,
+           s.beta=-.2, s.gamma=-.3, s.delta=1,
+           minage=4,sigma=sigma[4:10])
+stocks <- list(imm=imm,mat=mat)
+fleets <- list(surv=surv,comm=comm)
+tmp <- RGadget.Stock(stocks,fleets,opt)
 
-#blu <- as.data.frame(imm)
+
+#imm <- firststep.Stock(imm)
+#blu <- get.Stock(imm,1,1)
+#imm <- recruits.Stock(imm,1,1)
+#imm <- nextstep.Stock(imm,2)
+#imm <- updateAge.Stock(imm,2)
+#mat <- move.Stock(mat,imm,2)
+#imm <- migrate.Stock(imm,1,1)
+#imm <- eat.Stock(imm,mat,1)
+                                        #blu <- as.data.frame(imm)
 #rest <- blu$step==1&blu$year==1
 #tmp <- aggregate(Num.indiv~length + area,blu[rest,],sum)
 #xyplot(Num.indiv~length|area,blu,type='l',

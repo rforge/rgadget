@@ -1,3 +1,4 @@
+
 #' RGadget
 #'
 #' Each year is divided into timesteps of equal length.  Two stocks are
@@ -253,7 +254,8 @@ Rgadget <- function(opt=gadget.options()){
                       opt$salphacomm,
                       opt$sbetacomm,
                       opt$numoftimesteps,
-                      opt)
+                      opt$numobs,
+                      opt$lt)
             }
             if('mat' %in% opt$comm.catches){
               matCcomm[commAreas,,,i] <-
@@ -263,7 +265,8 @@ Rgadget <- function(opt=gadget.options()){
                       opt$salphacomm,
                       opt$sbetacomm,
                       opt$numoftimesteps,
-                      opt)
+                      opt$numobs,
+                      opt$lt)
             }
           }
       }
@@ -279,7 +282,8 @@ Rgadget <- function(opt=gadget.options()){
                         opt$salphasurv,
                         opt$sbetasurv,
                         1,
-                        opt)
+                        opt$numobs,
+                        opt$lt)
               }
               if('mat' %in% opt$surv.catches){
                 matCsurv[surveyAreas,,,i] <-
@@ -289,7 +293,8 @@ Rgadget <- function(opt=gadget.options()){
                         opt$salphasurv,
                         opt$sbetasurv,
                         1,
-                        opt)
+                        opt$numobs,
+                        opt$lt)
               }
             }
         }
@@ -300,12 +305,14 @@ Rgadget <- function(opt=gadget.options()){
                                   S=immCsurv[,,,i],
                                   E=Eat[,,,i],
                                   N=immNumRec[,,,i],
-                                  opt)
+                                  opt$maxratioconsumed,
+                                  opt$numofareas)
       tempmatC<-adjustconsumption(C=matCcomm[,,,i],
                                   S=matCsurv[,,,i],
                                   ,
                                   N=matNumRec[,,,i],
-                                  opt)
+                                  opt$maxratioconsumed,
+                                  opt$numofareas)
 
   #############
   # Subtract Consumption from stock

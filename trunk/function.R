@@ -116,7 +116,7 @@ gadget.options <- function(){
               doesmove=1,
 
 # Number of areas (cannot currently be more than 2)
-              numofareas = 1,
+              numofareas = 2,
 #The portion of the stock in area 1.
               probarea=1,
 # The temperature of the area
@@ -432,14 +432,15 @@ adjustconsumption <- function(C,
                               S=NULL,
                               E=NULL,
                               N,
-                              maxratioconsumed)
+                              maxratioconsumed,
+                              numofareas)
 {
   if(is.null(S))
     S <- array(0,dim(C))
   if(is.null(E))
     E <- array(0,dim(C))
   ## Nasty hack
-  if(opt$numofareas==1){
+  if(numofareas==1){
     dim(C) <- c(1,dim(C))
     dim(S) <- c(1,dim(S))
     dim(E) <- c(1,dim(E))
@@ -481,10 +482,11 @@ catch <- function(N,
                   salpha,
                   sbeta,
                   numperyear,
-                  numobs)
+                  numobs,
+                  l)
 {
   #The suitability for the catch
-  temp<-suitability(salpha,sbeta,0,1,opt$lt)
+  temp<-suitability(salpha,sbeta,0,1,l)
   Sl<-temp[1,]
   Fy <- rep(Fy/numperyear,each=numobs)
   
@@ -506,8 +508,7 @@ catch <- function(N,
 #' @param sigma standart deviation of length for all ages
 #' @param l lengthgroups
 #' @return a matrix of dimension length(mu) X (length(l)-1)
-distr <- function(mu,sigma,l)
-{
+distr <- function(mu,sigma,l) {
   fi <- (pnorm(rep(l[-1],each=length(sigma)),mu,sigma)-
          pnorm(rep(l[-length(l)],each=length(sigma)),mu,sigma))
   dim(fi) <- c(length(sigma),length(l)-1)
@@ -631,26 +632,24 @@ firststep <- function(n,
                       probarea,
                       minage,
                       maxage
-                      )
-{
+                      ) {
   minlen <- min(l)
   maxlen <- max(l)
   numoflgroups <- length(l)-1
-  num.agegroup <- n[1]*exp(-(0:(maxage-1))*z)
+  num.agegroup <- n[1]*exp(-(minage:maxage-1)*z)
   
-  if(maxage!=length(sigma)) {
+  if((maxage - minage +1)!=length(sigma)) {
     stop("Error - the number of age groups for sigma doesnt match the maximum age")
    # return('Error')
   }
     
   temp <- distr(mu,sigma,l)*rep(num.agegroup,each=numoflgroups)
-  if(minage>1)
-    temp[,1:minage] <- 0 
+#  if(minage>1)
+#    temp[,1:minage] <- 0 
   # assign the distribution to areas according to the probability of being in
   # that area
   if(length(probarea)!=numofareas){
     stop("Error - the area probabilities do not match the number of areas")
-    #return('Error')
   }
   initial.distribution <- array(rep(temp,each=numofareas),
                                 c(numofareas,dim(temp)))*probarea
