@@ -78,6 +78,11 @@ estimate.growth <- function(){
   opt$calcindex <- 0
   opt$calcalk.c <- 0
   opt$calcalk.s <- 1
+  opt$estimate.recruits.by.year <- 0
+  opt$estimate.recruits.by.year.and.area <- 0
+  opt$estimate.recruits.by.year.constant.area <- 0
+  opt$optim.params <- c('linf','k')#,'beta','comma','commb','surveya','surveyb')
+  opt$randomise.all.initial.values <- 1
   ## create dataset
   sim <- Rgadget(opt)
   makefiles(sim$opt,sim)
@@ -126,6 +131,8 @@ standard1 <- function(){
   
 }
 
+
+#estimate.sel <- function
 
 ##' Estimate Migration
 ##'

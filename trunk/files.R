@@ -216,7 +216,7 @@ fileaggregation<-function(opt,sim,location='Gfiles',file='area') {
   filelenagg(1,opt,location,'len')
   filelenagg(5,opt,location,'len')
   filelenagg(10,opt,location,'len')
-  filelenagg(opt$maxlen,opt,location,'alllen')
+  filelenagg(opt$numoflgroups,opt,location,'alllen')
   filelenagg(opt$alkagg,opt,location,'len')
   
 }
@@ -331,6 +331,10 @@ fileinput<-function(opt,sim,
                optimise=1*(param.names %in% opt$optim.params))
   if(opt$randomised.recruits==1){
     params$value[agrep('rec',params$switch)] <- 'random'
+  }
+
+  if(opt$randomise.all.initial.values==1){
+    params$value[params$optimise==1] <- 'random'
   }
     
   input.text <-
