@@ -81,6 +81,7 @@
 #' \item{doesgrow}{do the stocks grow}
 #' \item{growthfunction}{What growth function should be used, currently only lengthvbsimple is implemented}
 #' \item{optim.params}{What parameters should Gadget optimise}
+#' \item{randomise.all.initial.values}{Should initial values be randomized} 
 gadget.options <- function(){
   opt <- list(
 #############################################################
@@ -292,7 +293,8 @@ gadget.options <- function(){
               doesgrow=1,
               growthfunction='lengthvbsimple',
 # optimiser
-              optim.params=''
+              optim.params='',
+              randomise.all.initial.values = 0
               )
   return(opt)
 }

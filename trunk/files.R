@@ -372,7 +372,7 @@ filelikelihood<-function(opt,sim,location='Gfiles',file='likelihood')
       paste(likelihood,
             paste(sprintf(paste(";\n[component]",
                                 "name\t\tsi.area%1$s.R",
-                                "weight\t\t1",
+                                "weight\t\t1e-8",
                                 "type\t\tsurveyindices",
                                 ifelse(opt$bylen==1,
                                        paste("datafile\texample.surveyindexlen",
@@ -394,7 +394,7 @@ filelikelihood<-function(opt,sim,location='Gfiles',file='likelihood')
                                 
                                 ";\n[component]",
                                 "name\t\tsi.area%1$s.O",
-                                "weight\t\t1",
+                                "weight\t\t1e-8",
                                 "type\t\tsurveyindices",
                                 ifelse(opt$bylen==1,
                                        paste("datafile\texample.surveyindexlen",
@@ -438,7 +438,7 @@ filelikelihood<-function(opt,sim,location='Gfiles',file='likelihood')
               sep='\n')
     }
 
-    if(opt$calcalk.s == 0) {
+    if(opt$calcalk.s == 1) {
       likelihood <-
         paste(likelihood,
               ";\n[component]",
@@ -495,7 +495,7 @@ filelikelihood<-function(opt,sim,location='Gfiles',file='likelihood')
         paste(likelihood,
               ";\n[component]",
               "name\t\tcatch.kilos",
-              "weight\t\t1",
+              "weight\t\t1e-1",
               "type\t\tcatchinkilos",
               "datafile\texample.kilos",
               "function\tsumofsquares",
@@ -1378,16 +1378,16 @@ fileoptinfo<-function(opt=NULL,sim=NULL,location='Gfiles',file='optinfofile')
           "; created automatically from R-gadget",
           "; options for the Simulated Annealing optimisation",
           "[simann]",
-          "simanniter\t4000",
-          "simanneps\t0.0001",
-          "T\t\t7",
-          "rt\t\t0.6",
+          "simanniter\t2000",
+          "simanneps\t1e-4",
+          "T\t\t100",
+          "rt\t\t0.85",
           "; options for the Hooke and Jeeves optimisation",
           "[hooke]",
-          "hookeiter\t5000",
-          "hookeeps\t1e-05",
-          "rho\t\t0.7",
-          "lambda\t1",
+          "hookeiter\t1000",
+          "hookeeps\t1e-04",
+          "rho\t\t0.5",
+          "lambda\t0",
           sep='\n')
   write(optinfo,paste('.',location,file,sep='/'))
 }

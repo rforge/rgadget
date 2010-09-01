@@ -201,3 +201,78 @@ ecoSim <- function(){
   mat <- as.data.frame.table(sim$matNumRec)
   
 }
+
+ices.example <- function(){
+  ## set up the initial folders
+  try(system('mkdir ices.example',intern=TRUE,ignore.stderr=TRUE))
+  setwd('ices.example')
+  try(system('mkdir results',intern=TRUE,ignore.stderr=TRUE))
+  
+  ## example specific switches
+  opt <- gadget.options()
+  opt$numofareas <- 2
+  opt$probarea <- c(1,1)/2
+  opt$spbeta <- -0.3
+  opt$H <- 400
+  opt$m0 <- 1e-5
+  opt$Fycomm <- 0.45
+  opt$Fysurv <- 0.01
+  opt$doescatchsurv <- 1:opt$numofareas
+  opt$doescatchcomm <- 1:opt$numofareas
+  opt$bylen <- 0
+  opt$commfleettype <- 'linearfleet'
+  opt$commmultiplicative <- '(* 0.1 #mult)'
+  opt$calcindex <- 1
+  opt$calcldist.c <- 0
+  opt$calcldist.s <- 0
+  opt$calc.in.kilos <- 1
+  opt$calcalk.c <- 0
+  opt$calcalk.s <- 0
+  opt$estimate.recruits.by.year <- 1
+  opt$optim.params <- c('mult','comma','commb','surveya','surveyb',
+                        sprintf('rec%s',1:10))
+  opt$survey.sigma <- 0.2
+  ## generate dataset
+  sim <- Rgadget(opt)
+  run.stuff <- function(run){
+    try(system(sprintf('mkdir Gfiles%s',run),intern=TRUE,ignore.stderr=TRUE))
+    makefiles(sim$opt,sim,location=sprintf('Gfiles%s',run))
+    ## estimation run
+  
+    setwd(sprintf('Gfiles%s',run))
+    ## try(system('mkdir run1',intern=TRUE,ignore.stderr=TRUE))
+    ## try(system('mkdir out',intern=TRUE,ignore.stderr=TRUE))
+    callGadget(l=1,i='refinputfile',p=sprintf('../results/params.%s',run))
+    setwd('..')
+  }
+  library(multicore)
+  mclapply(1:100,run.stuff,mc.cores=3)
+  ## rerun from optimum to print population details
+#  callGadget(s=1,i='run1/params.out',o='run1/like.out')
+  #printfiles <- read.printfiles('out')
+  ## return to old wd
+  tmp <- array(0,c(18,100))
+  for(i in 1:100){
+    tmp[,i] <- read.table(sprintf('results/params.%s',i),header=TRUE,skip=4)$value
+  }
+  dat <- read.table('results/params.1',header=TRUE,skip=4,stringsAsFactors=FALSE)
+  dimnames(tmp) <- list(parameter=dat$switch,iteration=1:100)
+  setwd('../')
+  quants <- apply(tmp,1,function(x) quantile(x,c(0.025,0.25,0.5,0.75,0.975)))
+  plot(1:10,
+       quants[3,sprintf('rec%s',1:10)],
+       type='l',lty=1,ylim=c(0.5,1.2),
+       ylab='Recruitment',
+       xlab='Year',lwd=2
+       )
+  axis(1,lwd=2)
+  axis(2,lwd=2)
+  for(i in 1:5){
+    lines(1:10,quants[i,sprintf('rec%s',1:10)],
+          type='l',lty=abs(i-3)+1,lwd=2)
+  }
+  lines(1:10,rep(1,10),col='blue',lwd=2)
+  lines(1:10,apply(tmp,1,mean,lwd=2)[sprintf('rec%s',1:10)],col='red')
+  legend('bottomright',inset = 0.01,legend=c('True Value','Mean','Median','25% quantiles','2.5% quantiles'),lty=c(1,1,1,2,3),col=c('blue','Red',rep('black',3)),bg='grey90',lwd=2)
+  invisible(tmp)
+}
