@@ -1346,7 +1346,7 @@ filealk <- function(len.agg,age.agg,
   comm$ximm <- NULL
   comm$xmat <- NULL
   surv <- merge(immSurv,matSurv,
-                by=c('year','step','area','length'),
+                by=c('year','step','area','length','age'),
                 all=TRUE,
                 suffixes=c('imm','mat'))
   surv$ximm[is.na(surv$ximm)] <- 0

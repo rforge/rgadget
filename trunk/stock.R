@@ -352,7 +352,8 @@ Rgadget <- function(opt=gadget.options()){
       immNumRec[,,1,i]<-immNumRec[,,1,i]+Rec[,,i]
     }
 
-  return(list(Rec=Rec,
+  
+  sim <- list(Rec=Rec,
               immStart=immStart,
               matStart=matStart,
               immNumRec=immNumRec,
@@ -365,5 +366,6 @@ Rgadget <- function(opt=gadget.options()){
               GrowthProb=G,
               immMort=immMort,
               matMort=matMort,
-              opt=opt))
+              opt=opt)
+  return(sim)
 }
