@@ -1,3 +1,8 @@
+##' Calculates the survey indices for the simulated stocks. 
+##' @title Survey indices
+##' @param sim Results from a Rgadget simulation
+##' @return Dataframe with the survey indices 
+##' @author Bjarki Þór Elvarsson
 survey.index <- function(sim){
   ##Calculates the total catch  
   opt <- sim$opt
@@ -43,10 +48,14 @@ survey.index <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Index'
-  
+  attr(alk,'plotFun') <- 'xyplot'  
   return(SurveyIndex)
 }
-
+##' Calculate the survey length index based on the provided lengthgroupsw
+##' @title Survey length index
+##' @param sim Results from a Rgadget simulation
+##' @return Dataframe containing the length index from the 
+##' @author Bjarki Þór Elvarsson
 survey.indexlen <- function(sim){
   opt <- sim$opt
   immIndex <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
@@ -99,10 +108,14 @@ survey.indexlen <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
-
+  attr(alk,'plotFun') <- 'xyplot'
   return(SurveyIndex)
 }
-
+##' Calculate the length distribution from catch (commercial fleet) by length groups and time
+##' @title Length distribution from catch 
+##' @param sim Results from a Rgadget simulation
+##' @return Dataframe containing the length distribution
+##' @author Bjarki Þór Elvarsson
 catch.ldist <- function(sim){
   opt <- sim$opt
   immIndex <- as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE)
@@ -148,16 +161,20 @@ catch.ldist <- function(sim){
   SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
 
   class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~time|area
-  attr(SurveyIndex,'plotGroups') <- 'length.group'
+  attr(SurveyIndex,'formula') <- x~length|year+area
+  attr(SurveyIndex,'plotGroups') <- 'step'
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Catch Length Index'
-  
+  attr(alk,'plotFun') <- 'xyplot'  
   
   return(SurveyIndex)
 }
-
+##' Calculate the length distribution from the survey by length groups and time.
+##' @title Survey length distribution 
+##' @param sim Results from a Rgadget simulation
+##' @return Dataframe containing the survey length distribution.
+##' @author Bjarki Þór Elvarsson
 survey.ldist <- function(sim){
   opt <- sim$opt
   immIndex <- as.data.frame.table(sim$immCsurv,stringsAsFactors=FALSE)
@@ -202,14 +219,21 @@ survey.ldist <- function(sim){
   SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
 #  SurveyIndex$length <- as.numeric(SurveyIndex$length)
   class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~time|area
-  attr(SurveyIndex,'plotGroups') <- 'length.group'
+  attr(SurveyIndex,'formula') <- x~length|year+area
+  attr(SurveyIndex,'plotGroups') <- 'step'
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
+  attr(alk,'plotFun') <- 'xyplot'
   return(SurveyIndex)
 }
-
+##' Calculates the age-length-key for the survey and commercial fleet.
+##' @title Age length key
+##' @param sim Results from a Rgadget simulation
+##' @param age.agg The desired age aggregation
+##' @param len.agg The desired length aggregation
+##' @return Dataframe containing the age - length key
+##' @author Bjarki Þór Elvarsson
 age.length.key <- function(sim,age.agg,len.agg){
    ## age length table
   opt <- sim$opt
@@ -220,38 +244,40 @@ age.length.key <- function(sim,age.agg,len.agg){
     catch.table$step <- sapply(strsplit(catch.table$time,'_'),
                                function(x) as.numeric(x[4]))
     catch.table$age.agg <-
-      1 + round((as.numeric(catch.table$age) - opt$minage)/age.agg)
+      ordered(1 + round((as.numeric(catch.table$age) - opt$minage)/age.agg))
+    levels(catch.table$age.agg) <- paste('age',
+                                         levels(catch.table$age.agg),
+                                         sep='')
     catch.table$length.agg <-
-      1 + round((as.numeric(catch.table$length) - opt$minlen)/len.agg)
+      ordered(1 + round((as.numeric(catch.table$length) - opt$minlen)/len.agg))
+    levels(catch.table$length.agg) <- paste('len',
+                                            levels(catch.table$length.agg),
+                                            sep='')
     tmp <- aggregate(catch.table$Freq,
                      by=list(
                        year=catch.table$year,
                        step=catch.table$step,
                        area=paste('area',catch.table$area,sep=''),
-                       age=paste('age',catch.table$age.agg,sep=''),
-                       length=paste('len',catch.table$length.agg,sep='')),
+                       age=catch.table$age.agg,
+                       length=catch.table$length.agg),
                      sum)    
     if(len.agg==(opt$maxlen-opt$minlen))
-      tmp$length <- 'alllen'
+      tmp$length <- ordered('alllen')
     if(age.agg==(opt$maxage))
-      tmp$age <- 'allages'
+      tmp$age <- ordered('allages')
     return(tmp)
   }
 
   immComm <- alk.table(sim$immCcomm,
-                       #opt,
                        age.agg,
                        len.agg)
   matComm <- alk.table(sim$matCcomm,
-                       #opt,
                        age.agg,
                        len.agg)
   immSurv <- alk.table(sim$immCsurv,
-                       #opt,
                        age.agg,
                        len.agg)
   matSurv <- alk.table(sim$matCsurv,
-                       #opt,
                        age.agg,
                        len.agg)
   comm <- merge(immComm,matComm,
@@ -277,9 +303,22 @@ age.length.key <- function(sim,age.agg,len.agg){
   surv$xmat <- NULL
   surv$fleet <- 'surv'
   alk <- rbind(surv,comm)
-  return(alk)
-}
 
+  class(alk) <- c('Rgadget',class(alk))
+  attr(alk,'formula') <- total.catch~age+length|year+step+area
+  attr(alk,'plotGroups') <- ''
+  attr(alk,'plotType') <- ''
+  attr(alk,'xaxis') <- 'Year'
+  attr(alk,'yaxis') <- 'Age - Length - Key'
+  attr(alk,'plotFun') <- 'contour'
+  return(alk)
+
+}
+##' Calculates the overall weigth of the catches by time step and area.
+##' @title Catch in Kilos 
+##' @param sim Results from a Rgadget simulation
+##' @return Dataframe with the catch in kilos by timestep and ared.
+##' @author Bjarki Þór Elvarsson
 catch.in.kilos <- function(sim){
   opt <- sim$opt
   commAmount <- apply(apply(sim$immCcomm,c(1,3,4),
@@ -293,23 +332,40 @@ catch.in.kilos <- function(sim){
                           function(x) as.numeric(x[2]))
   commAmount$step <- sapply(strsplit(commAmount$time,'_'),
                           function(x) as.numeric(x[4]))
-  commAmount$time <- NULL
+  commAmount$time <- commAmount$year+(commAmount$step - 1)/opt$numoftimesteps
   commAmount <- commAmount[commAmount$Freq!=0,]
   commAmount$area <- sprintf('area%s',commAmount$area)
   commAmount$fleet <- 'comm'
-  commAmount <- commAmount[c('year','step','area','fleet','Freq')]
+  commAmount <- commAmount[c('year','step','area','fleet','Freq','time')]
+  names(commAmount)[5] <- 'catch.in.kilos'
+  
   return(commAmount)
 }
-
+##' Plot the results from the summary functions of the Rgadget simulation.
+##' @title Plot Rgadget
+##' @param dat A Rgadget object
+##' @author Bjarki Þór Elvarsson
 plot.Rgadget <- function(dat){
-  dat$plotGroups <- dat[[attr(dat,'plotGroups')]]
-  xyplot(attr(dat,'formula'),
-         data=dat,
-         groups=plotGroups,
-         type=attr(dat,'plotType'),
-         plot.points=FALSE,
-         auto.key = list(),
-         ylab=attr(dat,'yaxis'),
-         xlab=attr(dat,'xaxis'),
-         ref=TRUE) 
+  if(attr(dat,'plotFun')=='contour'){
+    contourplot(attr(dat,'formula'),
+                labels=FALSE,
+                data=dat[dat$fleet=='surv',],
+                auto.key=list(),
+                cuts=15,
+                scales=list(x=list(rot=45),y=list(rot=45)))
+    
+  } else {
+    dat$plotGroups <- dat[[attr(dat,'plotGroups')]]
+    xyplot(attr(dat,'formula'),
+           data=dat,
+           groups=plotGroups,
+           type=attr(dat,'plotType'),
+           plot.points=FALSE,
+           auto.key = list(),
+           ylab=attr(dat,'yaxis'),
+           xlab=attr(dat,'xaxis'),
+           ref=TRUE) 
+  }
+
+  ##  contourplot(total.catch~age+length|year,labels=FALSE,groups=step,data=alk[alk$fleet=='surv',],auto.key=list(),cuts=15,scales=list(x=list(rot=45),y=list(rot=45)))
 }

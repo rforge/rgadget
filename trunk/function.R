@@ -1,87 +1,86 @@
-#' Gagdet options
-#'
-#' This function creates a list of default values of all necessary switches
-#' for the RGadget simulation and file output. The user can then change the
-#' values of the switches and use the changed list as input to RGadget.
-#' @return a list of swithes
-#' \item{stocks}{names of the stocks in the simulation}
-#' \item{doeseat}{Does the mature stock eat the immature}
-#' \item{doescatchsurv}{Is there a survey}
-#' \item{doescatchcomm}{Is there a commercial effort}
-#' \item{doesmigrateimm}{Does the immature stock migrate}
-#' \item{doesmigratemat}{Does the mature stock migrate}
-#' \item{migrationP1}{Probability of staying in area 1 (TWO AREA ASSUMPTION)}
-#' \item{migrationP2}{Probability of staying in area 2 (TWO AREA ASSUMPTION)}
-#' \item{doesfuncmigrate}{(migration) pde's used to describe migration.}
-#' \item{diffustion}{(migration) diffusion parameter}
-#' \item{driftx}{(migration) drift in x coordinate}
-#' \item{drifty}{(migration) drift in y coordinate}
-#' \item{doesmove}{Does the immature stock mature into the mature stock}
-#' \item{numofareas}{Number of gadget areas}
-#' \item{probarea}{A vector of proportions in a given area, assumed equal for both stocks}
-#' \item{areasize}{Size of the gadget area (assumed equal for all areas}
-#' \item{area.temperature}{Average temperature of the area}
-#' \item{immminage}{Minimum age of the immmature stock}
-#' \item{immmaxage}{Maximum age of the immmature stock}
-#' \item{matminage}{Minimum age of the mature stock}
-#' \item{matmaxage}{Maximum age of the mature stock}
-#' \item{minlen}{Minimum length of both stocks}
-#' \item{maxlen}{Maximum length of both stocks}
-#' \item{lengthgrouplen}{Size of each lengthgroup. We assume the size of the lengthgroups is the same for both stocks.}
-#' \item{a}{a in the length-weight relationship a*l^b}
-#' \item{b}{b in the length-weight relationship a*l^b}
-#' \item{sigma}{The standard deviation of length at i years old. This vector must the same length as the number of ages.}
-#' \item{murec}{If specified this will be the meanlength of recruits}
-#' \item{lsup}{L-infinity. Bertalanffy growth parameters lsup, and k for the growth function (used for all ages > 1)}
-#' \item{binn}{binn is the maximum updating length}
-#' \item{beta}{Beta for beta-binomial}
-#' \item{numobs}{number of years observed}
-#' \item{numoftimesteps}{number of timesteps in each year}
-#' \item{z}{z is the natural mortality constant used to calculate the size of the initial population for age 2 +}
-#' \item{spalpha}{alpha for the predation suitability function}
-#' \item{spbeta}{beta for the predation suitability function}
-#' \item{spagamma}{gamma for the predation suitability function}
-#' \item{spdelta}{delta for the predation suitability function}
-#' \item{m0}{m0 for the maximum consumption}
-#' \item{m3}{m3 for the maximum consumption}
-#' \item{H}{H for the maximum consumption}
-#' \item{otherfrac}{the fraction of otherfood that is eaten}
-#' \item{otherfood}{maxratioconsumed}{The maximum portion consumed, in Gadget it is 0.95, this is known as understaocking in Gadget}
-#' \item{survstep}{timestep(s) for the survey}
-#' \item{commstep}{timestep(s) for the commercial effort}
-#' \item{salphasurv}{for the suitability function - survey}
-#' \item{sbetasurv}{for the suitability function - survey}
-#' \item{survfleettype}{Fleettype for the survey}
-#' \item{survmultiplicative}{For the fleettype}
-#' \item{Fysurv}{Fishing effort of the survey}
-#' \item{surv.catches}{What stocks does the survey fleet catch from}
-#' \item{salphacomm}{for the suitability function - commerical catch}
-#' \item{sbetacomm}{for the suitability function - commercial catch}
-#' \item{commfleettype}{Fleettype for the commercial catch}
-#' \item{comm.catches}{What stocks does the commercial fleet catch from}
-#' \item{commmultiplicative}{For the fleettype}
-#' \item{Fycomm}{Fishing effort of the commercial catch}
-#' \item{calcindex}{output survey index likelihood file}
-#' \item{calc.in.kilos}{output catches in kilos likelihood file}
-#' \item{estimate.recruits.by.year}{should recruits be estimated by year}
-#' \item{estimate.recruits.by.year.and.area}{should recruits be estimated by year and area}
-#' \item{estimate.recruits.by.year.constant.area}{should recruits be estimated by year with constant by area effect (fewer degrees of freedom used compared to the one above).}
-#' \item{randomised.recruits}{Should recruits be initialised randomly}
-#' \item{bylen}{output survey index likelihood file by length groups, 0 for age aggregation and 1 for length aggregation}
-#' \item{length.groups}{length groups for indices}
-#' \item{calcldist.c}{output length distribution likelihood data for the catch}
-#' \item{calcalk.c}{output age length distribution likelihood data for the catch}
-#' \item{calcldist.s}{output length distribution likelihood data for the survey}
-#' \item{calcalk.s}{output age length distribution likelihood data for the survey}
-#' \item{file.migration.ratio}{Output migration matricies (0) or ratios (1)}
-#' \item{alkagg}{aggregation level for age length distributions, will be used for both}
-#' \item{survey.sigma}{sigma for error in survey indices}
-#' \item{catch.sigma}{sigma for error in catchdistributions}
-#' \item{frac}{fraction of catch that should be put in likelihood files}
-#' \item{doesgrow}{do the stocks grow}
-#' \item{growthfunction}{What growth function should be used, currently only lengthvbsimple is implemented}
-#' \item{optim.params}{What parameters should Gadget optimise}
-#' \item{randomise.all.initial.values}{Should initial values be randomized} 
+##' This function creates a list of default values of all necessary switches
+##' for the RGadget simulation and file output. The user can then change the
+##' values of the switches and use the changed list as input to RGadget.
+##' @title Gagdet options
+##' @return a list of swithes
+##' \item{stocks}{names of the stocks in the simulation}
+##' \item{doeseat}{Does the mature stock eat the immature}
+##' \item{doescatchsurv}{Is there a survey}
+##' \item{doescatchcomm}{Is there a commercial effort}
+##' \item{doesmigrateimm}{Does the immature stock migrate}
+##' \item{doesmigratemat}{Does the mature stock migrate}
+##' \item{migrationP1}{Probability of staying in area 1 (TWO AREA ASSUMPTION)}
+##' \item{migrationP2}{Probability of staying in area 2 (TWO AREA ASSUMPTION)}
+##' \item{doesfuncmigrate}{(migration) pde's used to describe migration.}
+##' \item{diffustion}{(migration) diffusion parameter}
+##' \item{driftx}{(migration) drift in x coordinate}
+##' \item{drifty}{(migration) drift in y coordinate}
+##' \item{doesmove}{Does the immature stock mature into the mature stock}
+##' \item{numofareas}{Number of gadget areas}
+##' \item{probarea}{A vector of proportions in a given area, assumed equal for both stocks}
+##' \item{areasize}{Size of the gadget area (assumed equal for all areas}
+##' \item{area.temperature}{Average temperature of the area}
+##' \item{immminage}{Minimum age of the immmature stock}
+##' \item{immmaxage}{Maximum age of the immmature stock}
+##' \item{matminage}{Minimum age of the mature stock}
+##' \item{matmaxage}{Maximum age of the mature stock}
+##' \item{minlen}{Minimum length of both stocks}
+##' \item{maxlen}{Maximum length of both stocks}
+##' \item{lengthgrouplen}{Size of each lengthgroup. We assume the size of the lengthgroups is the same for both stocks.}
+##' \item{a}{a in the length-weight relationship a*l^b}
+##' \item{b}{b in the length-weight relationship a*l^b}
+##' \item{sigma}{The standard deviation of length at i years old. This vector must the same length as the number of ages.}
+##' \item{murec}{If specified this will be the meanlength of recruits}
+##' \item{lsup}{L-infinity. Bertalanffy growth parameters lsup, and k for the growth function (used for all ages > 1)}
+##' \item{binn}{binn is the maximum updating length}
+##' \item{beta}{Beta for beta-binomial}
+##' \item{numobs}{number of years observed}
+##' \item{numoftimesteps}{number of timesteps in each year}
+##' \item{z}{z is the natural mortality constant used to calculate the size of the initial population for age 2 +}
+##' \item{spalpha}{alpha for the predation suitability function}
+##' \item{spbeta}{beta for the predation suitability function}
+##' \item{spagamma}{gamma for the predation suitability function}
+##' \item{spdelta}{delta for the predation suitability function}
+##' \item{m0}{m0 for the maximum consumption}
+##' \item{m3}{m3 for the maximum consumption}
+##' \item{H}{H for the maximum consumption}
+##' \item{otherfrac}{the fraction of otherfood that is eaten}
+##' \item{otherfood}{maxratioconsumed}{The maximum portion consumed, in Gadget it is 0.95, this is known as understaocking in Gadget}
+##' \item{survstep}{timestep(s) for the survey}
+##' \item{commstep}{timestep(s) for the commercial effort}
+##' \item{salphasurv}{for the suitability function - survey}
+##' \item{sbetasurv}{for the suitability function - survey}
+##' \item{survfleettype}{Fleettype for the survey}
+##' \item{survmultiplicative}{For the fleettype}
+##' \item{Fysurv}{Fishing effort of the survey}
+##' \item{surv.catches}{What stocks does the survey fleet catch from}
+##' \item{salphacomm}{for the suitability function - commerical catch}
+##' \item{sbetacomm}{for the suitability function - commercial catch}
+##' \item{commfleettype}{Fleettype for the commercial catch}
+##' \item{comm.catches}{What stocks does the commercial fleet catch from}
+##' \item{commmultiplicative}{For the fleettype}
+##' \item{Fycomm}{Fishing effort of the commercial catch}
+##' \item{calcindex}{output survey index likelihood file}
+##' \item{calc.in.kilos}{output catches in kilos likelihood file}
+##' \item{estimate.recruits.by.year}{should recruits be estimated by year}
+##' \item{estimate.recruits.by.year.and.area}{should recruits be estimated by year and area}
+##' \item{estimate.recruits.by.year.constant.area}{should recruits be estimated by year with constant by area effect (fewer degrees of freedom used compared to the one above).}
+##' \item{randomised.recruits}{Should recruits be initialised randomly}
+##' \item{bylen}{output survey index likelihood file by length groups, 0 for age aggregation and 1 for length aggregation}
+##' \item{length.groups}{length groups for indices}
+##' \item{calcldist.c}{output length distribution likelihood data for the catch}
+##' \item{calcalk.c}{output age length distribution likelihood data for the catch}
+##' \item{calcldist.s}{output length distribution likelihood data for the survey}
+##' \item{calcalk.s}{output age length distribution likelihood data for the survey}
+##' \item{file.migration.ratio}{Output migration matricies (0) or ratios (1)}
+##' \item{alkagg}{aggregation level for age length distributions, will be used for both}
+##' \item{survey.sigma}{sigma for error in survey indices}
+##' \item{catch.sigma}{sigma for error in catchdistributions}
+##' \item{frac}{fraction of catch that should be put in likelihood files}
+##' \item{doesgrow}{do the stocks grow}
+##' \item{growthfunction}{What growth function should be used, currently only lengthvbsimple is implemented}
+##' \item{optim.params}{What parameters should Gadget optimise}
+##' \item{randomise.all.initial.values}{Should initial values be randomized} 
 gadget.options <- function(){
   opt <- list(
 #############################################################
@@ -296,15 +295,16 @@ gadget.options <- function(){
               optim.params='',
               randomise.all.initial.values = 0
               )
+  class(opt) <- c('gadget.options',class(opt))
   return(opt)
 }
-#' Derived options
-#'
-#' This function is a helper function for RGadget and all file export functions,
-#' it calculates all additional options and switches that can be derived from
-#' the gadget options lists.
-#' @param opt gadget options list
-#' @return augmented gadget options list
+
+##' This function is a helper function for RGadget and all file export functions,
+##' it calculates all additional options and switches that can be derived from
+##' the gadget options lists.
+##' @title Derived options
+##' @param opt gadget options list
+##' @return augmented gadget options list
 derivedOptions <- function(opt){
   
 # Min- and maxage over both of the stocks
@@ -412,24 +412,24 @@ derivedOptions <- function(opt){
   return(opt)
 }
 
-#' Adjust for overconsumption 
-#'
-#' For each prey an upper limit needs to be set on the total amount
-#' consumed by all predators so as not to obtain more consumption than
-#' available biomass.  Consumption is limited to 95\% ($R_M$) of the available
-#' biomass. This is implemented by scaling target consumption by all
-#' predators. 
-#' Let R_{prey}(l) be the Ratio consumed and R_M be the Maximum Ratio Consumed
-#' Then
-#' \deqn{R_{prey}(l)=\frac{\sum_{pred}\sum_{L}C_{pred,prey}(L,l)}{N_{prey}(l)W_{prey}(l)}}
-#' If R_{prey}(l)>R_M consumption is adjusted as follows
-#' \deqn{C_{pred,prey}(L,l)=R_MN_{prey}(l)W_{prey}(l)\frac{C_{pred,prey}(L,l)}{\sum_{pred}C_{pred,prey}(L,l)}}
-#' @param C is the commercial catch of prey
-#' @param S is the survey catch of prey
-#' @param E is the consumption of prey by predator
-#' @param N is the total number of prey
-#' @param opt gadget options list
-#' @return a list with adjusted catches/consumption for C, S and E.
+
+##' For each prey an upper limit needs to be set on the total amount
+##' consumed by all predators so as not to obtain more consumption than
+##' available biomass.  Consumption is limited to 95\% ($R_M$) of the available
+##' biomass. This is implemented by scaling target consumption by all
+##' predators. 
+##' Let R_{prey}(l) be the Ratio consumed and R_M be the Maximum Ratio Consumed
+##' Then
+##' \deqn{R_{prey}(l)=\frac{\sum_{pred}\sum_{L}C_{pred,prey}(L,l)}{N_{prey}(l)W_{prey}(l)}}
+##' If R_{prey}(l)>R_M consumption is adjusted as follows
+##' \deqn{C_{pred,prey}(L,l)=R_MN_{prey}(l)W_{prey}(l)\frac{C_{pred,prey}(L,l)}{\sum_{pred}C_{pred,prey}(L,l)}}
+##' @title Adjust for overconsumption 
+##' @param C is the commercial catch of prey
+##' @param S is the survey catch of prey
+##' @param E is the consumption of prey by predator
+##' @param N is the total number of prey
+##' @param opt gadget options list
+##' @return a list with adjusted catches/consumption for C, S and E.
 adjustconsumption <- function(C,
                               S=NULL,
                               E=NULL,
@@ -460,24 +460,22 @@ adjustconsumption <- function(C,
   return(list(C=C,S=S,E=E))
 }
 
-#' Fleet catches
-#'
-#' Catch is implemented in \texttt{R} using the {\it Linearfleet}
-#' option in Gadget. 
-#' Let \eqn{C_{fleet,prey}(l,a,t)} be the number of age \eqn{a} prey, in
-#' lengthgroup \eqn{l} caught at timestep \eqn{t}, then
-#' \deqn{C_{fleet,prey}(l,a,t) = F_{l,t}N_{prey}(l,a,t)\Delta t}
-#' with \eqn{F_{l,t} = S_{l}F_{y}} where \eqn{F_y} is constant for each year,   
-#' \deqn{S_{l} = \frac{1}{1+e^{-\alpha-\beta l}}}
-#' is the suitability function and \eqn{\alpha} and \eqn{\beta} are constants.  
-#' @param N number of prey
-#' @param timestep the timestep of the catch
-#' @param Fy fishing yield
-#' @param salpha suitability constant for the fleet
-#' @param sbeta suitability constant for the fleet
-#' @param numperyear number of catch timesteps
-#' @param numobs number of observation years
-#' @return Total catches of the fleet
+##' Catch is implemented in \texttt{R} using the {\it Linearfleet}
+##' option in Gadget. 
+##' Let \eqn{C_{fleet,prey}(l,a,t)} be the number of age \eqn{a} prey, in
+##' lengthgroup \eqn{l} caught at timestep \eqn{t}, then
+##' \deqn{C_{fleet,prey}(l,a,t) = F_{l,t}N_{prey}(l,a,t)\Delta t}
+##' with \eqn{F_{l,t} = S_{l}F_{y}} where \eqn{F_y} is constant for each year, 
+##' \deqn{S_{l} = \frac{1}{1+e^{-\alpha-\beta l}}}
+##' is the suitability function and \eqn{\alpha} and \eqn{\beta} are constants. ##' @title Fleet catches 
+##' @param N number of prey
+##' @param timestep the timestep of the catch
+##' @param Fy fishing yield
+##' @param salpha suitability constant for the fleet
+##' @param sbeta suitability constant for the fleet
+##' @param numperyear number of catch timesteps
+##' @param numobs number of observation years
+##' @return Total catches of the fleet
 catch <- function(N,
                   timestep,
                   Fy,
@@ -502,14 +500,15 @@ catch <- function(N,
   return(C)
 }
 
-#' Length distribution
-#'
-#' This is a helper function for the firststep function. This defines the
-#' length distribution for each age group
-#' @param mu mean length for all ages
-#' @param sigma standart deviation of length for all ages
-#' @param l lengthgroups
-#' @return a matrix of dimension length(mu) X (length(l)-1)
+
+##'
+##' This is a helper function for the firststep function. This defines the
+##' length distribution for each age group
+##' @title Length distribution
+##' @param mu mean length for all ages
+##' @param sigma standart deviation of length for all ages
+##' @param l lengthgroups
+##' @return a matrix of dimension length(mu) X (length(l)-1)
 distr <- function(mu,sigma,l) {
   fi <- (pnorm(rep(l[-1],each=length(sigma)),mu,sigma)-
          pnorm(rep(l[-length(l)],each=length(sigma)),mu,sigma))
@@ -521,40 +520,40 @@ distr <- function(mu,sigma,l) {
   return(t(fi))
 }
 
-#' Eat
-#'
-#' The following variables are used in the consumption calculations:
-#' l is Lengthgroup in prey
-#' L is Lengthgroup in predator
-#' A is Areasize
-#' H The density (biomass per area unit) of available food at
-#' which the predator can consume half maximum consumption
-#' \eqn{\Delta t} as Length of timestep
-#' \eqn{M_{pred}(L)} as Maximum consumption
-#' \eqn{\psi_{pred}(L)} as Fraction of \eqn{M_{pred}} consumed
-#' N_{pred}(L) as Number of predator \eqn{pred} in lengthgroup $L
-#' N_{prey}(l) as Number of prey \eqn{prey} in lengthgroup l
-#' W_{prey}(l) as The mean weight of prey of length l
-#' S_{pred,prey}(L,l) as Suitability of prey at length l for pred at length L
-#' C_{prey,pred}(L,L) as Total weight predator of length L consumes of prey of length $l$
-#' The formula for the consumption is as follows:
-#' \deqn{C_{pred,prey}(L,l)&=N_{pred}(L)M_{pred}(L)\Psi_{pred}(L)\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)}}
-#' \deqn{=N_{pred}(L)M_{pred}(L)\frac{\sum_{l,prey}F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)+HA}\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)}}
-#' \deqn{=N_{pred}(L)M_{pred}(L)\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)+HA}}
-#' where
-#' \deqn{F_{pred,prey}(L,l) &=S_{pred,prey}(L,l)N_{prey}(l)W_{prey}(l)}
-#' \deqn{ M_{pred}(L) &=m_0e^{(m_1T-m_2T^3)}L_{pred}^{m_4}\Delta t}
-#' The suitability function for predation used in the \R model is:
-#' \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
-#' With one predator, one prey and otherfood the equation becomes:
-#' \deqn{C_{L,l}=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
-#' \deqn{=N_{L}M_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA+HA}}
-#' where O is the density of otherfood.
-#' @param PreyInArea Number of prey items in the area
-#' @param PredInArea Number of predator items in the area
-#' @param step the timestep, that is the time of the year
-#' @param opt gadget options list
-#' @return The total unadjusted consumption of the predator on the prey
+
+##' The following variables are used in the consumption calculations:
+##' l is Lengthgroup in prey
+##' L is Lengthgroup in predator
+##' A is Areasize
+##' H The density (biomass per area unit) of available food at
+##' which the predator can consume half maximum consumption
+##' \eqn{\Delta t} as Length of timestep
+##' \eqn{M_{pred}(L)} as Maximum consumption
+##' \eqn{\psi_{pred}(L)} as Fraction of \eqn{M_{pred}} consumed
+##' N_{pred}(L) as Number of predator \eqn{pred} in lengthgroup $L
+##' N_{prey}(l) as Number of prey \eqn{prey} in lengthgroup l
+##' W_{prey}(l) as The mean weight of prey of length l
+##' S_{pred,prey}(L,l) as Suitability of prey at length l for pred at length L
+##' C_{prey,pred}(L,L) as Total weight predator of length L consumes of prey of length $l$
+##' The formula for the consumption is as follows:
+##' \deqn{C_{pred,prey}(L,l)&=N_{pred}(L)M_{pred}(L)\Psi_{pred}(L)\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)}}
+##' \deqn{=N_{pred}(L)M_{pred}(L)\frac{\sum_{l,prey}F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)+HA}\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)}}
+##' \deqn{=N_{pred}(L)M_{pred}(L)\frac{F_{pred,prey}(L,l)}{\sum_{l,prey}F_{pred,prey}(L,l)+HA}}
+##' where
+##' \deqn{F_{pred,prey}(L,l) &=S_{pred,prey}(L,l)N_{prey}(l)W_{prey}(l)}
+##' \deqn{ M_{pred}(L) &=m_0e^{(m_1T-m_2T^3)}L_{pred}^{m_4}\Delta t}
+##' The suitability function for predation used in the \R model is:
+##' \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
+##' With one predator, one prey and otherfood the equation becomes:
+##' \deqn{C_{L,l}=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
+##' \deqn{=N_{L}M_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA+HA}}
+##' where O is the density of otherfood.
+##' @title Eat
+##' @param PreyInArea Number of prey items in the area
+##' @param PredInArea Number of predator items in the area
+##' @param step the timestep, that is the time of the year
+##' @param opt gadget options list
+##' @return The total unadjusted consumption of the predator on the prey
 eat <- function(PreyInArea,PredInArea,step,opt){  
   preydim <- dim(PreyInArea)
   preddim <- dim(PredInArea)
@@ -590,41 +589,41 @@ eat <- function(PreyInArea,PredInArea,step,opt){
   return(Eat)
 }
 
-#' The first timestep
-#'
-#' The simulation is started with an initial population, the age of which
-#' ranges from the minimum age of the immature stock to the maximum age
-#' of the mature stock. This population is calculated as follows:
-#' Let \eqn{n_{a}} be the number of age \eqn{a} individuals in the first
-#' timestep, \eqn{\mu_{a}} the mean length at age \eqn{a} and \eqn{\sigma_{a}}
-#' the standard deviation of length at age \eqn{a}. For the minimum age
-#' (representing recruitment) see the recruitment function. For a given
-#' constant mortality \eqn{Z_{0}} we get
-#' \deqn{n_{a} = n_{a-1}e^{-Z_{0}}}
-#' to calculate the number at age for all \eqn{a}.
-#' The number in lengthgroup $i$ at age $a$ in timestep 1 can then be
-#' calculated from:
-#' \deqn{N_{i,a,1} = n_a\left(\Phi\left(\frac{l_{i+1}-\mu_a}{\sigma_a}\right)-\Phi\left(\frac{l_{i}-\mu_a}{\sigma_a}\right)\right)}
-#' where \eqn{l_{i}} and \eqn{l_{i+1}} are the endpoints of lengthgroup \eqn{i},
-#' \eqn{N_{l,a,t}} is the number at age \eqn{a} in lengthgroup \eqn{l} at
-#' timestep \eqn{t} and \eqn{\Phi} is the probability function for Normal
-#' distribution. 
-#' NB: in Gadget (which is programmed in C++) the value of $\Phi$ is
-#' approximated whereas \texttt{R} uses integration. To ensure
-#' compatibility between the models, the initial population for Gadget is
-#' entered directly from the initial population file rather than
-#' calculated from a Normal distribution. While this is an option
-#' within Gadget, it is not the standard method.
-#' @param n
-#' @param mu
-#' @param sigma
-#' @param l
-#' @param z
-#' @param numofareas
-#' @param probarea
-#' @param minage
-#' @param maxage
-#' @return matrix with initial distribution
+
+##' The simulation is started with an initial population, the age of which
+##' ranges from the minimum age of the immature stock to the maximum age
+##' of the mature stock. This population is calculated as follows:
+##' Let \eqn{n_{a}} be the number of age \eqn{a} individuals in the first
+##' timestep, \eqn{\mu_{a}} the mean length at age \eqn{a} and \eqn{\sigma_{a}}
+##' the standard deviation of length at age \eqn{a}. For the minimum age
+##' (representing recruitment) see the recruitment function. For a given
+##' constant mortality \eqn{Z_{0}} we get
+##' \deqn{n_{a} = n_{a-1}e^{-Z_{0}}}
+##' to calculate the number at age for all \eqn{a}.
+##' The number in lengthgroup $i$ at age $a$ in timestep 1 can then be
+##' calculated from:
+##' \deqn{N_{i,a,1} = n_a\left(\Phi\left(\frac{l_{i+1}-\mu_a}{\sigma_a}\right)-\Phi\left(\frac{l_{i}-\mu_a}{\sigma_a}\right)\right)}
+##' where \eqn{l_{i}} and \eqn{l_{i+1}} are the endpoints of lengthgroup \eqn{i},
+##' \eqn{N_{l,a,t}} is the number at age \eqn{a} in lengthgroup \eqn{l} at
+##' timestep \eqn{t} and \eqn{\Phi} is the probability function for Normal
+##' distribution. 
+##' NB: in Gadget (which is programmed in C++) the value of $\Phi$ is
+##' approximated whereas \texttt{R} uses integration. To ensure
+##' compatibility between the models, the initial population for Gadget is
+##' entered directly from the initial population file rather than
+##' calculated from a Normal distribution. While this is an option
+##' within Gadget, it is not the standard method.
+##' @title The first timestep
+##' @param n Number of age 1 individuals
+##' @param mu Vector of mean length per age.
+##' @param sigma Vector of standard deviation of length per age.
+##' @param l Vector of length groups
+##' @param z Natural mortality per age
+##' @param numofareas Number of areas
+##' @param probarea Vector of proportions living in an area. 
+##' @param minage Minimum age of the species.
+##' @param maxage Maximum age of the species.
+##' @return matrix with initial distribution
 firststep <- function(n,
                       mu,
                       sigma,
@@ -663,37 +662,38 @@ firststep <- function(n,
   return(initial.distribution)
 }
 
-#' Growth probability
-#'
-#' Growth is according to a von Bertalanffy equation 
-#' \deqn{\mu_{a} = L_{\infty}(1-e^{-\kappa a})}
-#' with the lengthvbsimple growth function from Gadget implemented.
-#' For a fish of age a and length l, mean length growth \eqn{\Delta L} is
-#' then calculated as:
-#' \deqn{\Delta L =L_{\infty}(1 - \frac{l}{L_{\infty}})(1 - e^{-\kappa \Delta t})}
-#' The length distribution is updated using the beta-binomial
-#' distribution, ie the probability of growing x lengthgroups, given
-#' maximum lengthgroupgrowth n, is
-#' \deqn{P[X = x] =  \frac{\Gamma(n+1)}{\Gamma(n-x+1)\Gamma(x+1)} \frac{\Gamma(\alpha + \beta)}{\Gamma(n+\alpha+\beta)} \frac{\Gamma(n-x+\beta)}{\Gamma(\beta)} \frac{\Gamma(x+a)}{\Gamma(\alpha)}}
-#' with \eqn{\alpha = \frac{\beta\Delta L}{n-\Delta L}} to preserve the mean
-#' lengthgrowth according to equation (\ref{deltaL}). NB: the
-#' expected value of \eqn{\Delta L} should be taken into consideration when
-#' fixing n. 
-#' Let \eqn{G = [g_{ij}]} be the length updating matrix where \eqn{g_{ij}} is the
-#' probability of growing from lengthgroup i to lengthgroup j
-#' obtained from the equation above.
-#' \deqn{N_{l,a+1,t+\Delta t} = \sum_{l'\leq l}g_{l'l}N_{l,a,t}}
-#' with \eqn{N_{l,a,t}} as described for the initial population for a >
-#' min a .
-#' @param lt
-#' @param beta
-#' @param lsup
-#' @param k
-#' @param dt
-#' @param lengthgrouplen
-#' @param binn
-#' @return a matrix where the index (j,i) repsents the probability of going
-#' lengthgroup i to lengthgroup j
+
+
+##' Growth is according to a von Bertalanffy equation 
+##' \deqn{\mu_{a} = L_{\infty}(1-e^{-\kappa a})}
+##' with the lengthvbsimple growth function from Gadget implemented.
+##' For a fish of age a and length l, mean length growth \eqn{\Delta L} is
+##' then calculated as:
+##' \deqn{\Delta L =L_{\infty}(1 - \frac{l}{L_{\infty}})(1 - e^{-\kappa \Delta t})}
+##' The length distribution is updated using the beta-binomial
+##' distribution, ie the probability of growing x lengthgroups, given
+##' maximum lengthgroupgrowth n, is
+##' \deqn{P[X = x] =  \frac{\Gamma(n+1)}{\Gamma(n-x+1)\Gamma(x+1)} \frac{\Gamma(\alpha + \beta)}{\Gamma(n+\alpha+\beta)} \frac{\Gamma(n-x+\beta)}{\Gamma(\beta)} \frac{\Gamma(x+a)}{\Gamma(\alpha)}}
+##' with \eqn{\alpha = \frac{\beta\Delta L}{n-\Delta L}} to preserve the mean
+##' lengthgrowth according to equation (\ref{deltaL}). NB: the
+##' expected value of \eqn{\Delta L} should be taken into consideration when
+##' fixing n. 
+##' Let \eqn{G = [g_{ij}]} be the length updating matrix where \eqn{g_{ij}} is the
+##' probability of growing from lengthgroup i to lengthgroup j
+##' obtained from the equation above.
+##' \deqn{N_{l,a+1,t+\Delta t} = \sum_{l'\leq l}g_{l'l}N_{l,a,t}}
+##' with \eqn{N_{l,a,t}} as described for the initial population for a >
+##' min a .
+##' @title Growth probability
+##' @param lt Vector of midpoints for the length groups.
+##' @param beta Beta for the Von Bertanlanffy curve 
+##' @param lsup l_\infty for the Von Bertanlanffy.
+##' @param k \kappa for the Von Bertanlanffy.
+##' @param dt Length of the time interval.
+##' @param lengthgrouplen length of the lengthgroups.
+##' @param binn is the maximum updating length.
+##' @return a matrix where the index (j,i) repsents the probability of going
+##' lengthgroup i to lengthgroup j
 growthprob <-function(lt,
                       beta,
                       lsup,
@@ -751,34 +751,32 @@ growthprob <-function(lt,
   return(prob(alpha,beta,length.growth))
 }
 
-#' Migration
-#'
-#' Migration takes place in every timestep and migration is assumed to be
-#' constant for all years.
-#' Migration at timestep $t$ is defined as a $2\times 2$ transition
-#' matrix $P_t := [p_{ij}]$ where $p_{ij}$ is the proportion moving from
-#' area $j$ to area $i$. {\bf NB:} for $P$ to be a transition matrix
-#' $\sum_ip_{ij} = 1$, for a fixed $j$.  
-#' If $N\textrm{\emph{1}}_t$ is a matrix containing the abundance in
-#' numbers in area 1 at timestep $t$ before migration and
-#' $N\textrm{\emph{2}}_t$ is the same number for area 2, the numbers
-#' after migration will be
-#' \begin{align}
-#' N\textrm{\emph{1}}_t &= p_{11}\cdot N\textrm{\emph{1}}_t + p_{12}\cdot N\textrm{\emph{2}}_t \notag \\
-#' N\textrm{\emph{2}}_t &= p_{21}\cdot N\textrm{\emph{1}}_t + p_{22}\cdot N\textrm{\emph{2}}_t 
-#' \end{align}
-
-#' As there are only 2 areas and the sum of the transition matrix columns
-#' must be 1 it is only necessary to enter the values of the first line
-#' into the migration file in the \texttt{R} program.  In the
-#' Gadget2.0.03 migration file, the proportion moving must be removed
-#' from the old area and added to the new area.
-#' @param N1 number in area 1
-#' @param N2 number in area 2
-#' @param k time step
-#' @param P migration matrix
-#' @param opt gadget options list
-#' @return a matrix with the new population after migration.
+##' Migration takes place in every timestep and migration is assumed to be
+##' constant for all years.
+##' Migration at timestep $t$ is defined as a $2\times 2$ transition
+##' matrix $P_t := [p_{ij}]$ where $p_{ij}$ is the proportion moving from
+##' area $j$ to area $i$. {\bf NB:} for $P$ to be a transition matrix
+##' $\sum_ip_{ij} = 1$, for a fixed $j$.  
+##' If $N\textrm{\emph{1}}_t$ is a matrix containing the abundance in
+##' numbers in area 1 at timestep $t$ before migration and
+##' $N\textrm{\emph{2}}_t$ is the same number for area 2, the numbers
+##' after migration will be
+##' \begin{align}
+##' N\textrm{\emph{1}}_t &= p_{11}\cdot N\textrm{\emph{1}}_t + p_{12}\cdot N\textrm{\emph{2}}_t \notag \\
+##' N\textrm{\emph{2}}_t &= p_{21}\cdot N\textrm{\emph{1}}_t + p_{22}\cdot N\textrm{\emph{2}}_t 
+##' \end{align}
+##' As there are only 2 areas and the sum of the transition matrix columns
+##' must be 1 it is only necessary to enter the values of the first line
+##' into the migration file in the \texttt{R} program.  In the
+##' Gadget2.0.03 migration file, the proportion moving must be removed
+##' from the old area and added to the new area.
+##' @title Migration
+##' @param N1 number in area 1
+##' @param N2 number in area 2
+##' @param k time step
+##' @param P migration matrix
+##' @param opt gadget options list
+##' @return a matrix with the new population after migration.
 migrate <- function(N1,N2,k,P=migrationProb(),opt=gadget.options())
 {
 #
@@ -798,36 +796,36 @@ migrate <- function(N1,N2,k,P=migrationProb(),opt=gadget.options())
   return(New)
 }
 
-#' Migration matrix
-#'
-#' Helper function for migrate
-#' @param opt gadget options list
-#' @return Migration array
+##' Helper function for migrate
+##' @title Migration matrix
+##' @param opt gadget options list
+##' @return Migration array
 migrationProb <- function(opt=gadget.options()){
   P <- array(rbind(opt$migrationP1,1-opt$migrationP2),
              c(1,opt$numofareas,opt$numoftimesteps))
   return(P)
 }
 
-#' Recruitment
-#'
-#' The timestep (or timesteps) on which recruitment takes place is
-#' defined by the user. 
-#' Given $n_{t}$ recruits, at timestep $t$, with mean length $\mu$ and
-#' standard deviation of length $\sigma$, the number of recruits in
-#' lengthgroup $i$ is calculated by:
-#' \deqn{N_{i,1,\text{t}} = n_t(\Phi(\frac{l_{i+1}-\mu}{\sigma})-\Phi(\frac{l_{i}-\mu}{\sigma}))}
-#' As for the initial population, the number of recruits in each length
-#' groups is given in the recruit input file (cf page \pageref{first}). 
-#' @param n
-#' @param mu
-#' @param sigma
-#' @param l
-#' @param numofareas
-#' @param probarea
-#' @param numobs
-#' @param numoftimesteps
-#' @return Recruits by area, length, time
+
+
+##' The timestep (or timesteps) on which recruitment takes place is
+##' defined by the user. 
+##' Given $n_{t}$ recruits, at timestep $t$, with mean length $\mu$ and
+##' standard deviation of length $\sigma$, the number of recruits in
+##' lengthgroup $i$ is calculated by:
+##' \deqn{N_{i,1,\text{t}} = n_t(\Phi(\frac{l_{i+1}-\mu}{\sigma})-\Phi(\frac{l_{i}-\mu}{\sigma}))}
+##' As for the initial population, the number of recruits in each length
+##' groups is given in the recruit input file (cf page \pageref{first}). 
+##' @title Recruitment
+##' @param n Number of recruited individuals
+##' @param mu Vector of mean length per age.
+##' @param sigma Vector of standard deviation of length per age.
+##' @param l Vector of length groups
+##' @param numofareas Number of areas
+##' @param probarea Vector of proportions living in an area. 
+##' @param numobs Number of years.
+##' @param numoftimesteps Number of observations per year.
+##' @return Recruits by area, length, time
 recruits <- function(n,mu,sigma,
                      l,numofareas,probarea,
                      numobs,numoftimesteps)
@@ -846,21 +844,22 @@ recruits <- function(n,mu,sigma,
   return(rec)
 }
 
-#' Prey suitability
-#'
-#' The suitability function for predation used in the {\texttt R} model is:
-#' \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
-#' With one predator, one prey and otherfood the equation becomes:
-#' \deqn{C_{L,l}&=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
-#' \deqn{=N_{L}M_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA+HA}}
-#' where $O$ is the density of otherfood.
-#' @param salpha
-#' @param sbeta
-#' @param sgamma
-#' @param sdelta
-#' @param l prey length group(s)
-#' @param L predator length group(s)
-#' @return matrix of suitabilities, columns prey length, lines predator length
+
+
+##' The suitability function for predation used in the {\texttt R} model is:
+##' \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
+##' With one predator, one prey and otherfood the equation becomes:
+##' \deqn{C_{L,l}&=N_{L}M_{L}\Psi_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA}}
+##' \deqn{=N_{L}M_{L}\frac{F_{L,l}}{\sum_lF_{L,l}+OA+HA}}
+##' where $O$ is the density of otherfood.
+##' @title Prey suitability
+##' @param salpha \alpha for the suitability function.
+##' @param sbeta \beta for the suitability function.
+##' @param sgamma \gamma for the suitability function.
+##' @param sdelta \delta for the suitability function.
+##' @param l prey length group(s)
+##' @param L predator length group(s)
+##' @return matrix of suitabilities, columns prey length, lines predator length
 suitability <- function(salpha,
                         sbeta,
                         sgamma,
@@ -877,12 +876,12 @@ suitability <- function(salpha,
   return(S)
 }
 
-#' Format RGadget
-#'
-#' This function formats the output from RGadget to a dataframe and adds some 
-#' trivial calculated values
-#' @param sim the results from RGadget
-#' @return A dataframe 
+##' Format RGadget
+##'
+##' This function formats the output from RGadget to a dataframe and adds some 
+##' trivial calculated values
+##' @param sim the results from RGadget
+##' @return A dataframe 
 format.RGadget <- function(sim){
   imm <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
   names(imm)[length(names(imm))] <- 'Num.indiv'
