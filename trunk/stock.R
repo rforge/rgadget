@@ -43,7 +43,7 @@ Rgadget <- function(opt=gadget.options()){
   opt <- derivedOptions(opt)
   ## what areas are commercially exploited
   commAreas <- 1:opt$numofareas %in% opt$doescatchcomm
-  ## define survey areas
+  ## define survey areas 
   surveyAreas <- 1:opt$numofareas %in% opt$doescatchsurv
 
 ################################

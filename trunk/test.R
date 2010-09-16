@@ -3,6 +3,7 @@ source('function.R')
 source('files.R')
 source('gadgetfunctions.R')
 source('mig6.R')
+source('hessian.R')
 ##' estimate fleet example
 ##'
 ##' Optimisation run starting from a random value.
@@ -259,11 +260,61 @@ ices.example <- function(){
   dimnames(tmp) <- list(parameter=dat$switch,iteration=1:100)
   setwd('../')
   quants <- apply(tmp,1,function(x) quantile(x,c(0.025,0.25,0.5,0.75,0.975)))
+  quants.frame <- as.data.frame.table(quants)
+  xyplot(Freq~parameter,
+         groups=Var1,
+         quants.frame[quants.frame$parameter %in%  sprintf("rec%s", 1:10),])
+  
+  ## hessian matrix approximations
+  
+  run.hess <- function(run){
+    tmp <- run.hessegadget(file.in=sprintf('results/params.%s',run),
+                       result=sprintf('results/hess.%s',run),
+                       location=sprintf('Gfiles%s',run))
+    
+    s2 <- tmp$sum.sq/(40-tmp$df)*diag(solve(tmp$hessian[4:18,4:18]))
+    return(s2)
+  }
+  
+#  s2 <- array(0,c(18,100))
+#  for(i in 1:100){
+#    s2[,i] <- run.hess(i)
+#  }
+#  save.image(file='s2.RData')
+  s2 <- mclapply(1:100,run.hess,mc.cores=4)
+  rec.mat <- tmp[sprintf('rec%s',1:10),]
+  s2.mat <- sapply(s2,function(x){ x[sprintf('rec%s',1:10)]})
+  s.mat <- sqrt(s2.mat)
+#  s.mat[is.na(s.mat)] <- 0.1
+  up.conf <- rec.mat+2*s.mat
+  lo.conf <- rec.mat-2*s.mat
+  
+  for(i in 1:100){blu[i] <- sum(up.conf[,i]>1&lo.conf[,i]<1)}
+  pdf('hess.pdf')
+  plot(1:10,
+       rec.mat[,13],
+       type='l',lty=1,ylim=c(0.5,1.2),
+       ylab='Recruitment',
+       xlab='Year',lwd=2,
+       cex.lab=1.5,
+       col='red'
+       )
+  axis(1,lwd=2)
+  axis(2,lwd=2)
+  lines(1:10,rec.mat[,13]+qnorm(0.25)*s.mat[,13],lty=2,lwd=2)
+  lines(1:10,rec.mat[,13]+qnorm(0.75)*s.mat[,13],lty=2,lwd=2)
+  lines(1:10,rec.mat[,13]+qnorm(0.025)*s.mat[,13],lty=3,lwd=2)
+  lines(1:10,rec.mat[,13]+qnorm(0.975)*s.mat[,13],lty=3,lwd=2)
+  lines(1:10,rep(1,10),col='blue',lwd=2)
+  legend('bottomright',inset = 0.01,legend=c('True Value','Parameter estimate','25% quantiles','2.5% quantiles'),lty=c(1,1,1,2,3),col=c('blue','red',rep('black',2)),bg='grey90',lwd=2)
+  dev.off()
+  pdf('mont.pdf')
   plot(1:10,
        quants[3,sprintf('rec%s',1:10)],
        type='l',lty=1,ylim=c(0.5,1.2),
        ylab='Recruitment',
-       xlab='Year',lwd=2
+       xlab='Year',lwd=2,
+       cex.lab=1.5
        )
   axis(1,lwd=2)
   axis(2,lwd=2)
@@ -274,5 +325,9 @@ ices.example <- function(){
   lines(1:10,rep(1,10),col='blue',lwd=2)
   lines(1:10,apply(tmp,1,mean,lwd=2)[sprintf('rec%s',1:10)],col='red')
   legend('bottomright',inset = 0.01,legend=c('True Value','Mean','Median','25% quantiles','2.5% quantiles'),lty=c(1,1,1,2,3),col=c('blue','Red',rep('black',3)),bg='grey90',lwd=2)
+  dev.off()
   invisible(tmp)
 }
+
+
+

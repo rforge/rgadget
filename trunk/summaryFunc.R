@@ -48,7 +48,7 @@ survey.index <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Index'
-  attr(alk,'plotFun') <- 'xyplot'  
+  attr(SurveyIndex,'plotFun') <- 'xyplot'  
   return(SurveyIndex)
 }
 ##' Calculate the survey length index based on the provided lengthgroupsw
@@ -64,7 +64,7 @@ survey.indexlen <- function(sim){
   immIndex$step <- sapply(strsplit(immIndex$time,'_'),
                           function(x) as.numeric(x[4]))
   immIndex <- immIndex[immIndex$step==opt$survstep,]
-#  immIndex$length <- as.numeric(immIndex$length)
+  immIndex$length <- as.numeric(immIndex$length)
   immIndex$length.group <- cut(immIndex$length,
                                breaks=opt$length.groups,
                                labels=sprintf('lengp%s',
@@ -83,6 +83,7 @@ survey.indexlen <- function(sim){
   matIndex$step <- sapply(strsplit(matIndex$time,'_'),
                           function(x) as.numeric(x[4]))
   matIndex <- matIndex[matIndex$step==opt$survstep,]
+  matIndex$length <- as.numeric(matIndex$length)
   matIndex$length.group <- cut(as.numeric(matIndex$length),
                                breaks=opt$length.groups,
                                labels=sprintf('lengp%s',
@@ -108,7 +109,7 @@ survey.indexlen <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
-  attr(alk,'plotFun') <- 'xyplot'
+  attr(SurveyIndex,'plotFun') <- 'xyplot'
   return(SurveyIndex)
 }
 ##' Calculate the length distribution from catch (commercial fleet) by length groups and time
@@ -166,7 +167,7 @@ catch.ldist <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Catch Length Index'
-  attr(alk,'plotFun') <- 'xyplot'  
+  attr(SurveyIndex,'plotFun') <- 'xyplot'  
   
   return(SurveyIndex)
 }
@@ -224,7 +225,7 @@ survey.ldist <- function(sim){
   attr(SurveyIndex,'plotType') <- 'l'
   attr(SurveyIndex,'xaxis') <- 'Year'
   attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
-  attr(alk,'plotFun') <- 'xyplot'
+  attr(SurveyIndex,'plotFun') <- 'xyplot'
   return(SurveyIndex)
 }
 ##' Calculates the age-length-key for the survey and commercial fleet.
@@ -338,7 +339,14 @@ catch.in.kilos <- function(sim){
   commAmount$fleet <- 'comm'
   commAmount <- commAmount[c('year','step','area','fleet','Freq','time')]
   names(commAmount)[5] <- 'catch.in.kilos'
-  
+
+  class(commAmount) <- c('Rgadget',class(commAmount))
+  attr(commAmount,'formula') <- catch.in.kilos~time|area
+  attr(commAmount,'plotGroups') <- ''
+  attr(commAmount,'plotType') <- ''
+  attr(commAmount,'xaxis') <- 'Year'
+  attr(commAmount,'yaxis') <- 'Catch in kilos'
+  attr(commAmount,'plotFun') <- 'xyplot'
   return(commAmount)
 }
 ##' Plot the results from the summary functions of the Rgadget simulation.
@@ -349,7 +357,7 @@ plot.Rgadget <- function(dat){
   if(attr(dat,'plotFun')=='contour'){
     contourplot(attr(dat,'formula'),
                 labels=FALSE,
-                data=dat[dat$fleet=='surv',],
+                data=dat[dat$fleet=='comm',],
                 auto.key=list(),
                 cuts=15,
                 scales=list(x=list(rot=45),y=list(rot=45)))
