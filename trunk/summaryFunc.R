@@ -305,8 +305,9 @@ age.length.key <- function(sim,age.agg,len.agg){
   surv$fleet <- 'surv'
   alk <- rbind(surv,comm)
 
+  alk$time <- alk$year + (alk$step-1)/4
   class(alk) <- c('Rgadget',class(alk))
-  attr(alk,'formula') <- total.catch~age+length|year+step+area
+  attr(alk,'formula') <- total.catch~as.numeric(age)+as.numeric(length)|area+fleet+time
   attr(alk,'plotGroups') <- ''
   attr(alk,'plotType') <- ''
   attr(alk,'xaxis') <- 'Year'
@@ -357,8 +358,10 @@ plot.Rgadget <- function(dat){
   if(attr(dat,'plotFun')=='contour'){
     contourplot(attr(dat,'formula'),
                 labels=FALSE,
-                data=dat[dat$fleet=='comm',],
-                auto.key=list(),
+                data=dat,
+#                auto.key=list(),
+                ylab=attr(dat,'yaxis'),
+                xlab=attr(dat,'xaxis'),
                 cuts=15,
                 scales=list(x=list(rot=45),y=list(rot=45)))
     
