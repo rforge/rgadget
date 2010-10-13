@@ -365,5 +365,6 @@ Rgadget <- function(opt=gadget.options()){
               immMort=immMort,
               matMort=matMort,
               opt=opt)
+  class(sim) <- c('gadget.sim',class(sim))
   return(sim)
 }

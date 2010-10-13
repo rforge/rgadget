@@ -380,3 +380,111 @@ plot.Rgadget <- function(dat){
 
   ##  contourplot(total.catch~age+length|year,labels=FALSE,groups=step,data=alk[alk$fleet=='surv',],auto.key=list(),cuts=15,scales=list(x=list(rot=45),y=list(rot=45)))
 }
+
+##' summary of the simulation defined by gadget.options
+##' @title Summary of gadget.options
+##' @param opt gadget.options list
+summary.gadget.options <- function(opt){
+  summary.text <- paste('Summary of gadget options:',
+                        '',
+                        sprintf('There are %s years split into %s steps',
+                                opt$numobs,opt$numoftimesteps),
+                        sprintf('Area(s):\t%s',paste(1:opt$numofareas,
+                                                     collapse=' ')),
+                        sprintf('Areasize:\t%s',opt$areasize),
+                        '',
+                        'Stocks',
+                        '',
+                        '- Immature stock',
+                        sprintf('- Ages between %s and %s',
+                                opt$immminage, opt$immmaxage),
+                        sprintf('- Lengths between %s and %s',
+                                opt$minlen,opt$maxlen),
+                        sprintf('- Length-weight relationship %s*l^%s',opt$a,opt$b),
+                        sprintf('- Von Bertanlanffy growth parameters: lsup = %s and k = %s',
+                                opt$lsup, opt$k),
+                        sprintf('- Beta for the beta-binomial length update: %s',
+                                opt$beta),
+                        sprintf('- Maximum length update %s',opt$binn),
+                        '',
+                        '- Mature stock',
+                        sprintf('- Ages between %s and %s',
+                                opt$matminage, opt$matmaxage),
+                        sprintf('- Lengths between %s and %s',
+                                opt$minlen,opt$maxlen),
+                        sprintf('- Length-weight relationship %s*l^%s',opt$a,opt$b),
+                        sprintf('- Von Bertanlanffy growth parameters: lsup = %s and k = %s',
+                                opt$lsup, opt$k),
+                        sprintf('- Beta for the beta-binomial length update: %s',
+                                opt$beta),
+                        sprintf('- Maximum length update %s',opt$binn),
+                        '',
+                        'Fleets:',
+                        '',
+                        '- Survey fleet:',
+                        sprintf('- suitability parameters\talpha:%s\tbeta%s',
+                                opt$salphasurv,opt$sbetasurv),
+                        sprintf('- Effort:\t%s',opt$Fysurv),
+                        sprintf('- Timestep(s):\t%s',
+                                paste(opt$survstep,collapse=' ')),
+                        sprintf('- Harvests in area(s) %s',
+                                paste(opt$doescatchsurv,collapse=' ')),
+                        '',
+                        '- Commercial fleet:',
+                        sprintf('- suitability parameters\talpha:%s\tbeta%s',
+                                opt$salphacomm,opt$sbetacomm),
+                        sprintf('- Effort:\t%s',opt$Fycomm),
+                        sprintf('- Timestep(s):\t%s',
+                                paste(opt$survstep,collapse=' ')),
+                        sprintf('- Harvests in area(s) %s',
+                                paste(opt$doescatchcomm,collapse=' ')),
+                        '\n',
+                        sep='\n')
+  cat(summary.text)
+  invisible(summary.text)
+}
+                               
+
+
+##' This function formats the output from RGadget to a dataframe and adds some 
+##' trivial calculated values
+##' @title as.data.frame.gadget.sim
+##' @param sim the results from RGadget
+##' @return A dataframe 
+as.data.frame.gadget.sim <- function(sim){
+  imm <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
+  names(imm)[length(names(imm))] <- 'Num.indiv'
+  catch.C.imm <- as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE)
+  names(catch.C.imm)[length(names(catch.C.imm))] <- 'Commercial.catch'
+  catch.S.imm <- as.data.frame.table(sim$immCsurv,stringsAsFactors=FALSE)
+  names(catch.S.imm)[length(names(catch.S.imm))] <- 'Survey.catch'
+  tmp.imm <- merge(imm,catch.C.imm,all=TRUE)
+  tmp.imm <- merge(tmp.imm,catch.S.imm,all=TRUE)
+  tmp.imm$year <- sapply(strsplit(tmp.imm$time,'_'),
+                         function(x) as.numeric(x[2]))
+  tmp.imm$step <- sapply(strsplit(tmp.imm$time,'_'),
+                         function(x) as.numeric(x[4]))
+  tmp.imm$length <- as.numeric(tmp.imm$length)
+  tmp.imm$age <- as.numeric(tmp.imm$age)
+  tmp.imm$weight <- opt$a*tmp.imm$length^opt$b
+  tmp.imm$stock <- 'imm'
+  
+  mat <- as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE)
+  names(mat)[length(names(mat))] <- 'Num.indiv'
+  catch.C.mat <- as.data.frame.table(sim$matCcomm,stringsAsFactors=FALSE)
+  names(catch.C.mat)[length(names(catch.C.mat))] <- 'Commercial.catch'
+  catch.S.mat <- as.data.frame.table(sim$matCsurv,stringsAsFactors=FALSE)
+  names(catch.S.mat)[length(names(catch.S.mat))] <- 'Survey.catch'
+  tmp.mat <- merge(mat,catch.C.mat,all=TRUE)
+  tmp.mat <- merge(tmp.mat,catch.S.mat,all=TRUE)
+  tmp.mat$year <- sapply(strsplit(tmp.mat$time,'_'),
+                         function(x) as.numeric(x[2]))
+  tmp.mat$step <- sapply(strsplit(tmp.mat$time,'_'),
+                         function(x) as.numeric(x[4]))
+  tmp.mat$length <- as.numeric(tmp.mat$length)
+  tmp.mat$age <- as.numeric(tmp.mat$age)
+  tmp.mat$weight <- opt$a*tmp.mat$length^opt$b
+  tmp.mat$stock <- 'mat'
+  
+  return(rbind(tmp.imm,tmp.mat))
+}
