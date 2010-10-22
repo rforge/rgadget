@@ -1,232 +1,126 @@
 ##' Calculates the survey indices for the simulated stocks. 
 ##' @title Survey indices
 ##' @param sim Results from a Rgadget simulation
+##' @param sigma sigma for a log-normal noise for the indicies
 ##' @return Dataframe with the survey indices 
 ##' @author Bjarki Þór Elvarsson
-survey.index <- function(sim){
+survey.index <- function(sim,sigma=0){
   ##Calculates the total catch  
   opt <- sim$opt
-  immIndex <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
-  immIndex$year <- sapply(strsplit(immIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  immIndex$step <- sapply(strsplit(immIndex$time,'_'),
+  Index <- rbind(as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE),
+                 as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE))
+  Index$year <- sapply(strsplit(Index$time,'_'),
+                       function(x) as.numeric(x[2]))
+  Index$step <- sapply(strsplit(Index$time,'_'),
                           function(x) as.numeric(x[4]))
-  immIndex <- immIndex[immIndex$step==opt$survstep,]
-  immSurveyAgg <- aggregate(immIndex$Freq,
-                            by=list(
-                              year=immIndex$year,
-                              step=immIndex$step,
-                              area=sprintf('area%s',immIndex$area),
-                              age=ifelse(immIndex$age==1,'age1','ageother')),
-                            sum)
+  Index <- Index[Index$step==opt$survstep,]
+  SurveyAgg <- aggregate(Index$Freq,
+                         by=list(
+                           year=Index$year,
+                           step=Index$step,
+                           area=sprintf('area%s',Index$area),
+                           age=ifelse(Index$age==1,'age1','ageother')),
+                         sum)
   
-  matIndex <- as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE)
-  matIndex$year <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  matIndex$step <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
-  matIndex <- matIndex[matIndex$step==opt$survstep,]
-  matSurveyAgg <- aggregate(matIndex$Freq,
-                            by=list(
-                              year=matIndex$year,
-                              step=matIndex$step,
-                              area=sprintf('area%s',matIndex$area),
-                              age=rep('ageother',dim(matIndex)[1])),
-                            sum)
   
-  temp <- exp(rnorm(1,0,opt$survey.sigma^2)-opt$survey.sigma^2/2)
-  SurveyIndex <- immSurveyAgg
-  SurveyIndex$x[SurveyIndex$age=='ageother'] <-
-    SurveyIndex$x[SurveyIndex$age=='ageother'] +
-      matSurveyAgg$x
-  SurveyIndex$x <- SurveyIndex$x*temp
-  SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
+  temp <- exp(rnorm(opt$numobs,0,sigma^2)-sigma^2/2)
+  SurveyAgg$x <- SurveyAgg$x*temp
+  SurveyAgg$time <- SurveyAgg$year+(SurveyAgg$step - 1)/opt$numoftimesteps
 
-  class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~time|area
-  attr(SurveyIndex,'plotGroups') <- 'age'
-  attr(SurveyIndex,'plotType') <- 'l'
-  attr(SurveyIndex,'xaxis') <- 'Year'
-  attr(SurveyIndex,'yaxis') <- 'Survey Index'
-  attr(SurveyIndex,'plotFun') <- 'xyplot'  
-  return(SurveyIndex)
+  class(SurveyAgg) <- c('Rgadget',class(SurveyAgg))
+  attr(SurveyAgg,'formula') <- x~time|area
+  attr(SurveyAgg,'plotGroups') <- 'age'
+  attr(SurveyAgg,'plotType') <- 'l'
+  attr(SurveyAgg,'xaxis') <- 'Year'
+  attr(SurveyAgg,'yaxis') <- 'Survey Index'
+  attr(SurveyAgg,'plotFun') <- 'xyplot'  
+  return(SurveyAgg)
 }
-##' Calculate the survey length index based on the provided lengthgroupsw
+##' Calculate the survey length index based on the provided lengthgroups
 ##' @title Survey length index
 ##' @param sim Results from a Rgadget simulation
+##' @param length.groups A vector of cutoff points for the length groups
+##' @param sigma sigma for a log-normal error
 ##' @return Dataframe containing the length index from the 
 ##' @author Bjarki Þór Elvarsson
-survey.indexlen <- function(sim){
+survey.indexlen <- function(sim,length.groups=c(4,14,90),sigma=0){
   opt <- sim$opt
-  immIndex <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
-  immIndex$year <- sapply(strsplit(immIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  immIndex$step <- sapply(strsplit(immIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
-  immIndex <- immIndex[immIndex$step==opt$survstep,]
-  immIndex$length <- as.numeric(immIndex$length)
-  immIndex$length.group <- cut(immIndex$length,
-                               breaks=opt$length.groups,
-                               labels=sprintf('lengp%s',
-                                 1:(length(opt$length.groups)-1)))
-  immSurveyLen <- aggregate(immIndex$Freq,
-                            by=list(
-                              year=immIndex$year,
-                              step=immIndex$step,
-                              area=sprintf('area%s',immIndex$area),
-                              length.group=immIndex$length.group),
-                            sum)
+  Index <- rbind(as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE),
+                 as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE))
+  Index$year <- sapply(strsplit(Index$time,'_'),
+                       function(x) as.numeric(x[2]))
+  Index$step <- sapply(strsplit(Index$time,'_'),
+                       function(x) as.numeric(x[4]))
+  Index <- Index[Index$step==opt$survstep,]
+  Index$length <- as.numeric(Index$length)
+  Index$length.group <- cut(Index$length,
+                            breaks=length.groups,
+                            labels=sprintf('lengp%s',
+                              1:(length(length.groups)-1)))
+  IndexLen <- aggregate(Index$Freq,
+                        by=list(
+                          year=Index$year,
+                          step=Index$step,
+                          area=sprintf('area%s',Index$area),
+                          length.group=Index$length.group),
+                        sum)
+  IndexLen$x <- IndexLen$x*exp(rnorm(length(IndexLen$x),0,
+                                     sigma^2) - sigma^2/2)
   
-  matIndex <- as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE)
-  matIndex$year <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  matIndex$step <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
-  matIndex <- matIndex[matIndex$step==opt$survstep,]
-  matIndex$length <- as.numeric(matIndex$length)
-  matIndex$length.group <- cut(as.numeric(matIndex$length),
-                               breaks=opt$length.groups,
-                               labels=sprintf('lengp%s',
-                                 1:(length(opt$length.groups)-1)))
-  matSurveyLen <- aggregate(matIndex$Freq,
-                            by=list(
-                              year=matIndex$year,
-                              step=matIndex$step,
-                              area=sprintf('area%s',matIndex$area),
-                              length.group=matIndex$length.group),
-                            sum)
+  IndexLen$time <- IndexLen$year+(IndexLen$step - 1)/opt$numoftimesteps
   
-  SurveyIndex <- immSurveyLen
-  SurveyIndex$x <- (SurveyIndex$x + matSurveyLen$x)*
-    exp(rnorm(length(SurveyIndex$x),0,opt$survey.sigma^2)-
-        opt$survey.sigma^2/2)
-  
-  SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
-  
-  class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~time|area
-  attr(SurveyIndex,'plotGroups') <- 'length.group'
-  attr(SurveyIndex,'plotType') <- 'l'
-  attr(SurveyIndex,'xaxis') <- 'Year'
-  attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
-  attr(SurveyIndex,'plotFun') <- 'xyplot'
-  return(SurveyIndex)
+  class(IndexLen) <- c('Rgadget',class(IndexLen))
+  attr(IndexLen,'formula') <- x~time|area
+  attr(IndexLen,'plotGroups') <- 'length.group'
+  attr(IndexLen,'plotType') <- 'l'
+  attr(IndexLen,'xaxis') <- 'Year'
+  attr(IndexLen,'yaxis') <- 'Survey Length Index'
+  attr(IndexLen,'plotFun') <- 'xyplot'
+  return(IndexLen)
 }
-##' Calculate the length distribution from catch (commercial fleet) by length groups and time
-##' @title Length distribution from catch 
+
+##' Calculate the length distribution from the fleet by length groups and time.
+##' @title Length Dist 
 ##' @param sim Results from a Rgadget simulation
-##' @return Dataframe containing the length distribution
+##' @param sigma sigma for a lognormal noise
+##' @return Dataframe containing the fleet length distribution.
 ##' @author Bjarki Þór Elvarsson
-catch.ldist <- function(sim){
+lengthDist <- function(sim,sigma=0){
   opt <- sim$opt
-  immIndex <- as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE)
-  immIndex$year <- sapply(strsplit(immIndex$time,'_'),
+  tmp.surv <- rbind(as.data.frame.table(sim$immCsurv,stringsAsFactors=FALSE),
+                    as.data.frame.table(sim$matCsurv,stringsAsFactors=FALSE))
+  tmp.comm <- rbind(as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE),
+                    as.data.frame.table(sim$matCcomm,stringsAsFactors=FALSE))
+  tmp.surv$fleet <- 'surv'
+  tmp.comm$fleet <- 'comm'
+  Index <- rbind(tmp.surv,tmp.comm)
+  Index$year <- sapply(strsplit(Index$time,'_'),
                           function(x) as.numeric(x[2]))
-  immIndex$step <- sapply(strsplit(immIndex$time,'_'),
+  Index$step <- sapply(strsplit(Index$time,'_'),
                           function(x) as.numeric(x[4]))
-  #immIndex <- immIndex[immIndex$step==opt$survstep,]
-  immIndex$length <- as.numeric(immIndex$length)
-  immIndex$length.group <- cut(immIndex$length,
-                               breaks=opt$length.groups,
-                               labels=sprintf('lengp%s',
-                                 1:(length(opt$length.groups)-1)))
-  immCatchLen <- aggregate(immIndex$Freq,
-                           by=list(
-                             year=immIndex$year,
-                             step=immIndex$step,
-                             area=sprintf('area%s',immIndex$area),
-                             age=rep('allages',length(immIndex$year)),
-                             length=as.numeric(immIndex$length)),
-                           sum)
-
-  matIndex <- as.data.frame.table(sim$matCcomm,stringsAsFactors=FALSE)
-  matIndex$year <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  matIndex$step <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
+  Index <- Index[Index$fleet=='comm'|Index$step==opt$survstep,]
+  IndexLen <- aggregate(Index$Freq,
+                         by=list(
+                           year=Index$year,
+                           step=Index$step,
+                           area=sprintf('area%s',Index$area),
+                           age=rep('allages',length(Index$year)),
+                           length=as.numeric(Index$length),
+                           fleet=Index$fleet),                           
+                         sum)
   
-  matCatchLen <- aggregate(matIndex$Freq,
-                           by=list(
-                             year=matIndex$year,
-                             step=matIndex$step,
-                             area=sprintf('area%s',matIndex$area),
-                             age=rep('allages',length(matIndex$year)),
-                             length=as.numeric(matIndex$length)),
-                           sum)
-
-  SurveyIndex <- immCatchLen
-  SurveyIndex$x <- (SurveyIndex$x + matCatchLen$x)*
-    exp(rnorm(length(SurveyIndex$x),0,opt$survey.sigma^2)-
-        opt$survey.sigma^2/2)
-  SurveyIndex$length <- as.numeric(SurveyIndex$length)
-  SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
-
-  class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~length|year+area
-  attr(SurveyIndex,'plotGroups') <- 'step'
-  attr(SurveyIndex,'plotType') <- 'l'
-  attr(SurveyIndex,'xaxis') <- 'Year'
-  attr(SurveyIndex,'yaxis') <- 'Catch Length Index'
-  attr(SurveyIndex,'plotFun') <- 'xyplot'  
+  IndexLen$x <- IndexLen$x*exp(rnorm(length(IndexLen$x),0,
+                                     sigma^2) - sigma^2/2)
+  IndexLen$time <- IndexLen$year+(IndexLen$step - 1)/opt$numoftimesteps
+  class(IndexLen) <- c('Rgadget',class(IndexLen))
+  attr(IndexLen,'formula') <- x~length|as.ordered(year)+as.factor(area):as.factor(fleet)
+  attr(IndexLen,'plotGroups') <- 'step'
+  attr(IndexLen,'plotType') <- 'l'
+  attr(IndexLen,'xaxis') <- 'Year'
+  attr(IndexLen,'yaxis') <- 'Length Index'
+  attr(IndexLen,'plotFun') <- 'xyplot'
   
-  return(SurveyIndex)
-}
-##' Calculate the length distribution from the survey by length groups and time.
-##' @title Survey length distribution 
-##' @param sim Results from a Rgadget simulation
-##' @return Dataframe containing the survey length distribution.
-##' @author Bjarki Þór Elvarsson
-survey.ldist <- function(sim){
-  opt <- sim$opt
-  immIndex <- as.data.frame.table(sim$immCsurv,stringsAsFactors=FALSE)
-  immIndex$year <- sapply(strsplit(immIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  immIndex$step <- sapply(strsplit(immIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
-  immIndex <- immIndex[immIndex$step==opt$survstep,]
-  
-  immIndex$length.group <- cut(as.numeric(immIndex$length),
-                               breaks=opt$length.groups,
-                               labels=sprintf('lengp%s',
-                                 1:(length(opt$length.groups)-1)))
-  immSurveyLen <- aggregate(immIndex$Freq,
-                           by=list(
-                             year=immIndex$year,
-                             step=immIndex$step,
-                             area=sprintf('area%s',immIndex$area),
-                             age=rep('allages',length(immIndex$year)),
-                             length=as.numeric(immIndex$length)),
-                           sum)
-
-  matIndex <- as.data.frame.table(sim$matCsurv,stringsAsFactors=FALSE)
-  matIndex$year <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[2]))
-  matIndex$step <- sapply(strsplit(matIndex$time,'_'),
-                          function(x) as.numeric(x[4]))
-  matIndex <- matIndex[matIndex$step==opt$survstep,]
-  matSurveyLen <- aggregate(matIndex$Freq,
-                           by=list(
-                             year=matIndex$year,
-                             step=matIndex$step,
-                             area=sprintf('area%s',matIndex$area),
-                             age=rep('allages',length(matIndex$year)),
-                             length=as.numeric(matIndex$length)),
-                           sum)
-
-  SurveyIndex <- immSurveyLen
-  SurveyIndex$x <- (SurveyIndex$x + matSurveyLen$x)*
-    exp(rnorm(length(SurveyIndex$x),0,opt$survey.sigma^2)-
-        opt$survey.sigma^2/2)
-  SurveyIndex$time <- SurveyIndex$year+(SurveyIndex$step - 1)/opt$numoftimesteps
-#  SurveyIndex$length <- as.numeric(SurveyIndex$length)
-  class(SurveyIndex) <- c('Rgadget',class(SurveyIndex))
-  attr(SurveyIndex,'formula') <- x~length|year+area
-  attr(SurveyIndex,'plotGroups') <- 'step'
-  attr(SurveyIndex,'plotType') <- 'l'
-  attr(SurveyIndex,'xaxis') <- 'Year'
-  attr(SurveyIndex,'yaxis') <- 'Survey Length Index'
-  attr(SurveyIndex,'plotFun') <- 'xyplot'
-  return(SurveyIndex)
+  return(IndexLen)
 }
 ##' Calculates the age-length-key for the survey and commercial fleet.
 ##' @title Age length key
@@ -307,12 +201,13 @@ age.length.key <- function(sim,age.agg,len.agg){
 
   alk$time <- alk$year + (alk$step-1)/4
   class(alk) <- c('Rgadget',class(alk))
-  attr(alk,'formula') <- total.catch~as.numeric(age)+as.numeric(length)|area+fleet+time
+  attr(alk,'formula') <- total.catch~as.numeric(age)+as.numeric(length)|as.ordered(time) + as.factor(area):as.factor(fleet)
   attr(alk,'plotGroups') <- ''
   attr(alk,'plotType') <- ''
   attr(alk,'xaxis') <- 'Year'
   attr(alk,'yaxis') <- 'Age - Length - Key'
   attr(alk,'plotFun') <- 'contour'
+  attr(alk,'layout') <- ''
   return(alk)
 
 }
@@ -344,41 +239,55 @@ catch.in.kilos <- function(sim){
   class(commAmount) <- c('Rgadget',class(commAmount))
   attr(commAmount,'formula') <- catch.in.kilos~time|area
   attr(commAmount,'plotGroups') <- ''
-  attr(commAmount,'plotType') <- ''
+  attr(commAmount,'plotType') <- 'l'
   attr(commAmount,'xaxis') <- 'Year'
   attr(commAmount,'yaxis') <- 'Catch in kilos'
   attr(commAmount,'plotFun') <- 'xyplot'
+  attr(commAmount,'layout') <- ''
   return(commAmount)
 }
 ##' Plot the results from the summary functions of the Rgadget simulation.
 ##' @title Plot Rgadget
 ##' @param dat A Rgadget object
 ##' @author Bjarki Þór Elvarsson
-plot.Rgadget <- function(dat){
+plot.Rgadget <- function(dat,compare.alk=TRUE){
   if(attr(dat,'plotFun')=='contour'){
-    contourplot(attr(dat,'formula'),
-                labels=FALSE,
-                data=dat,
-#                auto.key=list(),
-                ylab=attr(dat,'yaxis'),
-                xlab=attr(dat,'xaxis'),
-                cuts=15,
-                scales=list(x=list(rot=45),y=list(rot=45)))
-    
+    plot <- contourplot(attr(dat,'formula'),
+                        labels=FALSE,
+                        data=dat,
+                        ylab=attr(dat,'yaxis'),
+                        xlab=attr(dat,'xaxis'),
+                        cuts=15,
+                        scales=list(x=list(rot=45),y=list(rot=45)),
+                        layout=attr(dat,'layout'),
+                        strip=FALSE)
   } else {
-    dat$plotGroups <- dat[[attr(dat,'plotGroups')]]
-    xyplot(attr(dat,'formula'),
-           data=dat,
-           groups=plotGroups,
-           type=attr(dat,'plotType'),
-           plot.points=FALSE,
-           auto.key = list(),
-           ylab=attr(dat,'yaxis'),
-           xlab=attr(dat,'xaxis'),
-           ref=TRUE) 
+    if(attr(dat,'plotGroups')!=''){
+      dat$plotGroups <- dat[[attr(dat,'plotGroups')]]
+      key <- list(points=FALSE,lines=TRUE,
+                     title=attr(dat,'plotGroups'),space='right')
+    } else {
+      dat$plotGroups <- ''
+      key <- FALSE
+    }
+    plot <- xyplot(attr(dat,'formula'),
+                   data=dat,
+                   groups=plotGroups,
+                   type=attr(dat,'plotType'),
+                   plot.points=FALSE,
+                   auto.key = key,
+                   ylab=attr(dat,'yaxis'),
+                   xlab=attr(dat,'xaxis'),
+                   scales=list(x=list(rot=45),y=list(rot=45)),
+                   ref=TRUE,
+                   strip=FALSE) 
   }
-
-  ##  contourplot(total.catch~age+length|year,labels=FALSE,groups=step,data=alk[alk$fleet=='surv',],auto.key=list(),cuts=15,scales=list(x=list(rot=45),y=list(rot=45)))
+  if(length(dim(plot))==2){
+    print(useOuterStrips(plot))
+  } else {
+    print(plot)
+  }
+    
 }
 
 ##' summary of the simulation defined by gadget.options
@@ -444,8 +353,6 @@ summary.gadget.options <- function(opt){
   invisible(summary.text)
 }
                                
-
-
 ##' This function formats the output from RGadget to a dataframe and adds some 
 ##' trivial calculated values
 ##' @title as.data.frame.gadget.sim
@@ -485,6 +392,58 @@ as.data.frame.gadget.sim <- function(sim){
   tmp.mat$age <- as.numeric(tmp.mat$age)
   tmp.mat$weight <- opt$a*tmp.mat$length^opt$b
   tmp.mat$stock <- 'mat'
+
+  tmp <- rbind(tmp.imm,tmp.mat)
+  tmp$time <- NULL
+  return(tmp)
+}
+##' Plots the suitability functions, the length weight relationship and the Von Bertalanffy growth curve.
+##' @title Plot gadget options
+##' @param opt Gadget options object
+##' @author Bjarki Þór Elvarsson
+plot.gadget.options <- function(opt){
+  ## suitability plot for the simulation
+  l <- opt$minlen:opt$maxlen
+  tmp <- data.frame(fleet=rep(c('Survey fleet','Commercial fleet'),
+                      each=(opt$maxlen - opt$minlen+1)),
+                    length=rep(l,2),
+                    weight=opt$a*l^opt$b,
+                    suitability=c(suitability(opt$salphasurv,
+                      opt$sbetasurv,0,1,l),
+                      suitability(opt$salphacomm,opt$sbetacomm,0,1,l)))
+  suit <- xyplot(suitability~length,groups=fleet,tmp,type='l',
+                 auto.key=list(lines=TRUE,points=FALSE),
+                 main='Suitability')
+  ## length weight relationship
+  weight <- xyplot(weight~length,tmp[1:length(l),],main='Length-Weight',
+                   type='l')
+ 
+  tmp.imm <- data.frame(age=opt$immminage:opt$immmaxage,
+                        stock='immature',
+                        growth=vonB(opt$lsup,opt$k,
+                          opt$immminage:opt$immmaxage))
+  tmp.mat <- data.frame(age=opt$matminage:opt$matmaxage,
+                        stock='mat',
+                        growth=vonB(opt$lsup,opt$k,
+                          opt$matminage:opt$matmaxage))
+  tmp.age <- rbind(tmp.imm,tmp.mat)
+  vonB.plot <- xyplot(growth~age,tmp.age,groups=stock,type='l',
+                      auto.key=list(lines=TRUE,points=FALSE),
+                      main='Growth curve')
   
-  return(rbind(tmp.imm,tmp.mat))
+  print(suit,position = c(0,0,.33,1),
+        more=TRUE)
+  print(weight,position = c(.33,0,.66,1),
+        more=TRUE)
+  print(vonB.plot,position = c(.66,0,1,1))
+}
+##' Calculate the Von Bertanlaffy curve according to the formula L(a) = L_\infty \big[1-e^{-\kappa a}\big]. 
+##' @title Von Bertalanffy 
+##' @param lsup L_\infty 
+##' @param k \kappa
+##' @param a age
+##' @return a vector of length(a) with the calculated VB curve at age(s) a.
+##' @author Bjarki Þór Elvarsson
+vonB <- function(lsup,k,a){
+  lsup <- lsup*(1-exp(-k*a))
 }
