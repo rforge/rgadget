@@ -105,7 +105,7 @@ read.gadget.likelihood <- function(file){
   comp.loc <- grep('component',lik)
   name.loc <- comp.loc+3
   weights <- NULL
-  common <- c('name','weight','type')
+  common <- c('name','weight','type','datafile')
   tmp.func <- function(comp){
     loc <- grep(comp,lik[name.loc])  
     dat <- NULL
@@ -126,8 +126,14 @@ read.gadget.likelihood <- function(file){
     names.dat <- head(dat,1)
     dat <- as.data.frame(dat,stringsAsFactors=FALSE)[2*(1:length(loc)),]
     names(dat) <- names.dat
+    if(comp=='understocking'){
+      dat$datafile <- ''
+    }
     weights <<-  rbind(weights,
-                   dat[common])
+                       dat[common])
+    if(comp=='understocking'){
+      dat$datafile <- NULL
+    }
     dat$weight <- NULL
     return(dat)
   } 
@@ -151,6 +157,7 @@ write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
+  weights$datafile <- NULL
   for(comp in lik){
     comp <- merge(weights,comp,by='name',sort=FALSE)
     
@@ -284,7 +291,11 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
     return(SS.comp)
   }
   res <- mclapply(likelihood.base$weights$name[restr],run.iterative)
-  return(res)
+  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
+  names(SS.table) <- likelihood.base$weights$name
+  
+  
+  return(list(num.comp=num.comp,SS=SS.table))
 }
 
 read.gadget.SS <- function(file='lik.out',location='.'){
@@ -292,3 +303,60 @@ read.gadget.SS <- function(file='lik.out',location='.'){
   SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
   return(SS)
 }
+
+
+read.gadget.data <- function(likelihood){
+  read.func <- function(x){
+    
+  }
+  within(list(),
+         for(comp.type in
+             names(likelihood[!(names(likelihood) %in%
+                                c('weights','penalty','understocking'))])) {
+           assign(comp.type,
+                  apply(likelihood[comp.type],
+         }
+}
+
+
+read.gadget.optinfo <- function(file='optinfofile'){
+  optinfo <- readLines(file)
+  optinfo <- na.omit(sapply(strsplit(optinfo,';'),function(x) x[1]))
+  simann <- (1:length(optinfo))[(optinfo == '[simann]')]
+  hooke <- (1:length(optinfo))[(optinfo == '[hooke]')]
+  bfgs <- (1:length(optinfo))[(optinfo == '[bfgs]')]
+
+  vars <- c(simann,hooke,bfgs,length(optinfo))
+  simann.end <- min(vars[vars>simann])-1
+  hooke.end <-  min(vars[vars>hooke])-1
+  bfgs.end <- min(vars[vars>bfgs])-1
+  
+  optinfo <- list(simann=clear.spaces(optinfo[(simann+1):simann.end]),
+                  hooke=clear.spaces(optinfo[(hooke+1):hooke.end]),
+                  bfgs=clear.spaces(optinfo[(bfgs+1):bfgs.end]))
+  
+  return(optinfo)
+}
+
+write.gadget.optinfo<-function(opt=NULL,sim=NULL,location='Gfiles',file='optinfofile')
+{
+  optinfo <-
+    paste("; optimisation file for the gadget example",
+          "; created automatically from R-gadget",
+          "; options for the Simulated Annealing optimisation",
+          "[simann]",
+          "simanniter\t2000",
+          "simanneps\t1e-4",
+          "T\t\t100",
+          "rt\t\t0.85",
+          "; options for the Hooke and Jeeves optimisation",
+          "[hooke]",
+          "hookeiter\t1000",
+          "hookeeps\t1e-04",
+          "rho\t\t0.5",
+          "lambda\t0",
+          sep='\n')
+  write(optinfo,paste('.',location,file,sep='/'))
+}
+
+
