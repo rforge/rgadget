@@ -11,15 +11,23 @@
 ##' @param h display this help screen and exit
 ##' @param i name of the file containing the model parameters
 ##' @param opt name of the file containing the optimising parameters
-##' @param main name of the main file (optional, as default it will look for 'main'
-##' @param m name of the file containing additional parameters (optional)
-##' @param p name of the file to which the parameter estimates should be output to. Default is 'params.out'
-##' @param o name of the file to which the likelihood-output should be saved (optional).
+##' @param main name of the main file (optional, as default it will
+##' look for 'main'
+##' @param m name of the file containing additional parameters
+##' (optional)
+##' @param p name of the file to which the parameter estimates should
+##' be output to. Default is 'params.out'
+##' @param o name of the file to which the likelihood-output should be
+##' saved (optional).
 ##' @param print Number. print -o output every <number> iterations.
 ##' @param precision set the precision to <number> in output files
-##' @param log Name of the file to which the logging information should be saved.
-##' @param printinitial Name of the file to which the initial model information sould be saved.
-##' @param printfinal Name of the file to which the final model information sould be saved.
+##' @param log Name of the file to which the logging information
+##' should be saved.
+##' @param printinitial Name of the file to which the initial model
+##' information sould be saved.
+##' @param printfinal Name of the file to which the final model
+##' information sould be saved.
+##' @param gadget.exe path to the gadget executable, if it is not in the path
 ##' @return the run history
 callGadget <- function(l=NULL,
                        s=NULL,
@@ -97,8 +105,12 @@ read.printfiles <- function(location='.'){
   printfiles$printfile <- NULL
   return(printfiles)
 }
-
-read.gadget.likelihood <- function(file){
+##' This functions reads the likelihood (input) file for gadget
+##' @title Read likelihood
+##' @param file likelihood file
+##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
+##' @author Bjarki Þór Elvarsson
+read.gadget.likelihood <- function(file='likelihood'){
   lik <- readLines(file)
   lik <- lik[!grepl(';',substring(lik,1,1))]
   lik <- sapply(strsplit(lik,';'),function(x) x[1])
@@ -150,7 +162,13 @@ read.gadget.likelihood <- function(file){
   class(likelihood) <- c('gadget.likelihood',class(likelihood))
   return(likelihood)
 }
-
+##' Write a likelihood object to file
+##' @title Write likelihood
+##' @param lik object of class gadget.likelihood
+##' @param file name of the likelihood file
+##' @param location folder
+##' @return character string corresponding to the likelihood file (if desired)
+##' @author Bjarki Þór Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   lik.text <- '; Likelihood file - created in Rgadget'
 #  comp <- '[component]'
@@ -172,7 +190,11 @@ write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   write(lik.text,file=paste(location,file,sep='/'))
   invisible(lik.text)
 }
-
+##' Read gadget's main file
+##' @title Read main
+##' @param file main file location
+##' @return object of class gadget.main
+##' @author Bjarki Þór Elvarsson
 read.gadget.main <- function(file){
   main <- readLines(file)
   main <- main[!grepl(';',substring(main,1,1))]
@@ -184,10 +206,15 @@ read.gadget.main <- function(file){
   main <- main[2,]
   row.names(main) <- 1
   class(main) <- c('gadget.main',class(main))
-  
   return(main)
 }
-
+##' Write gadget.main object to file
+##' @title Write main
+##' @param main gadget.main object
+##' @param file name of main file 
+##' @param location folder
+##' @return text of the main file (if desired)
+##' @author Bjarki Þór Elvarsson
 write.gadget.main <- function(main,file='main',location='.'){
   main.text <- '; main file for gadget - created in Rgadget'
   if(is.null(main$printfiles)){
@@ -216,7 +243,11 @@ write.gadget.main <- function(main,file='main',location='.'){
   invisible(main.text)
 }
   
-
+##' Clear tab and spaces from a string and return a list or a matrix of values 
+##' @title Clear spaces
+##' @param text string 
+##' @return list or matrix containing the (non-empty) values from the string
+##' @author Bjarki Þór Elvarsson
 clear.spaces <- function(text){
   sapply(strsplit(sapply(strsplit(text,' '),
                          function(x) {
@@ -225,14 +256,25 @@ clear.spaces <- function(text){
                          }),' '),
          function(x) x)
 }
-
+##' Read gadget parameter file
+##' @title Read param
+##' @param file parameter file
+##' @param location folder
+##' @return dataframe
+##' @author Bjarki Þór Elvarsson
 read.gadget.parameters <- function(file='params.in',location='.'){
   params <- read.table(paste(location,file,sep='/'),header=TRUE,
                        comment.char=';')
   class(params) <- c('gadget.parameters',class(params))
   return(params)
 }
-
+##' Write gadget input parameters
+##' @title Write params
+##' @param params params dataframe
+##' @param file a string naming the file to write to
+##' @param location a string naming the folder where the file is to be written
+##' @return a string containing the text of the params file (if desired)
+##' @author Bjarki Þór Elvarsson
 write.gadget.parameters <- function(params,file='params.out',location='.'){
   input.text <-
     paste("; input file for the gadget model",
@@ -244,8 +286,15 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
 }
-
-gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params.in') {
+##' An implementation of the iterative reweigthing of likelihood components
+##' in gadget.  
+##' @title Iterative reweighting
+##' @param main.file a string containing the location of the main file
+##' @param gadget.exe a string containing the location of the gadget executable
+##' @param params.file a string containing the location of the input parameters
+##' @return a matrix containing the weights of the likelihood components at each iteration.
+##' @author Bjarki Þór Elvarsson
+gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='params.in') {
   main <- read.gadget.main(main.file)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
   params.in <- read.gadget.parameters(params.file,'.')
@@ -297,7 +346,12 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
   
   return(list(num.comp=num.comp,SS=SS.table))
 }
-
+##' Read the values of likelihood components from the likelihood output
+##' @title Read SS
+##' @param file a string containing location the likelihood output
+##' @param location folder
+##' @return vector of likelihood values
+##' @author Bjarki Þór Elvarsson
 read.gadget.SS <- function(file='lik.out',location='.'){
   lik.out <- readLines(paste(location,file,sep='/'))
   SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
@@ -306,16 +360,89 @@ read.gadget.SS <- function(file='lik.out',location='.'){
 
 
 read.gadget.data <- function(likelihood){
-  read.func <- function(x){
-    
+  read.agg <- function(x){
+    if(!is.null(x))
+      return(sapply(strsplit(readLines(x),' '),function(x) x[1]))
+    else
+      return(NULL)
   }
-  within(list(),
-         for(comp.type in
-             names(likelihood[!(names(likelihood) %in%
-                                c('weights','penalty','understocking'))])) {
-           assign(comp.type,
-                  apply(likelihood[comp.type],
-         }
+  read.func <- function(x){
+    x <- as.data.frame(t(x),stringsAsFactors=FALSE)
+    dat <- read.table(x$datafile,comment.char=';')
+    area.agg <- read.agg(x$areaaggfile)
+    age.agg <- read.agg(x$ageaggfile)
+    len.agg <- read.agg(x$lenaggfile)
+      
+    if(x$type=='catchdistribution'){
+      names(dat) <- c('year','step','area','age','length','number')
+    }
+    if(x$type=='catchstatistics'){
+      if(x[['function']] %in%
+         c('lengthcalcstddev','weightnostddev','lengthnostddev'))
+        names(dat) <- c('year','step','area','age','number','mean')
+      if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev'))
+        names(dat) <- c('year','step','area','age','number','mean','stddev') 
+    }
+    if(x$type=='stockdistribution'){
+      names(dat) <- c('year','step','area','stock','age','length','number')
+    }
+    if(x$type=='surveyindices'){
+      if(x$sitype %in% c('lengths','fleets') )
+        names(dat) <- c('year','step','area','length','number')
+      if(x$sitype=='ages')
+        names(dat) <- c('year','step','area','age','number')
+      if(x$sitype=='acoustic')
+        names(dat) <- c('year','step','area','survey','acoustic')
+      if(x$sitype=='effort')
+        names(dat) <- c('year','step','area','fleet','effort')
+    }
+    if(x$type == 'surveydistribution'){
+      names(dat) <- c('year','step','area','age','length','number')
+    }
+    if(x$type=='stomachcontent'){
+      names(dat) <- c('year','step','area','predator','prey','ratio')
+    }
+    if(x$type=='recaptures'){
+      names(dat) <- c('tagid','year','step','area','length','number')
+    }
+    if(x$type=='recstatistics'){
+      if(x[['function']]=='lengthgivenstddev')
+        names(dat) <- c('tagid','year','step','area','number','mean','stddev')
+      else
+        names(dat) <- c('tagid','year','step','area','number','mean')
+    }
+    if(x$type=='catchinkilos'){
+      if(x$aggregationlevel==1)
+        names(dat) <- c('year','area','fleet','biomass')
+      else
+        names(dat) <- c('year','step','area','fleet','biomass')
+    }
+    
+    restr.area <- (dat$area %in% area.agg)
+    if(length(restr.area)==0)
+      restr.area <- TRUE
+    restr.age <- (dat$age %in% age.agg)
+    if(length(restr.age)==0)
+      restr.age <- TRUE
+    restr.len <- (dat$length %in% len.agg)
+    if(length(restr.len)==0)
+      restr.len <- TRUE
+    dat <- dat[restr.area&restr.age&restr.len,]
+    return(dat)
+  }
+  lik.dat <- within(list(),
+                    for(comp.type in
+                        names(likelihood[!(names(likelihood) %in%
+                                           c('weights','penalty','understocking'))])) {
+                      assign(comp.type,
+                             apply(likelihood[[comp.type]],1,read.func))
+                    }
+                    
+                    )
+  lik.dat$comp.type <- NULL
+#  df <- sapply(lik.dat,function(x) dim(x[x[,dim(x)[2]]>0])[1])
+#  return(list(dat=lik.dat,df=df))
+  return(lik.dat)
 }
 
 
