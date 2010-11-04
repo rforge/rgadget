@@ -286,7 +286,7 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
 }
 
 read.gadget.SS <- function(file='lik.out',location='.'){
-  lik.init <- readLines(paste(location,file,sep='/')
+  lik.init <- readLines(paste(location,file,sep='/'))
   SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
   return(SS)
 }
