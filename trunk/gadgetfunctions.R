@@ -73,7 +73,7 @@ callGadget <- function(l=NULL,
 ##' @title Read gadget printfiles
 ##' @param location the folder containing the printfiles
 ##' @return a list containing the data that has been read in.
-read.printfiles <- function(location){
+read.printfiles <- function(location='.'){
   read.printfile <- function(file){
      tmp <- readLines(file)
      lengths <- sapply(strsplit(tmp,' '),length)
@@ -137,7 +137,7 @@ read.gadget.likelihood <- function(file){
   surveyindices <- tmp.func('surveyindices')
   catchdistribution <- tmp.func('catchdistribution')
   catchstatistics <- tmp.func('catchstatistics')
-  
+  weights$weight <- as.numeric(weights$weight)
   likelihood <- list(weights=weights,penalty=penalty,understocking=understocking,
                       surveyindices=surveyindices,
                       catchdistribution=catchdistribution,catchstatistics=catchstatistics)
@@ -145,14 +145,14 @@ read.gadget.likelihood <- function(file){
   return(likelihood)
 }
 
-write.gadget.likelihood <- function(lik,file,location){
+write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   lik.text <- '; Likelihood file - created in Rgadget'
 #  comp <- '[component]'
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
   for(comp in lik){
-    comp <- merge(weights,comp,by='name')
+    comp <- merge(weights,comp,by='name',sort=FALSE)
     
     comp.text <- paste(names(comp),t(comp))
     dim(comp.text) <- dim(t(comp))
@@ -244,6 +244,8 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
   params.in <- read.gadget.parameters(params.file,'.')
   main.init <- main
   main.init$printfile <- NULL
+  main.init$likelihoodfiles <- 'likelihood.init'
+  write.gadget.likelihood(likelihood,file='likelihood.init','.')
   write.gadget.main(main.init,file='main.init')
   callGadget(s=1,main='main.init',o='lik.init',i=params.file,gadget.exe=gadget.exe)
   SS <- read.gadget.SS('lik.init')
@@ -254,15 +256,16 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
   main.base$likelihoodfiles <- 'likelihood.base'
   write.gadget.main(main.base,file='main.base')
   likelihood.base <- likelihood
-  likelihood.base$weights[restr] <- 1/SS[restr]
-  write.gadget.likelihood(likelihood.base,file='likelihood.base')
+  likelihood.base$weights$weight[restr] <- 1/SS[restr]
+  write.gadget.likelihood(likelihood.base,file='likelihood.base','.')
   callGadget(l=1,main='main.base',i=params.file,p='params.base',gadget.exe=gadget.exe)
   callGadget(s=1,main='main.base',i='params.base',o='lik.base',gadget.exe=gadget.exe)
   SS.base <- read.gadget.SS('lik.base')
   run.iterative <- function(comp){
     likelihood <- likelihood.base
     which.comp <- likelihood$weights$name==comp
-    likelihood$weights$weight[wich.comp] <- 10000*likelihood$weights$weight[wich.comp]
+    likelihood$weights$weight[which.comp] <-
+      10000*likelihood$weights$weight[which.comp]
     write.gadget.likelihood(likelihood,file=paste('likelihood',comp,sep='.'))
     main <- main.base
     main$likelihoodfiles <- paste('likelihood',comp,sep='.')
@@ -280,13 +283,12 @@ gadget.iter <- function(main.file='main',gadget.exe='gadget',params.file='params
     SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
     return(SS.comp)
   }
-  
   res <- mclapply(likelihood.base$weights$name[restr],run.iterative)
   return(res)
 }
 
 read.gadget.SS <- function(file='lik.out',location='.'){
-  lik.init <- readLines(paste(location,file,sep='/'))
+  lik.out <- readLines(paste(location,file,sep='/'))
   SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
   return(SS)
 }
