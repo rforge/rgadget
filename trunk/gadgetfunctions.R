@@ -1,3 +1,5 @@
+library(multicore)
+
 ##' Call GADGET
 ##'
 ##' This function sets up all necessary switches and call gadget from R
@@ -347,12 +349,26 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
   names(SS.table) <- likelihood.base$weights$name
   not.rew <- sum(!restr)
   final.SS <- SS.table[c(1:num.comp,not.rew+1:num.comp)]
-  
+  df <- rep(0,num.comp)
+  for(i in 1:num.comp)
+    df[i] <- lik.dat$df[[likelihood$weights$type[not.rew+i]]][[likelihood$weights$name[not.rew+i]]]
+  final.weights <- df/final.SS
   main.final <- main.base
   main.final$likelihoodfiles <- 'likelihood.final'
   write.gadget.main(main.final,'main.final')
   likelihood.final <- likelihood.base
-  
+  likelihood.final$weights$weight[rest] <- final.weights
+  comp <- 'final'
+  callGadget(l=1,
+             main=paste('main',comp,sep='.'),
+             i=params.file,
+             p=paste('params',comp,sep='.'),
+             gadget.exe=gadget.exe)
+#  callGadget(s=1,
+#             main=paste('main',comp,sep='.'),
+#             i=paste('params',comp,sep='.'),
+#             o=paste('lik',comp,sep='.'),
+#             gadget.exe=gadget.exe)
   return(list(num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
 }
 ##' Read the values of likelihood components from the likelihood output
@@ -449,7 +465,7 @@ read.gadget.data <- function(likelihood){
                     
                     )
   lik.dat$comp.type <- NULL
-  df <- sapply(tmp,function(x) sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
+  df <- sapply(lik.dat,function(x) sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
   return(list(dat=lik.dat,df=df))
 }
 
