@@ -138,7 +138,7 @@ read.gadget.likelihood <- function(file='likelihood'){
     names.dat <- head(dat,1)
     dat <- as.data.frame(dat,stringsAsFactors=FALSE)[2*(1:length(loc)),]
     names(dat) <- names.dat
-    row.names(dat) <- dat$names
+    row.names(dat) <- dat$name
     if(comp=='understocking'){
       dat$datafile <- ''
     }
@@ -308,16 +308,18 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
   SS <- read.gadget.SS('lik.init')
   restr <- !(likelihood$weights$type %in% c('penalty','understocking'))
   num.comp <- sum(restr)
+  ## degrees of freedom approximated by the number of datapoints
+  lik.dat <- read.gadget.data(likelihood)
   ## base run (with the inverse SS as weights)
   main.base <- main.init
   main.base$likelihoodfiles <- 'likelihood.base'
   write.gadget.main(main.base,file='main.base')
   likelihood.base <- likelihood
   likelihood.base$weights$weight[restr] <- 1/SS[restr]
-  write.gadget.likelihood(likelihood.base,file='likelihood.base','.')
-  callGadget(l=1,main='main.base',i=params.file,p='params.base',gadget.exe=gadget.exe)
-  callGadget(s=1,main='main.base',i='params.base',o='lik.base',gadget.exe=gadget.exe)
-  SS.base <- read.gadget.SS('lik.base')
+#  write.gadget.likelihood(likelihood.base,file='likelihood.base','.')
+#  callGadget(l=1,main='main.base',i=params.file,p='params.base',gadget.exe=gadget.exe)
+#  callGadget(s=1,main='main.base',i='params.base',o='lik.base',gadget.exe=gadget.exe)
+#  SS.base <- read.gadget.SS('lik.base')
   run.iterative <- function(comp){
     likelihood <- likelihood.base
     which.comp <- likelihood$weights$name==comp
@@ -340,12 +342,18 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
     SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
     return(SS.comp)
   }
-  res <- mclapply(likelihood.base$weights$name[restr],run.iterative)
+  res <- mclapply(c('base',likelihood.base$weights$name[restr]),run.iterative)
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
+  not.rew <- sum(!restr)
+  final.SS <- SS.table[c(1:num.comp,not.rew+1:num.comp)]
   
+  main.final <- main.base
+  main.final$likelihoodfiles <- 'likelihood.final'
+  write.gadget.main(main.final,'main.final')
+  likelihood.final <- likelihood.base
   
-  return(list(num.comp=num.comp,SS=SS.table))
+  return(list(num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
 }
 ##' Read the values of likelihood components from the likelihood output
 ##' @title Read SS
