@@ -138,6 +138,7 @@ read.gadget.likelihood <- function(file='likelihood'){
     names.dat <- head(dat,1)
     dat <- as.data.frame(dat,stringsAsFactors=FALSE)[2*(1:length(loc)),]
     names(dat) <- names.dat
+    row.names(dat) <- dat$names
     if(comp=='understocking'){
       dat$datafile <- ''
     }
@@ -362,7 +363,7 @@ read.gadget.SS <- function(file='lik.out',location='.'){
 read.gadget.data <- function(likelihood){
   read.agg <- function(x){
     if(!is.null(x))
-      return(sapply(strsplit(readLines(x),' '),function(x) x[1]))
+      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1]))
     else
       return(NULL)
   }
@@ -380,7 +381,7 @@ read.gadget.data <- function(likelihood){
       if(x[['function']] %in%
          c('lengthcalcstddev','weightnostddev','lengthnostddev'))
         names(dat) <- c('year','step','area','age','number','mean')
-      if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev'))
+      if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev','lengthgivenvar'))
         names(dat) <- c('year','step','area','age','number','mean','stddev') 
     }
     if(x$type=='stockdistribution'){
@@ -440,9 +441,8 @@ read.gadget.data <- function(likelihood){
                     
                     )
   lik.dat$comp.type <- NULL
-#  df <- sapply(lik.dat,function(x) dim(x[x[,dim(x)[2]]>0])[1])
-#  return(list(dat=lik.dat,df=df))
-  return(lik.dat)
+  df <- sapply(tmp,function(x) sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
+  return(list(dat=lik.dat,df=df))
 }
 
 
