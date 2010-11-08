@@ -447,3 +447,35 @@ plot.gadget.options <- function(opt){
 vonB <- function(lsup,k,a){
   lsup <- lsup*(1-exp(-k*a))
 }
+##' Simulated length at age
+##' @title Length at age
+##' @param sim The results from a Rgadget simulation
+##' @return a dataframe containin the length at age for both fleets
+##' @author Bjarki Þór Elvarsson
+length.at.age <- function(sim){
+  sim.dat <- as.data.frame(sim)
+  cols <- c('age','year','step','length.at.age','fleet')
+  comm.lat <- aggregate(cbind(Commercial.catch,Commercial.catch*length)~
+                        age+year+step,sim.dat[sim.dat$step %in% sim$opt$commstep,],sum)
+  comm.lat$length.at.age <-  comm.lat[,5]/comm.lat[,4]
+  comm.lat$fleet <- 'comm'
+  comm.lat <- comm.lat[cols]
+  
+  surv.lat <- aggregate(cbind(Survey.catch,Survey.catch*length)~
+                        age+year+step,sim.dat[sim.dat$step %in% sim$opt$survstep,],sum)
+  surv.lat$length.at.age <-  surv.lat[,5]/surv.lat[,4]
+  surv.lat$fleet <- 'surv'
+  surv.lat <- surv.lat[cols]
+  lat <- rbind(surv.lat,comm.lat)
+  class(lat) <- c('Rgadget',class(lat))
+  attr(lat,'formula') <- length.at.age~age|year+step
+  attr(lat,'plotGroups') <- 'fleet'
+  attr(lat,'plotType') <- 'l'
+  attr(lat,'xaxis') <- 'Age'
+  attr(lat,'yaxis') <- 'Length'
+  attr(lat,'plotFun') <- 'xyplot'
+  
+
+  return(lat)
+  
+}
