@@ -290,7 +290,9 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
               append=TRUE, sep="\t")
 }
 ##' An implementation of the iterative reweigthing of likelihood components
-##' in gadget.  
+##' in gadget.  If one (or more) components, other than understocking and
+##' penalty, is 0 then the gadget optimisation with the final weights will
+##' not be completed.
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget executable
@@ -349,20 +351,22 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
   df <- rep(0,num.comp)
   for(i in 1:num.comp)
     df[i] <- lik.dat$df[[likelihood$weights$type[not.rew+i]]][[likelihood$weights$name[not.rew+i]]]
-  final.weights <- df/final.SS
-  main.final <- main.base
-  main.final$likelihoodfiles <- 'likelihood.final'
-  write.gadget.main(main.final,'main.final')
-  likelihood.final <- likelihood.base
-  likelihood.final$weights$weight[restr] <- final.weights
-  write.gadget.likelihood(likelihood.final,file='likelihood.final')
-  comp <- 'final'
-  callGadget(l=1,
-             main=paste('main',comp,sep='.'),
-             i=params.file,
-             p=paste('params',comp,sep='.'),
-	     opt='optinfofile',
-             gadget.exe=gadget.exe)
+  if(sum(final.SS==0)==0){
+    final.weights <- df/final.SS
+    main.final <- main.base
+    main.final$likelihoodfiles <- 'likelihood.final'
+    write.gadget.main(main.final,'main.final')
+    likelihood.final <- likelihood.base
+    likelihood.final$weights$weight[restr] <- final.weights
+    write.gadget.likelihood(likelihood.final,file='likelihood.final')
+    comp <- 'final'
+    callGadget(l=1,
+               main=paste('main',comp,sep='.'),
+               i=params.file,
+               p=paste('params',comp,sep='.'),
+               opt='optinfofile',
+               gadget.exe=gadget.exe)
+  }
   return(list(num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
 }
 
