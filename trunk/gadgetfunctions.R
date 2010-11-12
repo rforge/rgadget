@@ -252,7 +252,7 @@ write.gadget.main <- function(main,file='main',location='.'){
 ##' @return list or matrix containing the (non-empty) values from the string
 ##' @author Bjarki Þór Elvarsson
 clear.spaces <- function(text){
-  sapply(strsplit(sapply(strsplit(text,' '),
+  sapply(strsplit(sapply(strsplit(text,'[ \t]'),
                          function(x) {
                            paste(x[!(x==''|x=='\t')],
                                  collapse=' ')
@@ -331,6 +331,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
                main=paste('main',comp,sep='.'),
                i=params.file,
                p=paste('params',comp,sep='.'),
+               opt='optinfofile',
                gadget.exe=gadget.exe)
     callGadget(s=1,
                main=paste('main',comp,sep='.'),
@@ -360,10 +361,11 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',params.file='p
              main=paste('main',comp,sep='.'),
              i=params.file,
              p=paste('params',comp,sep='.'),
-             opt='optinfofile'
+	     opt='optinfofile',
              gadget.exe=gadget.exe)
   return(list(num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
 }
+
 ##' Read the values of likelihood components from the likelihood output
 ##' @title Read SS
 ##' @param file a string containing location the likelihood output
@@ -376,7 +378,11 @@ read.gadget.SS <- function(file='lik.out',location='.'){
   return(SS)
 }
 
-
+##' Read data used by the various components
+##' @title Read likelihood data
+##' @param likelihood 
+##' @return list of dataframes and degress of freedom
+##' @author Bjarki Þór Elvarsson
 read.gadget.data <- function(likelihood){
   read.agg <- function(x){
     if(!is.null(x))
@@ -462,7 +468,11 @@ read.gadget.data <- function(likelihood){
   return(list(dat=lik.dat,df=df))
 }
 
-
+##' Read optinfo parameters from file
+##' @title Read gadget  
+##' @param file location of the optinfofile
+##' @return optinfo object
+##' @author Bjarki Þór Elvarsson
 read.gadget.optinfo <- function(file='optinfofile'){
   optinfo <- readLines(file)
   optinfo <- na.omit(sapply(strsplit(optinfo,';'),function(x) x[1]))
@@ -470,37 +480,47 @@ read.gadget.optinfo <- function(file='optinfofile'){
   hooke <- (1:length(optinfo))[(optinfo == '[hooke]')]
   bfgs <- (1:length(optinfo))[(optinfo == '[bfgs]')]
 
-  vars <- c(simann,hooke,bfgs,length(optinfo))
-  simann.end <- min(vars[vars>simann])-1
-  hooke.end <-  min(vars[vars>hooke])-1
-  bfgs.end <- min(vars[vars>bfgs])-1
-  
-  optinfo <- list(simann=clear.spaces(optinfo[(simann+1):simann.end]),
-                  hooke=clear.spaces(optinfo[(hooke+1):hooke.end]),
-                  bfgs=clear.spaces(optinfo[(bfgs+1):bfgs.end]))
-  
+  vars <- c(simann-1,hooke-1,bfgs-1,length(optinfo))
+  simann.end <- min(vars[vars>simann])
+  hooke.end <-  min(vars[vars>hooke])
+  bfgs.end <- min(vars[vars>bfgs])
+  tmp.func <- function(start,end){
+    x <-  as.data.frame(clear.spaces(optinfo[start:end]),
+                        stringsAsFactors=FALSE)
+    names(x) <- x[1,]
+    x <- x[2,]
+    return(x)
+  }
+  optinfo <- list(simann = tmp.func(simann+1,simann.end),
+                  hooke = tmp.func(hooke+1,hooke.end),
+                  bfgs = tmp.func(bfgs+1,bfgs.end))
+  class(optinfo) <- c('gadget.optinfo',class(optinfo))
   return(optinfo)
 }
-
-write.gadget.optinfo<-function(opt=NULL,sim=NULL,location='Gfiles',file='optinfofile')
-{
-  optinfo <-
+##' Write optinfo to file
+##' @title Write gadget optinfo
+##' @param optinfo optinfo object
+##' @param file file
+##' @param location location
+##' @return text of the optinfofile (if desired)
+##' @author Bjarki Þór Elvarsson
+write.gadget.optinfo<-function(optinfo,file='optinfofile',location=''){
+  opt.text <- 
     paste("; optimisation file for the gadget example",
           "; created automatically from R-gadget",
           "; options for the Simulated Annealing optimisation",
-          "[simann]",
-          "simanniter\t2000",
-          "simanneps\t1e-4",
-          "T\t\t100",
-          "rt\t\t0.85",
-          "; options for the Hooke and Jeeves optimisation",
-          "[hooke]",
-          "hookeiter\t1000",
-          "hookeeps\t1e-04",
-          "rho\t\t0.5",
-          "lambda\t0",
           sep='\n')
-  write(optinfo,paste('.',location,file,sep='/'))
+  for(comp in names(optinfo)){
+    opt.text <-
+      paste(opt.text,
+            sprintf('[%s]',comp),
+            paste(names(optinfo[[comp]]),
+                  optinfo[[comp]],
+                  sep='\t\t',collapse='\n'),
+            sep='\n')
+  }
+  write(opt.text,paste(location,file,sep='/'))
+  invisible(opt.text)
 }
 
 
