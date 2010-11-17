@@ -330,7 +330,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   likelihood.base <- likelihood
   likelihood.base$weights$weight[restr] <- 1/SS[restr]
   if(!rew.sI)
-    likelihood.base$weigths[likelihood$weights$type=='surveyindices'] <- sIw
+    likelihood.base$weights$weight[likelihood.base$weights$type=='surveyindices'] <- sIw
 
   ## Gadget set up stuff, needed for each component
   run.iterative <- function(comp){
@@ -349,7 +349,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                p=paste('params',comp,sep='.'),
                opt='optinfofile',
                gadget.exe=gadget.exe)
-    callGadget(s=1,
+    Callgadget(s=1,
                main=paste('main',comp,sep='.'),
                i=paste('params',comp,sep='.'),
                o=paste('lik',comp,sep='.'),
@@ -364,7 +364,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     run.string$SI <-
       likelihood.base$weights$name[likelihood.base$weights$type=='surveyindices']
   }
-  res <- mclapply(run.string,run.iterative)
+  Res <- mclapply(run.string,run.iterative)
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
   if(FALSE){
