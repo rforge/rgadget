@@ -320,7 +320,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   restr <- !(likelihood$weights$type %in% c('penalty','understocking'))
   if(!rew.sI){
     restr <- restr&(likelihood$weights$type != 'surveyindices')
-    sIw <- sI.weigths(lik.dat)
+    sIw <- sI.weights(lik.dat)
   }
   num.comp <- sum(restr)
   ## Base run (with the inverse SS as weights)
