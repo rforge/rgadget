@@ -299,14 +299,20 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' executable
 ##' @param params.file a string containing the location of the input
 ##' parameters
-##' @param rew.sI logical, should survey indices be iteratively reweighted (TRUE) or estimated using a linear model.
+##' @param rew.sI logical, should survey indices be iteratively
+##' reweighted (TRUE) or estimated using a linear model.
+##' @param run.final logical should the final optimisation be run
 ##' @return a matrix containing the weights of the likelihood components at each iteration.
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
-                             params.file='params.in',rew.sI=FALSE) {
+                             params.file='params.in',rew.sI=FALSE,
+                             run.final=FALSE) {
+
   main <- read.gadget.main(main.file)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
   params.in <- read.gadget.parameters(params.file,'.')
+
+  ## initial run (to determine the initial run)
   main.init <- main
   main.init$printfile <- NULL
   main.init$likelihoodfiles <- 'likelihood.init'
@@ -314,15 +320,43 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   write.gadget.main(main.init,file='main.init')
   callGadget(s=1,main='main.init',o='lik.init',i=params.file,gadget.exe=gadget.exe)
   SS <- read.gadget.SS('lik.init')
+
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
-  
   restr <- !(likelihood$weights$type %in% c('penalty','understocking'))
+  num.comp <- sum(restr)
+
+  ## Survey indices get special treatment
+  sI.weights <- function(lik.dat){
+    dat <- NULL
+    for(comp in lik.dat$dat$surveyindices){
+      dat <- rbind(dat,comp)
+    }
+    dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
+    dat$y <- log(dat$number)
+    dat$year <- as.factor(dat$year)
+    fit <- lm(y~year+length,dat)
+    weights <- (lik.dat$df$surveyindices -
+                tapply(dat$length,dat$comp,function(x) length(unique(x))))/
+                  tapply(resid(fit),dat$comp,function(x) sum(x^2))
+    return(weights)
+  }
+  
+  restr.SI <- (likelihood$weights$type == 'surveyindices')
   if(!rew.sI){
-    restr <- restr&(likelihood$weights$type != 'surveyindices')
+    restr <- restr&(!restr.SI)
     sIw <- sI.weights(lik.dat)
   }
-  num.comp <- sum(restr)
+  run.string <- c('base',likelihood.base$weights$name[restr])
+  if(!rew.sI){
+    run.string <- as.list(run.string)
+    run.string$SI <-
+      likelihood.base$weights$name[likelihood.base$weights$type==
+                                   'surveyindices']
+    likelihood.base$weights$weight[likelihood.base$weights$type==
+                                   'surveyindices'] <- sIw
+  }
+  
   ## Base run (with the inverse SS as weights)
   main.base <- main.init
   main.base$likelihoodfiles <- 'likelihood.base'
@@ -330,8 +364,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   likelihood.base <- likelihood
   likelihood.base$weights$weight[restr] <- 1/SS[restr]
   if(!rew.sI)
-    likelihood.base$weights$weight[likelihood.base$weights$type=='surveyindices'] <- sIw
-
+    likelihood.base$weights$weight[restr.SI] <- sIw/sum(SS[restr.SI]*sIw)
+  
   ## Gadget set up stuff, needed for each component
   run.iterative <- function(comp){
     likelihood <- likelihood.base
@@ -357,22 +391,15 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
     return(SS.comp)
   }
-  
-  run.string <- c('base',likelihood.base$weights$name[restr])
-  if(!rew.sI){
-    run.string <- as.list(run.string)
-    run.string$SI <-
-      likelihood.base$weights$name[likelihood.base$weights$type=='surveyindices']
-  }
-  Res <- mclapply(run.string,run.iterative)
+
+  res <- mclapply(run.string,run.iterative)
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
-  if(FALSE){
-    not.rew <- sum(!restr)
+  if(run.final){
     final.SS <- diag(SS.table[-1,restr])
     df <- rep(0,num.comp)
     for(i in 1:num.comp)
-      df[i] <- lik.dat$df[[likelihood$weights$type[not.rew+i]]][[likelihood$weights$name[not.rew+i]]]
+      df[i] <- lik.dat$df[[likelihood$weights$type[restr[i]]]][[likelihood$weights$name[restr[i]]]]
     final.weights <- df/final.SS
     main.final <- main.base
     main.final$likelihoodfiles <- 'likelihood.final'
@@ -389,21 +416,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                gadget.exe=gadget.exe)
   }
   return(list(res=res,num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
-}
-
-sI.weights <- function(lik.dat){
-  dat <- NULL
-  for(comp in lik.dat$dat$surveyindices){
-    dat <- rbind(dat,comp)
-  }
-  dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
-  dat$y <- log(dat$number)
-  dat$year <- as.factor(dat$year)
-  fit <- lm(y~year+length,dat)
-  weights <- (lik.dat$df$surveyindices -
-              tapply(dat$length,dat$comp,function(x) length(unique(x))))/
-    tapply(resid(fit),dat$comp,function(x) sum(x^2))
-  return(weights)
 }
 
 ##' Read the values of likelihood components from the likelihood output
