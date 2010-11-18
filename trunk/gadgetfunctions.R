@@ -380,7 +380,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                p=paste('params',comp,sep='.'),
                opt='optinfofile',
                gadget.exe=gadget.exe)
-    Callgadget(s=1,
+    callGadget(s=1,
                main=paste('main',comp,sep='.'),
                i=paste('params',comp,sep='.'),
                o=paste('lik',comp,sep='.'),
