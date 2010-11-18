@@ -350,11 +350,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   run.string <- c('base',likelihood.base$weights$name[restr])
   if(!rew.sI){
     run.string <- as.list(run.string)
-    run.string$SI <-
-      likelihood.base$weights$name[likelihood.base$weights$type==
+    run.string$SI <- likelihood$weights$name[likelihood$weights$type==
                                    'surveyindices']
-    likelihood.base$weights$weight[likelihood.base$weights$type==
-                                   'surveyindices'] <- sIw
   }
   
   ## Base run (with the inverse SS as weights)
