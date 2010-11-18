@@ -159,9 +159,11 @@ read.gadget.likelihood <- function(file='likelihood'){
   catchdistribution <- tmp.func('catchdistribution')
   catchstatistics <- tmp.func('catchstatistics')
   weights$weight <- as.numeric(weights$weight)
-  likelihood <- list(weights=weights,penalty=penalty,understocking=understocking,
-                      surveyindices=surveyindices,
-                      catchdistribution=catchdistribution,catchstatistics=catchstatistics)
+  likelihood <- list(weights=weights,penalty=penalty,
+                     understocking=understocking,
+                     surveyindices=surveyindices,
+                     catchdistribution=catchdistribution,
+                     catchstatistics=catchstatistics)
   class(likelihood) <- c('gadget.likelihood',class(likelihood))
   return(likelihood)
 }
@@ -350,8 +352,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   run.string <- c('base',likelihood$weights$name[restr])
   if(!rew.sI){
     run.string <- as.list(run.string)
-    run.string$SI <- likelihood$weights$name[likelihood$weights$type==
-                                   'surveyindices']
+    run.string$SI <- likelihood$weights$name[restr.SI]
   }
   
   ## Base run (with the inverse SS as weights)
@@ -388,21 +389,32 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
     return(SS.comp)
   }
-
+  ## run the bloody thing
   res <- mclapply(run.string,run.iterative)
+  names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
+
+  ## Do we want to run the final optimisation (debug purposes)
   if(run.final){
-    final.SS <- diag(SS.table[-1,restr])
+    final.SS <- diag(as.matrix(SS.table[likelihood$weights$name[restr],restr]))
     df <- rep(0,num.comp)
-    for(i in 1:num.comp)
-      df[i] <- lik.dat$df[[likelihood$weights$type[restr[i]]]][[likelihood$weights$name[restr[i]]]]
+    lik.tmp <- likelihood$weights[restr,]
+    for(i in 1:num.comp){
+      df[i] <- lik.dat$df[[lik.tmp$type[i]]][[lik.tmp$name[i]]]
+    }
     final.weights <- df/final.SS
+    if(!rew.SI){
+      SI.df <- sum(lik.dat$df$surveyindices)
+      ind <- run.string$SI
+      final.SI <- SI.df*sIw/(sIw*SS.table[paste(ind,collapse='.'),ind])
+      final.weights <- unlist(c(final.weights,final.SI))
+    }
     main.final <- main.base
     main.final$likelihoodfiles <- 'likelihood.final'
     write.gadget.main(main.final,'main.final')
     likelihood.final <- likelihood.base
-    likelihood.final$weights$weight[restr] <- final.weights
+    likelihood.final$weights[names(final.weights),'weight'] <- final.weights
     write.gadget.likelihood(likelihood.final,file='likelihood.final')
     comp <- 'final'
     callGadget(l=1,
