@@ -347,7 +347,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     restr <- restr&(!restr.SI)
     sIw <- sI.weights(lik.dat)
   }
-  run.string <- c('base',likelihood.base$weights$name[restr])
+  run.string <- c('base',likelihood$weights$name[restr])
   if(!rew.sI){
     run.string <- as.list(run.string)
     run.string$SI <- likelihood$weights$name[likelihood$weights$type==
