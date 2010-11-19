@@ -605,7 +605,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile',location=''){
 ##' @param stepsize The stepsize used
 ##' @return results from lik.out
 ##' @author Bjarki Thor Elvarsson
-sensitivity.gadget <- function(file='param.out',
+sensitivity.gadget <- function(file='params.out',
                                outer.range=0.5,
                                outer.stepsize=0.05,
                                inner.range=0.05,
@@ -653,7 +653,7 @@ sensitivity.gadget <- function(file='param.out',
   param.table <- unique(param.table)
   header <- paste('switches',paste(names(param.table),collapse='\t'),sep='\t')
   write(header,file='sens.in')
-  write.table(param.table,header=FALSE,append=TRUE,quote=FALSE,sep='\t',
+  write.table(param.table,col.names=FALSE,append=TRUE,quote=FALSE,sep='\t',
               row.names=FALSE)
   callGadget(s=TRUE,i=sens.in,o=lik.out)
   lik.sens <- read.gagdet.lik.out(lik.out)
