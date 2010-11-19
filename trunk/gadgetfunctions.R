@@ -616,7 +616,8 @@ sensitivity.gadget <- function(file='params.out',
                                gadget.exe='gadget',
                                sens.in='sens.in',
                                lik.out='lik.sens',
-                               within.bounds=TRUE
+                               within.bounds=TRUE,
+                               main.file='main'
                                ){
   params <- read.gadget.parameters(file=file)
   p.range <- sort(unique(c(seq(-outer.range,outer.range,by=outer.stepsize),
@@ -655,6 +656,9 @@ sensitivity.gadget <- function(file='params.out',
   write(header,file=sens.in)
   write.table(param.table,file=sens.in,col.names=FALSE,append=TRUE,
               quote=FALSE,sep='\t',row.names=FALSE)
+  main <- read.gadget.main(main.file)
+  main$printfiles <- ''
+  write.gadget.main(main,file=sprintf('%s.sens',main))
   callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out')
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
