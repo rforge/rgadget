@@ -198,16 +198,14 @@ write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
 ##' @param file main file location
 ##' @return object of class gadget.main
 ##' @author Bjarki Þór Elvarsson
-read.gadget.main <- function(file){
+read.gadget.main <- function(file='main'){
   main <- readLines(file)
   main <- main[!grepl(';',substring(main,1,1))]
   main <- sapply(strsplit(main,';'),function(x) x[1])
   main <- clear.spaces(main)
-  main <- as.data.frame(sapply(main[sapply(main,length)!=1],function(x) x),
-                        stringsAsFactors=FALSE)
-  names(main) <- main[1,]
-  main <- main[2,]
-  row.names(main) <- 1
+  tmp <- sapply(main[sapply(main,length)!=1],function(x) x[2:length(x)])
+  names(tmp) <-  sapply(main[sapply(main,length)!=1],function(x) x[1])
+  main <- tmp
   class(main) <- c('gadget.main',class(main))
   return(main)
 }
@@ -227,20 +225,24 @@ write.gadget.main <- function(main,file='main',location='.'){
     paste(main.text,
           paste('timefile',main$timefile),
           paste('areafile',main$areafile),
-          paste('printfiles',main$printfiles),
+          paste('printfiles',paste(main$printfiles,collapse='\t')),
           '[stock]',
-          paste('stockfiles',main$stockfiles),
+          paste('stockfiles',paste(main$stockfiles,collapse='\t'),
           ifelse(is.null(main$tagfiles),
                  '[tagging]',
-                 paste('[tagging]\ntagfiles',main$tagfiles)),
+                 paste('[tagging]\ntagfiles',paste(main$tagfiles,
+                                                   collapse='\t')),
           ifelse(is.null(main$otherfoodfiles),
                  '[otherfood]',
-                 paste('[otherfood]\notherfoodfiles',main$otherfoodfiles)),
+                 paste('[otherfood]\notherfoodfiles',
+                       paste(main$otherfoodfiles,collapse='\t'))),
           ifelse(is.null(main$likelihoodfiles),
                  '[fleet]',
-                 paste('[fleet]\nfleetfiles',main$fleetfiles)),
+                 paste('[fleet]\nfleetfiles',
+                       paste(main$fleetfiles,collapse='\t'))),
           '[likelihood]',
-          paste('likelihoodfiles',main$likelihoodfiles),
+          paste('likelihoodfiles',
+                paste(main$likelihoodfiles,collapse='\t')),
           sep='\n')
   write(main.text,paste(location,file,sep='/'))
   invisible(main.text)
@@ -657,7 +659,7 @@ sensitivity.gadget <- function(file='params.out',
   write.table(param.table,file=sens.in,col.names=FALSE,append=TRUE,
               quote=FALSE,sep='\t',row.names=FALSE)
   main <- read.gadget.main(main.file)
-  main$printfiles <- ''
+  main$printfiles <- NULL
   write.gadget.main(main,file=sprintf('%s.sens',main))
   callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out')
   lik.sens <- read.gadget.lik.out(lik.out)
