@@ -652,11 +652,11 @@ sensitivity.gadget <- function(file='params.out',
   }
   param.table <- unique(param.table)
   header <- paste('switches',paste(names(param.table),collapse='\t'),sep='\t')
-  write(header,file='sens.in')
-  write.table(param.table,col.names=FALSE,append=TRUE,quote=FALSE,sep='\t',
-              row.names=FALSE)
-  callGadget(s=TRUE,i=sens.in,o=lik.out)
-  lik.sens <- read.gagdet.lik.out(lik.out)
+  write(header,file=sens.in)
+  write.table(param.table,file=sens.in,col.names=FALSE,append=TRUE,
+              quote=FALSE,sep='\t',row.names=FALSE)
+  callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out')
+  lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
   sens.data$parameter <- row.names(param.table)
   return(sens.data)
