@@ -26,9 +26,9 @@ library(multicore)
 ##' @param log Name of the file to which the logging information
 ##' should be saved.
 ##' @param printinitial Name of the file to which the initial model
-##' information sould be saved.
+##' information should be saved.
 ##' @param printfinal Name of the file to which the final model
-##' information sould be saved.
+##' information should be saved.
 ##' @param gadget.exe path to the gadget executable, if it is not in the path
 ##' @return the run history
 callGadget <- function(l=NULL,
@@ -68,9 +68,6 @@ callGadget <- function(l=NULL,
                            paste('-printfinal',printfinal)))
   run.string <- paste(gadget.exe,switches)
   run.history <- try(system(run.string,intern=TRUE,ignore.stderr=TRUE))
-#  if(!is.null(o))
-#    o <- read.table(o,skip=7,header=TRUE)
-#  invisible(list(run.history=run.history,output=o))
   invisible(run.history)
 }
                        
@@ -86,17 +83,18 @@ callGadget <- function(l=NULL,
 read.printfiles <- function(location='.'){
   read.printfile <- function(file){
      tmp <- readLines(file)
-     lengths <- sapply(strsplit(tmp,' '),length)
-     skip <- min((1:length(tmp))[lengths==min(lengths)])
-     header <-
-       strsplit(paste(strsplit(tmp[skip],' ')[[1]][2:min(lengths)],
-                      collapse='.'),'-')[[1]]
-     data <- read.table(file,skip=skip,header=FALSE)
-     names(data) <- header
+     skip <- max(grep(tmp,';'))
+     header <- unlist(sapply(strsplit(tmp[skip],' '),
+                             function(x) strsplit(x[2],'-')))
+     data <- read.table(file,comment.char=';',header=FALSE)
+     if(length(names(data)) != length(header)){
+       warning(sprintf('Error in read.printfile -- Header could no be read from file %s',file))
+     } else {
+       names(data) <- header
+     }
      return(data)
   }
-  out.files <- try(system(paste('ls',location),
-                          intern=TRUE,ignore.stderr=TRUE))
+  out.files <- list.files(path=location)
   printfiles <- within(list(),
                        for(printfile in out.files){
                          assign(printfile,
@@ -144,8 +142,7 @@ read.gadget.likelihood <- function(file='likelihood'){
     if(comp=='understocking'){
       dat$datafile <- ''
     }
-    weights <<-  rbind(weights,
-                       dat[common])
+    weights <<-  rbind(weights,dat[common])
     if(comp=='understocking'){
       dat$datafile <- NULL
     }
@@ -195,6 +192,7 @@ write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   write(lik.text,file=paste(location,file,sep='/'))
   invisible(lik.text)
 }
+
 ##' Read gadget's main file
 ##' @title Read main
 ##' @param file main file location
@@ -268,8 +266,9 @@ clear.spaces <- function(text){
 ##' @return dataframe
 ##' @author Bjarki Þór Elvarsson
 read.gadget.parameters <- function(file='params.in',location='.'){
-  params <- read.table(paste(location,file,sep='/'),header=TRUE,
-                       comment.char=';')
+  params <- read.table(file,header=TRUE,
+                       comment.char=';',
+                       stringsAsFactors=FALSE)
   class(params) <- c('gadget.parameters',class(params))
   return(params)
 }
@@ -312,7 +311,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   main <- read.gadget.main(main.file)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-  params.in <- read.gadget.parameters(params.file,'.')
+  params.in <-read.gadget.parameters(params.file,'.')
 
   ## initial run (to determine the initial run)
   main.init <- main
@@ -583,4 +582,109 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile',location=''){
   invisible(opt.text)
 }
 
+##' The test will be run by changing each of the variables in your model
+##' by up to +/- some percentage of the initial value. Often we would like
+##' a higher resolution near the optimum than is requried elsewhere.
+##' @title Gadget sensitivity
+##' @param file name of the input file with the initial point
+##' @param outer.range 
+##' @param outer.stepsize 
+##' @param inner.range 
+##' @param inner.stepsize 
+##' @param opt Will we be looking at only the optimized variables, or
+##' all of them?
+##' @param vars.all (logical) Will we be looking at all variables or
+##' just some? 
+##' @param var.names If only a few, which ones will they be? Can be
+##' blank if we are using all variables
+##' @param gadget.exe name of the gadget executable
+##' @param sens.in name of the resulting gadget input file
+##' @param lik.out 
+##' @param within.bounds 
+##' @param range The range of the sensitivity check
+##' @param stepsize The stepsize used
+##' @return results from lik.out
+##' @author Bjarki Thor Elvarsson
+sensitivity.gadget <- function(file='param.out',
+                               outer.range=0.5,
+                               outer.stepsize=0.05,
+                               inner.range=0.05,
+                               inner.stepsize=0.01,
+                               opt=TRUE,
+                               vars.all=TRUE,
+                               var.names='',
+                               gadget.exe='gadget',
+                               sens.in='sens.in',
+                               lik.out='lik.sens',
+                               within.bounds=TRUE
+                               ){
+  params <- read.gadget.parameters(file=file)
+  p.range <- sort(unique(c(seq(-outer.range,outer.range,by=outer.stepsize),
+                           seq(-inner.range,inner.range,by=inner.stepsize))))
+  restr <- TRUE
+  if(opt){
+    restr <- restr&(params$opt==1)
+  }
+  if(!vars.all){
+    restr <- restr&(params$switch %in% var.names)
+  }
+  num.points <- sum(restr)*length(p.range)
+  param.table <- rep(params$value,each=num.points)
+  dim(param.table) <- c(num.points,length(params$value))
+  param.table <- as.data.frame(param.table)
+  names(param.table) <- params$switch
+  row.names(param.table) <- paste(rep(params$switch[restr],
+                                      each=length(p.range)),
+                                  1:length(p.range),sep='.')
+  seat <- 0
+  for(name in params$switch[restr]){
+    param.res <- params$switch==name
+    if(within.bounds){
+      param.table[[name]][seat+1:length(p.range)] <-
+        pmax(pmin(params$upper[param.res],
+                  p.range*params$value[param.res]),
+             params$lower[param.res])
+    } else { 
+      param.table[[name]][seat+1:length(p.range)] <-
+        p.range*params$value[param.res]
+    }
+    seat <- seat+length(p.range)
+  }
+  param.table <- unique(param.table)
+  header <- paste('switches',paste(names(param.table),collapse='\t'),sep='\t')
+  write(header,file='sens.in')
+  write.table(param.table,header=FALSE,append=TRUE,quote=FALSE,sep='\t',
+              row.names=FALSE)
+  callGadget(s=TRUE,i=sens.in,o=lik.out)
+  lik.sens <- read.gagdet.lik.out(lik.out)
+  sens.data <- lik.sens$data
+  sens.data$parameter <- row.names(param.table)
+  return(sens.data)
+}
 
+
+##' Read in the gadget likelihood output.
+##' @title Read gadget lik.out 
+##' @param file string containing the name of the file
+##' @return a list containing the swicthes (names of variable), weigths
+##' (líkelihood components) and data (dataframe with the parameter values,
+##' likelihood component values and the final score.
+##' @author Bjarki Thor Elvarsson
+read.gadget.lik.out <- function(file='lik.out'){
+  lik <- readLines(file)
+  i <- grep("Listing of the switches",lik)
+  i1 <- grep("Listing of the likelihood components",lik)
+  i2 <- grep("Listing of the output from the likelihood",lik)
+  switches <- sapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique)
+  names(switches) <- sapply(switches,function(x) x[1])
+
+  weights <- t(sapply(strsplit(lik[(i1+3):(i2-2)],'\t'),function(x) x))
+  weights <- as.data.frame(weights,stringsAsFactors=FALSE)
+  weights$V2 <- as.numeric(weights$V2)
+  weights$V3 <- as.numeric(weights$V3)
+  names(weights) <- c('Component','Type','Weight')
+  
+  data <- read.table(file,skip=(i2+1))
+  names(data) <- c('iteration',names(switches),weights$Component,'score')
+  return(list(switches=switches,weights=weights,data=data))
+}
