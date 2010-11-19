@@ -660,8 +660,9 @@ sensitivity.gadget <- function(file='params.out',
               quote=FALSE,sep='\t',row.names=FALSE)
   main <- read.gadget.main(main.file)
   main$printfiles <- NULL
-  write.gadget.main(main,file=sprintf('%s.sens',main))
-  callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out')
+  write.gadget.main(main,file=sprintf('%s.sens',main.file))
+  callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out',
+             main=sprintf('%s.sens',main.file))
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
   sens.data$parameter <- row.names(param.table)
