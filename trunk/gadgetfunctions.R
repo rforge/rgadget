@@ -304,12 +304,14 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' parameters
 ##' @param rew.sI logical, should survey indices be iteratively
 ##' reweighted (TRUE) or estimated using a linear model.
-##' @param run.final logical should the final optimisation be run
+##' @param run.final logical should the final optimisation be run (DEBUG)
+##' @param resume.final logical should the final optimisation be resumed (DEBUG)
 ##' @return a matrix containing the weights of the likelihood components at each iteration.
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              params.file='params.in',rew.sI=FALSE,
-                             run.final=FALSE) {
+                             run.final=TRUE,
+                             resume.final=FALSE) {
 
   main <- read.gadget.main(main.file)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
@@ -327,7 +329,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
   restr <- !(likelihood$weights$type %in% c('penalty','understocking'))
-  num.comp <- sum(restr)
 
   ## Survey indices get special treatment
   sI.weights <- function(lik.dat){
@@ -390,14 +391,22 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
     return(SS.comp)
   }
+  ## 
+  if(resume.final){
+    res <- lapply(run.string,
+                  function(x)
+                  read.gadget.SS(paste('lik',paste(x,collapse=TRUE,sep='.'))))
+  } else {
   ## run the bloody thing
-  res <- mclapply(run.string,run.iterative)
+    res <- mclapply(run.string,run.iterative)
+  }
   names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
 
   ## Do we want to run the final optimisation (debug purposes)
   if(run.final){
+    num.comp <- sum(restr)
     final.SS <- diag(as.matrix(SS.table[likelihood$weights$name[restr],restr]))
     df <- rep(0,num.comp)
     lik.tmp <- likelihood$weights[restr,]
@@ -405,10 +414,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       df[i] <- lik.dat$df[[lik.tmp$type[i]]][[lik.tmp$name[i]]]
     }
     final.weights <- df/final.SS
-    if(!rew.SI){
-      SI.df <- sum(lik.dat$df$surveyindices)
+    if(!rew.sI){
+#      SI.df <- sum(lik.dat$df$surveyindices)
       ind <- run.string$SI
-      final.SI <- SI.df*sIw/(sIw*SS.table[paste(ind,collapse='.'),ind])
+      final.SI <- sIw/(sIw*SS.table[paste(ind,collapse='.'),ind])
       final.weights <- unlist(c(final.weights,final.SI))
     }
     main.final <- main.base
