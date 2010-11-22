@@ -205,7 +205,7 @@ read.gadget.main <- function(file='main'){
   main <- clear.spaces(main)
   tmp <- sapply(main[sapply(main,length)!=1],function(x) x[2:length(x)])
   names(tmp) <-  sapply(main[sapply(main,length)!=1],function(x) x[1])
-  main <- tmp
+  main <- as.list(tmp)
   class(main) <- c('gadget.main',class(main))
   return(main)
 }
@@ -395,7 +395,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   if(resume.final){
     res <- lapply(run.string,
                   function(x)
-                  read.gadget.SS(paste('lik',paste(x,collapse=TRUE,sep='.'))))
+                  read.gadget.SS(paste('lik',paste(x,collapse='.'),sep='.'))))
   } else {
   ## run the bloody thing
     res <- mclapply(run.string,run.iterative)
