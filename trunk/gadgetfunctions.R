@@ -300,8 +300,19 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' penalty, are 0 then the gadget optimisation with the final weights will
 ##' not be completed.
 ##' 
-##' In Taylor et. al an objective reweighting of likelihood components is
-##' described for cod in Icelandic waters. 
+##' In Taylor et. al an objective reweighting scheme for likelihood components 
+##' is described for cod in Icelandic waters. As the authors point out the issue
+##' of component weighting has been discussed for some time, since the data
+##' sources have different natural scales (grams vs. kilograms) that should not
+##' affect the outcome. A simple heuristic, where the weights are 
+##' the inverse of the initial sums of squares for the respective component
+##' resulting in an initials score equal to the number of components. This has
+##' the intutitive advantage of all components being normalised. There is
+##' however a drawback to this since the component scores, given the initial
+##' parametrisation, are most likely not equally far from their respective
+##' optima resulting in sub-optimal weighting.
+##' The iterative reweighting heuristic tackles this problem by optimising
+##' each component separately 
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
