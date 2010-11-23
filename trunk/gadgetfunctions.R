@@ -5,7 +5,7 @@ library(multicore)
 ##' This function sets up all necessary switches and call gadget from R
 ##' and attempts to read some of the output from gadget. This has currently
 ##' only been tested on linux and requires gadget to be in the users path.
-##' The source code for gadget can be obtained from 
+##' The source code for gadget can be obtained from http://www.hafro.is/gadget
 ##' @param l perform a likelihood (optimising) model run
 ##' @param s perform a single (simulation) model run
 ##' @param n perform a network run (using paramin)
@@ -293,9 +293,15 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
               append=TRUE, sep="\t")
 }
 ##' An implementation of the iterative reweigthing of likelihood components
-##' in gadget.  If one (or more) components, other than understocking and
-##' penalty, is 0 then the gadget optimisation with the final weights will
+##' in gadget. It analyzes a given gadget model and, after a series of
+##' optimisations where each likelihood component is heavily weigthed,
+##' suggests a weigthing for the components based on the respective variance.
+##' If one (or more) components, other than understocking and
+##' penalty, are 0 then the gadget optimisation with the final weights will
 ##' not be completed.
+##' 
+##' In Taylor et. al an objective reweighting of likelihood components is
+##' described for cod in Icelandic waters. 
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
@@ -395,9 +401,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   if(resume.final){
     res <- lapply(run.string,
                   function(x)
-                  read.gadget.SS(paste('lik',paste(x,collapse='.'),sep='.'))))
+                  read.gadget.SS(paste('lik',paste(x,collapse='.'),sep='.')))
   } else {
-  ## run the bloody thing
+    ## run the bloody thing
     res <- mclapply(run.string,run.iterative)
   }
   names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
@@ -631,8 +637,9 @@ sensitivity.gadget <- function(file='params.out',
                                main.file='main'
                                ){
   params <- read.gadget.parameters(file=file)
-  p.range <- sort(unique(c(seq(-outer.range,outer.range,by=outer.stepsize),
-                           seq(-inner.range,inner.range,by=inner.stepsize))))
+  p.range <- 1 + sort(unique(c(seq(-outer.range,outer.range,by=outer.stepsize),
+                               seq(-inner.range,inner.range,
+                                   by=inner.stepsize))))
   restr <- TRUE
   if(opt){
     restr <- restr&(params$opt==1)
@@ -671,7 +678,8 @@ sensitivity.gadget <- function(file='params.out',
   main$printfiles <- NULL
   write.gadget.main(main,file=sprintf('%s.sens',main.file))
   callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out',
-             main=sprintf('%s.sens',main.file))
+             main=sprintf('%s.sens',main.file),
+             gadget.exe=gadget.exe)
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
   sens.data$parameter <- row.names(param.table)
