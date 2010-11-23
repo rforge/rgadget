@@ -312,7 +312,11 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' parametrisation, are most likely not equally far from their respective
 ##' optima resulting in sub-optimal weighting.
 ##' The iterative reweighting heuristic tackles this problem by optimising
-##' each component separately 
+##' each component separately in order to determine the lowest possible value
+##' for each component. This is then used to determine the final weights.
+##' The resoning for this approach is as follows:
+##' Conceptually the likelihood components can be thought of as residual sums
+##' of squares, and such 
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
