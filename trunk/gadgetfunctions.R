@@ -301,12 +301,13 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' not be completed.
 ##' 
 ##' In Taylor et. al an objective reweighting scheme for likelihood components 
-##' is described for cod in Icelandic waters. As the authors point out the issue
-##' of component weighting has been discussed for some time, since the data
-##' sources have different natural scales (grams vs. kilograms) that should not
+##' is described for cod in Icelandic waters. The authors nota that the issue
+##' of component weighting has been discussed for some time, as the data
+##' sources have different natural scales (e.g g vs. kg) that should not
 ##' affect the outcome. A simple heuristic, where the weights are 
 ##' the inverse of the initial sums of squares for the respective component
-##' resulting in an initials score equal to the number of components. This has
+##' resulting in an initials score equal to the number of components, is
+##' therfor often used. This has
 ##' the intutitive advantage of all components being normalised. There is
 ##' however a drawback to this since the component scores, given the initial
 ##' parametrisation, are most likely not equally far from their respective
@@ -316,7 +317,25 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' for each component. This is then used to determine the final weights.
 ##' The resoning for this approach is as follows:
 ##' Conceptually the likelihood components can be thought of as residual sums
-##' of squares, and such 
+##' of squares, and as such their variance can be esimated by dividing the
+##' SS by the degrees of freedom. The optimal weighting strategy is the inverse
+##' of the variance.
+##' Here the iteration starts with assigning the inverse SS as the initial
+##' weight, that is the initial score of each component when multiplied with
+##' the weight is 1. Then an optimisation run for each component with the intial
+##' score for that component set to 10000. After the optimisation run
+##' the inverse of the resulting SS is multiplied by the effective number of
+##' datapoints and used as the final weight for that particular component.
+##' The effective number of datapoints is used as a proxy for the degrees of
+##' freedom is determined from the number of non-zero datapoints. This is viewed
+##' as satisfactory proxy when the dataset is large, but for smaller datasets
+##' this could be a gross overestimate. In particular, if the surveyindices
+##' are weigthed on their own while the yearly recruitment is esimated they
+##' could be overfitted. If there are two surveys within the year Taylor et. al
+##' suggest that the corresponding indices from each survey are weigthed
+##' simultaneously so that each there are at least two measurement for each
+##' yearly recruit (NOT IMPLEMENTED). Another approach for say a single survey
+##' fleet the weight for each index component
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
