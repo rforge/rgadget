@@ -49,7 +49,7 @@ Rgadget <- function(opt=gadget.options()){
 ################################
 #
 # The stocks
-# preN(k)=[N_{i,1,j}] is a matrix where immN(k)_{i,1,j} is the number
+# preN(k)=[N_{i,1,j}] is a matrix where immN(k)_{i,1,j} 7is the number
 # of recruits in lengthgroup i at timestep j, area k
   immNumRec <- array(0,c(opt$numofareas,
                          opt$numoflgroups,
@@ -220,16 +220,18 @@ Rgadget <- function(opt=gadget.options()){
       ############
       # Migration Assume only two areas atm
       if(opt$doesmigrateimm==1){
-        immTemp<-migrate(immNumRec[1,,,i],immNumRec[2,,,i],
-                         num,P=migrationProb(opt=opt),opt=opt)
-        immNumRec[1,,,i] <- immTemp[,,1]
-        immNumRec[2,,,i] <- immTemp[,,2]
+        immNumRec[,,,i] <- migrate(immNumRec[,,,i],opt$immMigration[num,,])
+#        immTemp<-migrate(immNumRec[1,,,i],immNumRec[2,,,i],
+#                         num,P=migrationProb(opt=opt),opt=opt)
+#        immNumRec[1,,,i] <- immTemp[,,1]
+#        immNumRec[2,,,i] <- immTemp[,,2]
       }
       if(opt$doesmigratemat==1){
-        matTemp<-migrate(matNumRec[1,,,i],matNumRec[2,,,i],
-                         num,P=migrationProb(opt=opt),opt=opt)
-        matNumRec[1,,,i] <- matTemp[,,1]
-        matNumRec[2,,,i] <- matTemp[,,2]
+        matNumRec[,,,i] <- migrate(matNumRec[,,,i],opt$matMigration[num,,])
+#        matTemp<-migrate(matNumRec[1,,,i],matNumRec[2,,,i],
+#                         num,P=migrationProb(opt=opt),opt=opt)
+#        matNumRec[1,,,i] <- matTemp[,,1]
+#        matNumRec[2,,,i] <- matTemp[,,2]
       }
 
 

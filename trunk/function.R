@@ -9,8 +9,8 @@
 ##' \item{doescatchcomm}{Is there a commercial effort}
 ##' \item{doesmigrateimm}{Does the immature stock migrate}
 ##' \item{doesmigratemat}{Does the mature stock migrate}
-##' \item{migrationP1}{Probability of staying in area 1 (TWO AREA ASSUMPTION)}
-##' \item{migrationP2}{Probability of staying in area 2 (TWO AREA ASSUMPTION)}
+##' \item{immMigration]{Migration matrix for the immmature substock}
+##' \item{matMigration]{Migration matrix for the mature substock}
 ##' \item{doesfuncmigrate}{(migration) pde's used to describe migration.}
 ##' \item{diffustion}{(migration) diffusion parameter}
 ##' \item{driftx}{(migration) drift in x coordinate}
@@ -103,8 +103,8 @@ gadget.options <- function(){
 # Migration
               doesmigrateimm = 1,
               doesmigratemat = 1,
-              migrationP1 = c(1,0.6,0.6,1),
-              migrationP2  = c(0.6,1,1,0.6),
+              immMigration = array(c(1,0,.4,.6,.6,.4,0,1,.6,.4,0,1,1,0,.4,.6),c(2,2,4))
+              matMigration = array(c(1,0,.4,.6,.6,.4,0,1,.6,.4,0,1,1,0,.4,.6),c(2,2,4))
               doesfuncmigrate = 0,
               diffusion = NULL,
               driftx = NULL,
@@ -774,38 +774,44 @@ growthprob <-function(lt,
 ##' @param N1 number in area 1
 ##' @param N2 number in area 2
 ##' @param k time step
-##' @param P migration matrix
 ##' @param opt gadget options list
 ##' @return a matrix with the new population after migration.
-migrate <- function(N1,N2,k,P=migrationProb(),opt=gadget.options())
-{
+#migrate <- function(N1,N2,k,opt=gadget.options())
+#{
 #
-# Check if P is a transition matrix
-  if(max(P)>1)
-    print("Error - migration matrix is not a transition matrix")
+#  ##' Helper function for migrate
+#  ##' @title Migration matrix
+#  ##' @param opt gadget options list
+#  ##' @return Migration array
+#  migrationProb <- function(){
+#    P <- array(rbind(opt$migrationP1,1-opt$migrationP2),
+#               c(1,opt$numofareas,opt$numoftimesteps))
+#    return(P)
+#  }
+##
+## Check if P is a transition matrix
+#  if(max(P)>1)
+#    print("Error - migration matrix is not a transition matrix")
+#
+#  d1<-dim(N1)
+#  d2<-dim(N2)
+#  if(d1[1]!=d2[1] && d1[2]!=d2[2])
+#    print("Error - migration matrices do not have the same dimensions")
+#
+#  New<-array(0,c(d1[1],d1[2],opt$numofareas))
+#  # Use the advantage of only having 2 areas
+#  New[,,1]<-P[1,1,k]*N1+P[1,2,k]*N2
+#  New[,,2]<-(1-P[1,1,k])*N1+(1-P[1,2,k])*N2
+#  return(New)
+#}
 
-  d1<-dim(N1)
-  d2<-dim(N2)
-  if(d1[1]!=d2[1] && d1[2]!=d2[2])
-    print("Error - migration matrices do not have the same dimensions")
-
-  New<-array(0,c(d1[1],d1[2],opt$numofareas))
-  # Use the advantage of only having 2 areas
-  New[,,1]<-P[1,1,k]*N1+P[1,2,k]*N2
-  New[,,2]<-(1-P[1,1,k])*N1+(1-P[1,2,k])*N2
-  return(New)
+migrate <- function(N,M){
+  numofareas <- dim(N)[1]
+  for(area in 1:numofareas){
+    N[area,,] <- apply(M[area,]*N,c(2,3),sum)
+  }
+  return(N)
 }
-
-##' Helper function for migrate
-##' @title Migration matrix
-##' @param opt gadget options list
-##' @return Migration array
-migrationProb <- function(opt=gadget.options()){
-  P <- array(rbind(opt$migrationP1,1-opt$migrationP2),
-             c(1,opt$numofareas,opt$numoftimesteps))
-  return(P)
-}
-
 
 
 ##' The timestep (or timesteps) on which recruitment takes place is
