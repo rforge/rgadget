@@ -1,11 +1,11 @@
 library(multicore)
 
-##' Call GADGET
-##'
-##' This function sets up all necessary switches and call gadget from R
-##' and attempts to read some of the output from gadget. This has currently
-##' only been tested on linux and requires gadget to be in the users path.
+##' This function sets up all necessary switches and calls gadget from R
+##' and attempts to read the runtime output from gadget. This has currently
+##' only been tested on unix based platforms (but should in principle work on
+##' windows) and requires gadget to be in the users path.
 ##' The source code for gadget can be obtained from http://www.hafro.is/gadget
+##' @title Call GADGET
 ##' @param l perform a likelihood (optimising) model run
 ##' @param s perform a single (simulation) model run
 ##' @param n perform a network run (using paramin)
@@ -29,7 +29,8 @@ library(multicore)
 ##' information should be saved.
 ##' @param printfinal Name of the file to which the final model
 ##' information should be saved.
-##' @param gadget.exe path to the gadget executable, if it is not in the path
+##' @param gadget.exe path to the gadget executable, if it is not in
+##' the path
 ##' @return the run history
 callGadget <- function(l=NULL,
                        s=NULL,
@@ -75,12 +76,12 @@ callGadget <- function(l=NULL,
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
 ##' designed to read the defined examples, so it may work for some instances
-##' and it may not. It assumes that the first line containing the fewest words 
+##' and it may not. It assumes that the last line containing a comment ';'
 ##' is the line describing the column names and is the last comment line.
 ##' @title Read gadget printfiles
-##' @param location the folder containing the printfiles
-##' @return a list containing the data that has been read in.
-read.printfiles <- function(location='.'){
+##' @param path a character string with the name of the folder containing the printfiles
+##' @return a list containing the data that has been read in named after the files found in path.
+read.printfiles <- function(path='.'){
   read.printfile <- function(file){
      tmp <- readLines(file)
      skip <- max(grep(tmp,';'))
@@ -94,20 +95,21 @@ read.printfiles <- function(location='.'){
      }
      return(data)
   }
-  out.files <- list.files(path=location)
+  out.files <- list.files(path=path)
   printfiles <- within(list(),
                        for(printfile in out.files){
                          assign(printfile,
-                                read.printfile(paste(location,
+                                read.printfile(paste(path,
                                                      printfile,
                                                      sep='/')))
                        })
   printfiles$printfile <- NULL
   return(printfiles)
 }
-##' This functions reads the likelihood (input) file for gadget
+##' This functions reads the likelihood (input) file for gadget. The format of
+##' the likelihood file is described in gadget's user manual. 
 ##' @title Read likelihood
-##' @param file likelihood file
+##' @param file a character string containing the name of the likelihood file
 ##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
 ##' @author Bjarki Þór Elvarsson
 read.gadget.likelihood <- function(file='likelihood'){
@@ -120,7 +122,7 @@ read.gadget.likelihood <- function(file='likelihood'){
   common <- c('name','weight','type','datafile')
   tmp.func <- function(comp){
     loc <- grep(comp,lik[name.loc])  
-    dat <- NULL
+    dat <- list()
     for(dd in loc){
       if(dd < length(comp.loc)) {
         restr <- (comp.loc[dd] + 1):(comp.loc[dd+1]-1)
@@ -133,20 +135,25 @@ read.gadget.likelihood <- function(file='likelihood'){
                                             collapse=' ')
                                   }),' '),
                     function(x) as.character(x))
-      dat <- rbind(dat, tmp)
+      names.tmp <- head(tmp,1)
+      tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
+      names(tmp) <- names.tmp
+      row.names(tmp) <- tmp$name
+
+      if(comp=='understocking'){
+        tmp$datafile <- ''
+      }
+      weights <<-  rbind(weights,tmp[common])    
+      if(comp=='understocking'){
+        tmp$datafile <- NULL
+      }
+      tmp$weight <- NULL
+      dat <- within(dat,assign(tmp$name,tmp))
     }
-    names.dat <- head(dat,1)
-    dat <- as.data.frame(dat,stringsAsFactors=FALSE)[2*(1:length(loc)),]
-    names(dat) <- names.dat
-    row.names(dat) <- dat$name
-    if(comp=='understocking'){
-      dat$datafile <- ''
-    }
-    weights <<-  rbind(weights,dat[common])
-    if(comp=='understocking'){
-      dat$datafile <- NULL
-    }
-    dat$weight <- NULL
+    comp.loc <- c(comp.loc,length(lik) + 1)
+    if(length(unique(comp.loc[loc+1]-comp.loc[loc]))<2)
+      dat <-
+        as.data.frame(t(sapply(dat,function(x) unlist(x))),stringsAsFactors=FALSE)
     return(dat)
   } 
   ## understocking
@@ -173,7 +180,6 @@ read.gadget.likelihood <- function(file='likelihood'){
 ##' @author Bjarki Þór Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
   lik.text <- '; Likelihood file - created in Rgadget'
-#  comp <- '[component]'
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
@@ -333,9 +339,17 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' are weigthed on their own while the yearly recruitment is esimated they
 ##' could be overfitted. If there are two surveys within the year Taylor et. al
 ##' suggest that the corresponding indices from each survey are weigthed
-##' simultaneously so that each there are at least two measurement for each
-##' yearly recruit (NOT IMPLEMENTED). Another approach for say a single survey
-##' fleet the weight for each index component
+##' simultaneously in order to make sure that there are at least two measurement for each
+##' yearly recruit (NOT IMPLEMENTED). Another approach (which is implemented)
+##' for say a single survey fleet the weight for each index component is
+##' estimated from a model of the form
+##' \deqn{\log(I_{lts}) = \mu + Y_t + \lambda_l + \Sigma_s + \epsilon_{lts}}{%
+##' log(I_lts) = mu + Y_t + lambda_l + Sigma_s + e_lts}
+##' where the residual term, \eqn{\epsilon_{lts}}{e_lts}, is independent normal
+##' with variance \eqn{\sigma_{ls}^2}{sigma_ls^2}. The inverse of the estimated
+##' variance from the above model as the weights between the surveyindices.
+##' After these weights have been determined all surveyindices are weighted
+##' simultaneously. 
 ##' @title Iterative reweighting
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
@@ -570,7 +584,7 @@ read.gadget.data <- function(likelihood){
                         names(likelihood[!(names(likelihood) %in%
                                            c('weights','penalty','understocking'))])) {
                       assign(comp.type,
-                             apply(likelihood[[comp.type]],1,read.func))
+                             sapply(likelihood[[comp.type]],read.func))
                     }
                     
                     )
