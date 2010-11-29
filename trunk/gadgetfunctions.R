@@ -516,7 +516,9 @@ read.gadget.data <- function(likelihood){
       return(NULL)
   }
   read.func <- function(x){
+
     x <- as.data.frame(t(x),stringsAsFactors=FALSE)
+
     dat <- read.table(x$datafile,comment.char=';')
     area.agg <- read.agg(x$areaaggfile)
     age.agg <- read.agg(x$ageaggfile)
@@ -583,8 +585,9 @@ read.gadget.data <- function(likelihood){
                     for(comp.type in
                         names(likelihood[!(names(likelihood) %in%
                                            c('weights','penalty','understocking'))])) {
+
                       assign(comp.type,
-                             sapply(likelihood[[comp.type]],read.func))
+                             apply(likelihood[[comp.type]],1,read.func))
                     }
                     
                     )
