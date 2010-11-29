@@ -140,11 +140,11 @@ read.gadget.likelihood <- function(file='likelihood'){
       names(tmp) <- names.tmp
       row.names(tmp) <- tmp$name
 
-      if(comp=='understocking'){
+      if(comp=='understocking'|comp=='migrationpenalty'){
         tmp$datafile <- ''
       }
       weights <<-  rbind(weights,tmp[common])    
-      if(comp=='understocking'){
+      if(comp=='understocking'|comp=='migrationpenalty'){
         tmp$datafile <- NULL
       }
       tmp$weight <- NULL
@@ -157,17 +157,18 @@ read.gadget.likelihood <- function(file='likelihood'){
     return(dat)
   } 
   ## understocking
-  penalty <- tmp.func('penalty')
-  understocking <- tmp.func('understocking')
-  surveyindices <- tmp.func('surveyindices')
-  catchdistribution <- tmp.func('catchdistribution')
-  catchstatistics <- tmp.func('catchstatistics')
-  weights$weight <- as.numeric(weights$weight)
-  likelihood <- list(weights=weights,penalty=penalty,
-                     understocking=understocking,
-                     surveyindices=surveyindices,
-                     catchdistribution=catchdistribution,
-                     catchstatistics=catchstatistics)
+  likelihood <- list(penalty = tmp.func('penalty'),
+                     understocking = tmp.func('understocking'),
+                     surveyindices = tmp.func('surveyindices'),
+                     catchdistribution = tmp.func('catchdistribution'),
+                     catchstatistics = tmp.func('catchstatistics'),
+                     surveydistribution = tmp.func('surveydistribution'),
+                     stomachcontent = tmp.func('stomachcontent'),
+                     recaptures = tmp.func('recaptures'),
+                     recstatistics = tmp.func('recstatistics'),
+                     migrationpenalty = tmp.func('migrationpenalty'),
+                     catchinkilos = tmp.func('catchinkilos'))
+  likelihood$weights$weight <- as.numeric(weights$weight)
   class(likelihood) <- c('gadget.likelihood',class(likelihood))
   return(likelihood)
 }
@@ -382,7 +383,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
-  restr <- !(likelihood$weights$type %in% c('penalty','understocking'))
+  restr <- !(likelihood$weights$type %in%
+             c('penalty','understocking','migrationpenalty'))
 
   ## Survey indices get special treatment
   sI.weights <- function(lik.dat){
@@ -393,7 +395,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
     dat$y <- log(dat$number)
     dat$year <- as.factor(dat$year)
-    fit <- lm(y~year+length,dat)
+    fit <- lm(y~year+length+step,dat)
     weights <- (lik.dat$df$surveyindices -
                 tapply(dat$length,dat$comp,function(x) length(unique(x))))/
                   tapply(resid(fit),dat$comp,function(x) sum(x^2))
