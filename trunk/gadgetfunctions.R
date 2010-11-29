@@ -122,41 +122,47 @@ read.gadget.likelihood <- function(file='likelihood'){
   common <- c('name','weight','type','datafile')
   tmp.func <- function(comp){
     loc <- grep(comp,lik[name.loc])  
-    dat <- list()
-    for(dd in loc){
-      if(dd < length(comp.loc)) {
-        restr <- (comp.loc[dd] + 1):(comp.loc[dd+1]-1)
-      } else {
-        restr <- 1:length(lik) > comp.loc[dd]
+    if(sum(loc)==0){
+      return(NULL)
+    }else {
+      dat <- list()
+      for(dd in loc){
+        if(dd < length(comp.loc)) {
+          restr <- (comp.loc[dd] + 1):(comp.loc[dd+1]-1)
+        } else {
+          restr <- 1:length(lik) > comp.loc[dd]
+        }
+        tmp <- sapply(strsplit(sapply(strsplit(lik[restr],' '),
+                                      function(x) {
+                                        paste(x[!(x==''|x=='\t')],
+                                              collapse=' ')
+                                      }),' '),
+                      function(x) as.character(x))
+        names.tmp <- head(tmp,1)
+        tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
+        names(tmp) <- names.tmp
+        row.names(tmp) <- tmp$name
+        
+        if(comp=='understocking'|comp=='migrationpenalty'){
+          tmp$datafile <- ''
+        }
+        weights <<-  rbind(weights,tmp[common])    
+        if(comp=='understocking'|comp=='migrationpenalty'){
+          tmp$datafile <- NULL
+        }
+        tmp$weight <- NULL
+        dat <- within(dat,assign(tmp$name,tmp))
+        
+        comp.loc <- c(comp.loc,length(lik) + 1)
       }
-      tmp <- sapply(strsplit(sapply(strsplit(lik[restr],' '),
-                                    function(x) {
-                                      paste(x[!(x==''|x=='\t')],
-                                            collapse=' ')
-                                  }),' '),
-                    function(x) as.character(x))
-      names.tmp <- head(tmp,1)
-      tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
-      names(tmp) <- names.tmp
-      row.names(tmp) <- tmp$name
-
-      if(comp=='understocking'|comp=='migrationpenalty'){
-        tmp$datafile <- ''
-      }
-      weights <<-  rbind(weights,tmp[common])    
-      if(comp=='understocking'|comp=='migrationpenalty'){
-        tmp$datafile <- NULL
-      }
-      tmp$weight <- NULL
-      dat <- within(dat,assign(tmp$name,tmp))
+      if(length(unique(comp.loc[loc+1]-comp.loc[loc]))<2 )
+        dat <-
+          as.data.frame(t(sapply(dat,function(x) unlist(x))),stringsAsFactors=FALSE)
+      return(dat)
     }
-    comp.loc <- c(comp.loc,length(lik) + 1)
-    if(length(unique(comp.loc[loc+1]-comp.loc[loc]))<2)
-      dat <-
-        as.data.frame(t(sapply(dat,function(x) unlist(x))),stringsAsFactors=FALSE)
-    return(dat)
-  } 
+  }
   ## understocking
+
   likelihood <- list(penalty = tmp.func('penalty'),
                      understocking = tmp.func('understocking'),
                      surveyindices = tmp.func('surveyindices'),
@@ -168,7 +174,9 @@ read.gadget.likelihood <- function(file='likelihood'){
                      recstatistics = tmp.func('recstatistics'),
                      migrationpenalty = tmp.func('migrationpenalty'),
                      catchinkilos = tmp.func('catchinkilos'))
+  likelihood$weights <- weights
   likelihood$weights$weight <- as.numeric(weights$weight)
+  likelihood <- likelihood[c('weights',unique(likelihood$weights$type))]
   class(likelihood) <- c('gadget.likelihood',class(likelihood))
   return(likelihood)
 }
@@ -176,27 +184,25 @@ read.gadget.likelihood <- function(file='likelihood'){
 ##' @title Write likelihood
 ##' @param lik object of class gadget.likelihood
 ##' @param file name of the likelihood file
-##' @param location folder
 ##' @return character string corresponding to the likelihood file (if desired)
 ##' @author Bjarki Þór Elvarsson
-write.gadget.likelihood <- function(lik,file='likelihood',location='.'){
+write.gadget.likelihood <- function(lik,file='likelihood'){
   lik.text <- '; Likelihood file - created in Rgadget'
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
   weights$datafile <- NULL
   for(comp in lik){
-    comp <- merge(weights,comp,by='name',sort=FALSE)
-    
-    comp.text <- paste(names(comp),t(comp))
-    dim(comp.text) <- dim(t(comp))
-    comp.text <- rbind('[component]',comp.text,';')
-    lik.text <- paste(lik.text,
-                      paste(comp.text,
-                            collapse='\n'),
-                      sep='\n')                   
+      comp <- merge(weights,comp,by='name',sort=FALSE)
+      comp.text <- paste(names(comp),t(comp))
+      dim(comp.text) <- dim(t(comp))
+      comp.text <- rbind('[component]',comp.text,';')
+      lik.text <- paste(lik.text,
+                        paste(comp.text,
+                              collapse='\n'),
+                        sep='\n')
   }
-  write(lik.text,file=paste(location,file,sep='/'))
+  write(lik.text,file=file)
   invisible(lik.text)
 }
 
@@ -422,7 +428,23 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   if(!rew.sI)
     likelihood.base$weights$weight[restr.SI] <- sIw/sum(SS[restr.SI]*sIw)
   
-  ## Gadget set up stuff, needed for each component
+  ##' Read the values of likelihood components from the likelihood output
+  ##' @title Read SS
+  ##' @param file a string containing location the likelihood output
+  ##' @param location folder
+  ##' @return vector of likelihood values
+  ##' @author Bjarki Þór Elvarsson
+  read.gadget.SS <- function(file='lik.out',location='.'){
+    lik.out <- readLines(paste(location,file,sep='/'))
+    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
+    return(SS)
+  }
+  
+  ##' Gadget set up stuff, needed for each component
+  ##' @title run iterative
+  ##' @param comp likelihood component
+  ##' @return Sums of squares
+  ##' @author Bjarki Thor Elvarsson
   run.iterative <- function(comp){
     likelihood <- likelihood.base
     which.comp <- likelihood$weights$name %in% comp
@@ -493,21 +515,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   return(list(res=res,num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
 }
 
-##' Read the values of likelihood components from the likelihood output
-##' @title Read SS
-##' @param file a string containing location the likelihood output
-##' @param location folder
-##' @return vector of likelihood values
-##' @author Bjarki Þór Elvarsson
-read.gadget.SS <- function(file='lik.out',location='.'){
-  lik.out <- readLines(paste(location,file,sep='/'))
-  SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
-  return(SS)
-}
 
 ##' Read data used by the various components
 ##' @title Read likelihood data
-##' @param likelihood 
+##' @param likelihood object of class gadget.likelihood
 ##' @return list of dataframes and degress of freedom
 ##' @author Bjarki Þór Elvarsson
 read.gadget.data <- function(likelihood){
@@ -586,7 +597,9 @@ read.gadget.data <- function(likelihood){
   lik.dat <- within(list(),
                     for(comp.type in
                         names(likelihood[!(names(likelihood) %in%
-                                           c('weights','penalty','understocking'))])) {
+                                           c('weights','penalty',
+                                             'understocking',
+                                             'migrationpenalty'))])) {
 
                       assign(comp.type,
                              apply(likelihood[[comp.type]],1,read.func))
