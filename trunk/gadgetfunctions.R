@@ -382,7 +382,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   main.init <- main
   main.init$printfile <- NULL
   main.init$likelihoodfiles <- 'likelihood.init'
-  write.gadget.likelihood(likelihood,file='likelihood.init','.')
+  write.gadget.likelihood(likelihood,file='likelihood.init')
   write.gadget.main(main.init,file='main.init')
   callGadget(s=1,main='main.init',o='lik.init',i=params.file,gadget.exe=gadget.exe)
   SS <- read.gadget.SS('lik.init')
