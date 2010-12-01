@@ -226,10 +226,9 @@ read.gadget.main <- function(file='main'){
 ##' @title Write main
 ##' @param main gadget.main object
 ##' @param file name of main file 
-##' @param location folder
 ##' @return text of the main file (if desired)
 ##' @author Bjarki Þór Elvarsson
-write.gadget.main <- function(main,file='main',location='.'){
+write.gadget.main <- function(main,file='main'){
   main.text <- '; main file for gadget - created in Rgadget'
   if(is.null(main$printfiles)){
     main$printfiles <- '; no printfile supplied'  
@@ -257,7 +256,7 @@ write.gadget.main <- function(main,file='main',location='.'){
           paste('likelihoodfiles',
                 paste(main$likelihoodfiles,collapse='\t')),
           sep='\n')
-  write(main.text,paste(location,file,sep='/'))
+  write(main.text,file=file)
   invisible(main.text)
 }
   
@@ -277,10 +276,9 @@ clear.spaces <- function(text){
 ##' Read gadget parameter file
 ##' @title Read param
 ##' @param file parameter file
-##' @param location folder
 ##' @return dataframe
 ##' @author Bjarki Þór Elvarsson
-read.gadget.parameters <- function(file='params.in',location='.'){
+read.gadget.parameters <- function(file='params.in'){
   params <- read.table(file,header=TRUE,
                        comment.char=';',
                        stringsAsFactors=FALSE)
@@ -291,17 +289,16 @@ read.gadget.parameters <- function(file='params.in',location='.'){
 ##' @title Write params
 ##' @param params params dataframe
 ##' @param file a string naming the file to write to
-##' @param location a string naming the folder where the file is to be written
 ##' @return a string containing the text of the params file (if desired)
 ##' @author Bjarki Þór Elvarsson
-write.gadget.parameters <- function(params,file='params.out',location='.'){
+write.gadget.parameters <- function(params,file='params.out'){
   input.text <-
     paste("; input file for the gadget model",
           "; created automatically from Rgadget",
           paste(names(params),collapse='\t'),
           sep='\n')
   write(input.text,paste('.',location,file,sep='/'))
-  write.table(params,file=paste('.',location,file,sep='/'),
+  write.table(params,file=file,
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
 }
@@ -365,34 +362,57 @@ write.gadget.parameters <- function(params,file='params.out',location='.'){
 ##' parameters
 ##' @param rew.sI logical, should survey indices be iteratively
 ##' reweighted (TRUE) or estimated using a linear model.
-##' @param run.final logical should the final optimisation be run (DEBUG)
-##' @param resume.final logical should the final optimisation be resumed (DEBUG)
+##' @param run.final logical should the final optimisation be run
+##' (DEBUG)
+##' @param resume.final logical should the final optimisation be
+##' resumed (DEBUG)
+##' @param wgts a string containing the path the folder where the interim weighting results should be stored. 
 ##' @return a matrix containing the weights of the likelihood components at each iteration.
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              params.file='params.in',rew.sI=FALSE,
                              run.final=TRUE,
-                             resume.final=FALSE) {
-
+                             resume.final=FALSE,
+                             wgts = 'WGTS') {
+  ## store the results in a special folder to prevent clutter
+  dir.create(wgts)
+  
+  ##' Read the values of likelihood components from the likelihood output
+  ##' @title Read SS
+  ##' @param file a string containing location the likelihood output
+  ##' @return vector of likelihood values
+  ##' @author Bjarki Þór Elvarsson
+  read.gadget.SS <- function(file='lik.out'){
+    lik.out <- readLines(file)
+    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
+    return(SS)
+  }
+  
   main <- read.gadget.main(main.file)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-  params.in <-read.gadget.parameters(params.file,'.')
-
+  params.in <-read.gadget.parameters(params.file)
+  
   ## initial run (to determine the initial run)
   main.init <- main
   main.init$printfile <- NULL
-  main.init$likelihoodfiles <- 'likelihood.init'
-  write.gadget.likelihood(likelihood,file='likelihood.init')
-  write.gadget.main(main.init,file='main.init')
-  callGadget(s=1,main='main.init',o='lik.init',i=params.file,gadget.exe=gadget.exe)
-  SS <- read.gadget.SS('lik.init')
-
+  main.init$likelihoodfiles <- paste(wgts,'likelihood.init',sep='/')
+  write.gadget.likelihood(likelihood,file=paste(wgts,'likelihood.init',sep='/'))
+  write.gadget.main(main.init,file=paste(wgts,'main.init',sep='/'))
+  callGadget(s=1,main=paste(wgts,'main.init',sep='/'),
+             o=paste(wgts,'lik.init',sep='/'),
+             i=params.file,gadget.exe=gadget.exe)
+  SS <- read.gadget.SS(paste(wgts,'lik.init',sep='/'))
+  
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
   restr <- !(likelihood$weights$type %in%
              c('penalty','understocking','migrationpenalty'))
-
-  ## Survey indices get special treatment
+  
+  ##' Survey indices get special treatment
+  ##' @title survey index weight 
+  ##' @param lik.dat Likelihood dataset
+  ##' @return internal weights for the survey index components
+  ##' @author Bjarki Thor Elvarsson
   sI.weights <- function(lik.dat){
     dat <- NULL
     for(comp in lik.dat$dat$surveyindices){
@@ -421,24 +441,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   
   ## Base run (with the inverse SS as weights)
   main.base <- main.init
-  main.base$likelihoodfiles <- 'likelihood.base'
-  write.gadget.main(main.base,file='main.base')
+  main.base$likelihoodfiles <- paste(wgts,'likelihood.base',sep='/')
+  write.gadget.main(main.base,file=paste(wgts,'main.base'))
   likelihood.base <- likelihood
   likelihood.base$weights$weight[restr] <- 1/SS[restr]
   if(!rew.sI)
     likelihood.base$weights$weight[restr.SI] <- sIw/sum(SS[restr.SI]*sIw)
-  
-  ##' Read the values of likelihood components from the likelihood output
-  ##' @title Read SS
-  ##' @param file a string containing location the likelihood output
-  ##' @param location folder
-  ##' @return vector of likelihood values
-  ##' @author Bjarki Þór Elvarsson
-  read.gadget.SS <- function(file='lik.out',location='.'){
-    lik.out <- readLines(paste(location,file,sep='/'))
-    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
-    return(SS)
-  }
+
   
   ##' Gadget set up stuff, needed for each component
   ##' @title run iterative
@@ -451,29 +460,34 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     likelihood$weights$weight[which.comp] <-
       10000*likelihood$weights$weight[which.comp]
     comp <- paste(comp,collapse='.')
-    write.gadget.likelihood(likelihood,file=paste('likelihood',comp,sep='.'))
+    write.gadget.likelihood(likelihood,
+                            file=paste(wgts,
+                              paste('likelihood',comp,sep='.'),sep='/'))
     main <- main.base
-    main$likelihoodfiles <- paste('likelihood',comp,sep='.')
-    write.gadget.main(main,file=paste('main',comp,sep='.'))
+    main$likelihoodfiles <- paste(wgts,paste('likelihood',comp,sep='.'),sep='/')
+    write.gadget.main(main,file=paste(wgts,paste('main',comp,sep='.'),sep='/'))
     callGadget(l=1,
-               main=paste('main',comp,sep='.'),
+               main=paste(paste(wgts,'main',sep='/'),comp,sep='.'),
                i=params.file,
-               p=paste('params',comp,sep='.'),
+               p=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                opt='optinfofile',
                gadget.exe=gadget.exe)
     callGadget(s=1,
-               main=paste('main',comp,sep='.'),
-               i=paste('params',comp,sep='.'),
-               o=paste('lik',comp,sep='.'),
+               main=paste(wgts,paste('main',comp,sep='.'),sep='/'),
+               i=paste(wgts,paste('params',comp,sep='.'),sep='/'),
+               o=paste(wgts,paste('lik',comp,sep='.'),sep='/'),
                gadget.exe=gadget.exe)
-    SS.comp <- read.gadget.SS(paste('lik',comp,sep='.'))
+    SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
     return(SS.comp)
   }
   ## 
   if(resume.final){
     res <- lapply(run.string,
                   function(x)
-                  read.gadget.SS(paste('lik',paste(x,collapse='.'),sep='.')))
+                  read.gadget.SS(paste(wgts,
+                                       paste('lik',
+                                             paste(x,collapse='.'),
+                                             sep='.'),sep='/')))
   } else {
     ## run the bloody thing
     res <- mclapply(run.string,run.iterative)
@@ -482,7 +496,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood.base$weights$name
 
-  ## Do we want to run the final optimisation (debug purposes)
+  ## Do we want to run the final optimisation (only used for debug purposes,
+  ## and should be removed in later revisions)
   if(run.final){
     num.comp <- sum(restr)
     final.SS <- diag(as.matrix(SS.table[likelihood$weights$name[restr],restr]))
@@ -647,10 +662,10 @@ read.gadget.optinfo <- function(file='optinfofile'){
 ##' @param location location
 ##' @return text of the optinfofile (if desired)
 ##' @author Bjarki Þór Elvarsson
-write.gadget.optinfo<-function(optinfo,file='optinfofile',location=''){
+write.gadget.optinfo<-function(optinfo,file='optinfofile'){
   opt.text <- 
-    paste("; optimisation file for the gadget example",
-          "; created automatically from R-gadget",
+    paste("; optimisation file for gadget",
+          "; created in R-gadget",
           sep='\n')
   for(comp in names(optinfo)){
     opt.text <-
@@ -661,7 +676,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile',location=''){
                   sep='\t\t',collapse='\n'),
             sep='\n')
   }
-  write(opt.text,paste(location,file,sep='/'))
+  write(opt.text,file=file)
   invisible(opt.text)
 }
 
@@ -749,6 +764,7 @@ sensitivity.gadget <- function(file='params.out',
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
   sens.data$parameter <- row.names(param.table)
+  class(sens.data) <- c('gadget.sens',class(sens.data))
   return(sens.data)
 }
 
@@ -776,5 +792,7 @@ read.gadget.lik.out <- function(file='lik.out'){
   
   data <- read.table(file,skip=(i2+1))
   names(data) <- c('iteration',names(switches),weights$Component,'score')
-  return(list(switches=switches,weights=weights,data=data))
+  lik.out <- list(switches=switches,weights=weights,data=data)
+  class(lik.out) <- c('gadget.lik.out',class(lik.out))
+  return(lik.out)
 }
