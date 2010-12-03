@@ -113,7 +113,8 @@ read.printfiles <- function(path='.'){
 ##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
 ##' @author Bjarki Þór Elvarsson
 read.gadget.likelihood <- function(file='likelihood'){
-  lik <- readLines(file)
+  lik <- sub(' +$','',readLines(file))
+  lik <- lik[lik!='']
   lik <- lik[!grepl(';',substring(lik,1,1))]
   lik <- sapply(strsplit(lik,';'),function(x) x[1])
   comp.loc <- grep('component',lik)
@@ -442,7 +443,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## Base run (with the inverse SS as weights)
   main.base <- main.init
   main.base$likelihoodfiles <- paste(wgts,'likelihood.base',sep='/')
-  write.gadget.main(main.base,file=paste(wgts,'main.base'))
+  write.gadget.main(main.base,file=paste(wgts,'main.base',sep='/'))
   likelihood.base <- likelihood
   likelihood.base$weights$weight[restr] <- 1/SS[restr]
   if(!rew.sI)
@@ -539,13 +540,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 read.gadget.data <- function(likelihood){
   read.agg <- function(x){
     if(!is.null(x))
-      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1]))
+      return(read.table(x,stringsAsFactors=FALSE,comment.char=';')[,1])
+#      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1]))
     else
       return(NULL)
   }
   read.func <- function(x){
-
-    x <- as.data.frame(t(x),stringsAsFactors=FALSE)
+    x <- as.data.frame(t(x),stringsAsFactors=FALSE,comment.char=';')
 
     dat <- read.table(x$datafile,comment.char=';')
     area.agg <- read.agg(x$areaaggfile)
