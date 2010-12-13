@@ -109,11 +109,13 @@ read.printfiles <- function(path='.'){
 ##' This functions reads the likelihood (input) file for gadget. The format of
 ##' the likelihood file is described in gadget's user manual. 
 ##' @title Read likelihood
-##' @param file a character string containing the name of the likelihood file
+##' @param files a vector of character strings containing the names of the likelihood files 
 ##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
 ##' @author Bjarki Þór Elvarsson
-read.gadget.likelihood <- function(file='likelihood'){
-  lik <- sub(' +$','',readLines(file))
+read.gadget.likelihood <- function(files='likelihood'){
+  lik <- NULL
+  for(file in files)
+    lik <- c(lik,sub(' +$','',readLines(file)))
   lik <- lik[lik!='']
   lik <- lik[!grepl(';',substring(lik,1,1))]
   lik <- sapply(strsplit(lik,';'),function(x) x[1])
@@ -133,7 +135,7 @@ read.gadget.likelihood <- function(file='likelihood'){
         } else {
           restr <- 1:length(lik) > comp.loc[dd]
         }
-        tmp <- sapply(strsplit(sapply(strsplit(lik[restr],' '),
+        tmp <- sapply(strsplit(sapply(strsplit(lik[restr],'[ \t]'),
                                       function(x) {
                                         paste(x[!(x==''|x=='\t')],
                                               collapse=' ')
@@ -213,7 +215,8 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
 ##' @return object of class gadget.main
 ##' @author Bjarki Þór Elvarsson
 read.gadget.main <- function(file='main'){
-  main <- readLines(file)
+  main <- sub(' +$','',readLines(file))
+  main <- main[main!='']
   main <- main[!grepl(';',substring(main,1,1))]
   main <- sapply(strsplit(main,';'),function(x) x[1])
   main <- clear.spaces(main)
@@ -376,7 +379,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              resume.final=FALSE,
                              wgts = 'WGTS') {
   ## store the results in a special folder to prevent clutter
-  dir.create(wgts)
+  dir.create(wgts,showWarnings=FALSE)
   
   ##' Read the values of likelihood components from the likelihood output
   ##' @title Read SS
@@ -716,8 +719,11 @@ sensitivity.gadget <- function(file='params.out',
                                sens.in='sens.in',
                                lik.out='lik.sens',
                                within.bounds=TRUE,
-                               main.file='main'
+                               main.file='main',
+                               sens.dir = 'SENS'
                                ){
+  dir.create(sens.dir,showWarnings=FALSE)
+  lik.out <- paste(sens.dir,lik.out,sep='/')
   params <- read.gadget.parameters(file=file)
   p.range <- 1 + sort(unique(c(seq(-outer.range,outer.range,by=outer.stepsize),
                                seq(-inner.range,inner.range,
@@ -758,9 +764,10 @@ sensitivity.gadget <- function(file='params.out',
               quote=FALSE,sep='\t',row.names=FALSE)
   main <- read.gadget.main(main.file)
   main$printfiles <- NULL
-  write.gadget.main(main,file=sprintf('%s.sens',main.file))
-  callGadget(s=TRUE,i=sens.in,o=lik.out,p='sens.out',
-             main=sprintf('%s.sens',main.file),
+  write.gadget.main(main,file=sprintf('%s/%s.sens',sens.dir,main.file))
+  callGadget(s=TRUE,i=sens.in,o=lik.out,
+             p=paste(sens.dir,'sens.out',sep='/'),
+             main=sprintf('%s/%s.sens',sens.dir,main.file),
              gadget.exe=gadget.exe)
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
@@ -782,8 +789,9 @@ read.gadget.lik.out <- function(file='lik.out'){
   i <- grep("Listing of the switches",lik)
   i1 <- grep("Listing of the likelihood components",lik)
   i2 <- grep("Listing of the output from the likelihood",lik)
-  switches <- sapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique)
+  switches <- lapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique)
   names(switches) <- sapply(switches,function(x) x[1])
+  switches <- lapply(switches,function(x) x[-1])
 
   weights <- t(sapply(strsplit(lik[(i1+3):(i2-2)],'\t'),function(x) x))
   weights <- as.data.frame(weights,stringsAsFactors=FALSE)
