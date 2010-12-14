@@ -448,12 +448,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   }
   if(!is.null(grouping)){
     i <- 1
-    within(run.string,
-           for(group in grouping){
-             assign(sprintf('g%s',i),group)
-             i <- i+1
-           }
-           )
+    run.string <-
+      within(run.string,
+             for(group in grouping){
+               assign(sprintf('g%s',i),group)
+               i <- i+1
+             }
+             )
     run.string$group <- NULL
     run.string$i <- NULL
   }
