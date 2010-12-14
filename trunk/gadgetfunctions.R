@@ -447,13 +447,15 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     run.string$SI <- likelihood$weights$name[restr.SI]
   }
   if(!is.null(grouping)){
+    i <- 1
     within(run.string,
-           i <- 1
            for(group in grouping){
-             assign(sprintf('g%s',group))
+             assign(sprintf('g%s',i),group)
+             i <- i+1
            }
            )
     run.string$group <- NULL
+    run.string$i <- NULL
   }
   
   ## Base run (with the inverse SS as weights)
