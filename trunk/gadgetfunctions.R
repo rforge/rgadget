@@ -348,7 +348,7 @@ write.gadget.parameters <- function(params,file='params.out'){
 ##' could be overfitted. If there are two surveys within the year Taylor et. al
 ##' suggest that the corresponding indices from each survey are weigthed
 ##' simultaneously in order to make sure that there are at least two measurement for each
-##' yearly recruit (NOT IMPLEMENTED). Another approach (which is implemented)
+##' yearly recruit, this is done through component grouping which is implemented. Another approach, which is also implemented,
 ##' for say a single survey fleet the weight for each index component is
 ##' estimated from a model of the form
 ##' \deqn{\log(I_{lts}) = \mu + Y_t + \lambda_l + \Sigma_s + \epsilon_{lts}}{%
@@ -370,14 +370,18 @@ write.gadget.parameters <- function(params,file='params.out'){
 ##' (DEBUG)
 ##' @param resume.final logical should the final optimisation be
 ##' resumed (DEBUG)
-##' @param wgts a string containing the path the folder where the interim weighting results should be stored. 
+##' @param wgts a string containing the path the folder where the
+##' interim weighting results should be stored. 
+##' @param grouping a list naming the groups of components that should be reweighted together. 
 ##' @return a matrix containing the weights of the likelihood components at each iteration.
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              params.file='params.in',rew.sI=FALSE,
                              run.final=TRUE,
                              resume.final=FALSE,
-                             wgts = 'WGTS') {
+                             wgts = 'WGTS',
+                             grouping = NULL
+                             ) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
   
@@ -433,14 +437,23 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   }
   
   restr.SI <- (likelihood$weights$type == 'surveyindices')
+  run.string <- c('base',likelihood$weights$name[restr&
+                                                 !(likelihood$weights$name %in%
+                                                   unlist(grouping))])
+  run.string <- as.list(run.string)
   if(!rew.sI){
     restr <- restr&(!restr.SI)
     sIw <- sI.weights(lik.dat)
-  }
-  run.string <- c('base',likelihood$weights$name[restr])
-  if(!rew.sI){
-    run.string <- as.list(run.string)
     run.string$SI <- likelihood$weights$name[restr.SI]
+  }
+  if(!is.null(grouping)){
+    within(run.string,
+           i <- 1
+           for(group in grouping){
+             assign(sprintf('g%s',group))
+           }
+           )
+    run.string$group <- NULL
   }
   
   ## Base run (with the inverse SS as weights)
@@ -701,8 +714,10 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' blank if we are using all variables
 ##' @param gadget.exe name of the gadget executable
 ##' @param sens.in name of the resulting gadget input file
-##' @param lik.out 
-##' @param within.bounds 
+##' @param lik.out a string containing the name of the likelihood output file
+##' @param within.bounds should gadget be restricted to 
+##' @param main.file string naming the gadget main file used
+##' @param sens.dir a string naming the folder where the result and temporary files are stored. The funciton will create the folder if it has not already been created.
 ##' @param range The range of the sensitivity check
 ##' @param stepsize The stepsize used
 ##' @return results from lik.out
