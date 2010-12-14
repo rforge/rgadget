@@ -738,7 +738,8 @@ sensitivity.gadget <- function(file='params.out',
                                lik.out='lik.sens',
                                within.bounds=TRUE,
                                main.file='main',
-                               sens.dir = 'SENS'
+                               sens.dir = 'SENS',
+                               calc.full = FALSE
                                ){
   dir.create(sens.dir,showWarnings=FALSE)
   lik.out <- paste(sens.dir,lik.out,sep='/')
@@ -762,18 +763,36 @@ sensitivity.gadget <- function(file='params.out',
                                       each=length(p.range)),
                                   1:length(p.range),sep='.')
   seat <- 0
-  for(name in params$switch[restr]){
-    param.res <- params$switch==name
-    if(within.bounds){
-      param.table[[name]][seat+1:length(p.range)] <-
-        pmax(pmin(params$upper[param.res],
-                  p.range*params$value[param.res]),
-             params$lower[param.res])
-    } else { 
-      param.table[[name]][seat+1:length(p.range)] <-
-        p.range*params$value[param.res]
+  if(!calc.full){
+    for(name in params$switch[restr]){
+      param.res <- params$switch==name
+      if(within.bounds){
+        param.table[[name]][seat+1:length(p.range)] <-
+          pmax(pmin(params$upper[param.res],
+                    p.range*params$value[param.res]),
+               params$lower[param.res])
+      } else { 
+        param.table[[name]][seat+1:length(p.range)] <-
+          p.range*params$value[param.res]
+      }
+      seat <- seat+length(p.range)
     }
-    seat <- seat+length(p.range)
+  } else {
+    param.table <- 
+      within(ls(),
+             for(name in params$switch[restr]){
+               param.res <- params$switch==name
+               if(within.bounds){
+                 assign(name,
+                        pmax(pmin(params$upper[param.res],
+                                  p.range*params$value[param.res]),
+                             params$lower[param.res]))
+               } else { 
+                 assign(name,p.range*params$value[param.res])
+               }
+             })
+    param.table$name <- NULL
+    param.table <- expand.grid(param.table)
   }
   param.table <- unique(param.table)
   header <- paste('switches',paste(names(param.table),collapse='\t'),sep='\t')
