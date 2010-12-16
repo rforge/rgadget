@@ -526,20 +526,17 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(!is.null(grouping)){
       tmp.restr <- restr&(!(likelihood$weights$name %in% unlist(grouping)))
       for(group in grouping){
-        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),likelihood$weights %in% group])
-        n <- length(tmpSS)
-        names(tmpSS)[(n-length(group)+1):n] <- c(names(tmpSS),group)
+        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),likelihood$weights$name %in% group])
       }      
     }
     final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],tmp.restr])),tmpSS)
-    names(final.SS) <- c(likelihood$weights$name[tmp.restr],names(tmpSS))
-    
+    final.SS <- final.SS[likelihood$weights$name[restr]]
     df <- rep(0,num.comp)
     lik.tmp <- likelihood$weights[restr,]
     for(i in 1:num.comp){
       df[i] <- lik.dat$df[[lik.tmp$type[i]]][[lik.tmp$name[i]]]
     }
-    final.weights <- df/final.SS[likelihood$weights$name[restr]]
+    final.weights <- df/unlist(final.SS)
     if(!rew.sI){
       ind <- run.string$SI
       final.SI <- sIw/sum(sIw*SS.table[paste(ind,collapse='.'),ind])
@@ -559,7 +556,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                opt='optinfofile',
                gadget.exe=gadget.exe)
   }
-  return(list(res=res,num.comp=num.comp,SS=SS.table,lik.dat=lik.dat))
+  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
 }
 
 
