@@ -527,7 +527,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       tmp.restr <- restr&(!(likelihood$weights$name %in% unlist(grouping)))
       for(group in grouping){
         tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),likelihood$weights %in% group])
-        names(tmpSS) <- c(names(tmpSS),group)
+        n <- length(tmpSS)
+        names(tmpSS)[(n-length(group)+1):n] <- c(names(tmpSS),group)
       }      
     }
     final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],tmp.restr])),tmpSS)
