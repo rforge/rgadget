@@ -447,6 +447,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     run.string$SI <- likelihood$weights$name[restr.SI]
   }
   if(!is.null(grouping)){
+    
     i <- 1
     run.string <-
       within(run.string,
@@ -520,17 +521,27 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## and should be removed in later revisions)
   if(run.final){
     num.comp <- sum(restr)
-    final.SS <- diag(as.matrix(SS.table[likelihood$weights$name[restr],restr]))
+    tmpSS <- NULL
+    tmp.restr <- restr
+    if(!is.null(grouping)){
+      tmp.restr <- restr&(!(likelihood$weights$name %in% unlist(grouping)))
+      for(group in grouping){
+        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),likelihood$weights %in% group])
+        names(tmpSS) <- c(names(tmpSS,group))
+      }      
+    }
+    final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],tmp.restr])),tmpSS)
+    names(final.SS) <- c(likelihood$weights$name[tmp.restr],names(tmpSS))
+    
     df <- rep(0,num.comp)
     lik.tmp <- likelihood$weights[restr,]
     for(i in 1:num.comp){
       df[i] <- lik.dat$df[[lik.tmp$type[i]]][[lik.tmp$name[i]]]
     }
-    final.weights <- df/final.SS
+    final.weights <- df/final.SS[likelihood$weights$name[restr]]
     if(!rew.sI){
-#      SI.df <- sum(lik.dat$df$surveyindices)
       ind <- run.string$SI
-      final.SI <- sIw/(sIw*SS.table[paste(ind,collapse='.'),ind])
+      final.SI <- sIw/sum(sIw*SS.table[paste(ind,collapse='.'),ind])
       final.weights <- unlist(c(final.weights,final.SI))
     }
     main.final <- main.base
