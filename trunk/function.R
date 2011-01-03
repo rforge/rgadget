@@ -30,6 +30,7 @@
 ##' \item{a}{a in the length-weight relationship a*l^b}
 ##' \item{b}{b in the length-weight relationship a*l^b}
 ##' \item{sigma}{The standard deviation of length at i years old. This vector must the same length as the number of ages.}
+##' \item{n}{Number of recruits per year.}
 ##' \item{murec}{If specified this will be the meanlength of recruits}
 ##' \item{lsup}{L-infinity. Bertalanffy growth parameters lsup, and k for the growth function (used for all ages > 1)}
 ##' \item{binn}{binn is the maximum updating length}
@@ -43,7 +44,7 @@
 ##' \item{spdelta}{delta for the predation suitability function}
 ##' \item{m0}{m0 for the maximum consumption}
 ##' \item{m3}{m3 for the maximum consumption}
-##' \item{H}{H for the maximum consumption}
+##' \item{H}{H The density (biomass per area unit) of available food at which the predator can consume half maximum consumption}
 ##' \item{otherfrac}{the fraction of otherfood that is eaten}
 ##' \item{otherfood}{maxratioconsumed}{The maximum portion consumed, in Gadget it is 0.95, this is known as understaocking in Gadget}
 ##' \item{survstep}{timestep(s) for the survey}
@@ -155,7 +156,9 @@ gadget.options <- function(){
 # This vector must the same length as the number of ages.
               sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
                 5.5404, 5.8072, 6.0233, 8, 9, 9),
-# Meanlength for the recruits
+              ## number of recruits
+              n = 1000000,
+              ## Meanlength for the recruits
               murec=NULL,
 # von Bertalanffy growth parameters for the growth function
 # (used for all ages > 1)
@@ -330,7 +333,10 @@ derivedOptions <- function(opt){
 
 # n is a vector where n[i] is number of recruits in timestep i
 # mod(numoftimestep) in year ([i/numoftimesteps]+1)
-  opt$n <- rep(c(1000000,0,0,0),opt$numobs)
+  if(length(opt$n)==1)
+    opt$n <- rep(c(opt$n,0,0,0),opt$numobs)
+  if(length(opt$n)<opt$numobs*opt$numoftimesteps)
+    warning('Recruitment vector has length less the total number of timesteps. Expect errors.')
   
     
 #################################

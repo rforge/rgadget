@@ -75,7 +75,7 @@ callGadget <- function(l=NULL,
 
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
-##' designed to read the defined examples, so it may work for some instances
+##' designed to read a few nice examples, so it may work for some instances
 ##' and it may not. It assumes that the last line containing a comment ';'
 ##' is the line describing the column names and is the last comment line.
 ##' @title Read gadget printfiles
@@ -436,16 +436,25 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     return(weights)
   }
   
-  restr.SI <- (likelihood$weights$type == 'surveyindices')
-  run.string <- c('base',likelihood$weights$name[restr&
-                                                 !(likelihood$weights$name %in%
-                                                   unlist(grouping))])
-  run.string <- as.list(run.string)
+  restr.SI <- (likelihood$weights$type == 'surveyindices')  
   if(!rew.sI){
+    run.string <- c('base',
+                    likelihood$weights$name[restr&(!restr.SI)&
+                                            !(likelihood$weights$name %in%
+                                              unlist(grouping))])
+    run.string <- as.list(run.string)
     restr <- restr&(!restr.SI)
     sIw <- sI.weights(lik.dat)
     run.string$SI <- likelihood$weights$name[restr.SI]
+  } else {
+    run.string <- c('base',
+                    likelihood$weights$name[restr&
+                                            !(likelihood$weights$name %in%
+                                              unlist(grouping))])
+    
+    run.string <- as.list(run.string)
   }
+  
   if(!is.null(grouping)){
     
     i <- 1
@@ -518,7 +527,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   names(SS.table) <- likelihood.base$weights$name
 
   ## Do we want to run the final optimisation (only used for debug purposes,
-  ## and should be removed in later revisions)
+  ## and the check should be removed in later revisions)
   if(run.final){
     num.comp <- sum(restr)
     tmpSS <- NULL
@@ -850,4 +859,21 @@ read.gadget.lik.out <- function(file='lik.out'){
   lik.out <- list(switches=switches,weights=weights,data=data)
   class(lik.out) <- c('gadget.lik.out',class(lik.out))
   return(lik.out)
+}
+
+read.gadget <- function(main.file='main',params.file='params.in',
+                        optinfo.file='optinfofile'){
+  gadget <- within(ls(),
+                   main <- read.gadget.main(main.file)
+                   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
+                   lik.dat <- read.gadget.data(likelihood)
+                   params.in <-read.gadget.parameters(params.file)
+                   optinfo <- read.gagdet.optinfo(optinfo.file)
+                   )
+  class(gadget) <- c('gadget.setup',class(gadget))
+  return(gadget)
+}
+
+write.gadget <- function(gadget){
+  
 }
