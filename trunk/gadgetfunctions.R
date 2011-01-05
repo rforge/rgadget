@@ -861,19 +861,3 @@ read.gadget.lik.out <- function(file='lik.out'){
   return(lik.out)
 }
 
-read.gadget <- function(main.file='main',params.file='params.in',
-                        optinfo.file='optinfofile'){
-  gadget <- within(ls(),
-                   main <- read.gadget.main(main.file)
-                   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-                   lik.dat <- read.gadget.data(likelihood)
-                   params.in <-read.gadget.parameters(params.file)
-                   optinfo <- read.gagdet.optinfo(optinfo.file)
-                   )
-  class(gadget) <- c('gadget.setup',class(gadget))
-  return(gadget)
-}
-
-write.gadget <- function(gadget){
-  
-}
