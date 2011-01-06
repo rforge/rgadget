@@ -549,6 +549,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(!rew.sI){
       ind <- run.string$SI
       final.SI <- sIw/sum(sIw*SS.table[paste(ind,collapse='.'),ind])
+      final.sIw <- unlist(c(final.weights,sIw))
+      final.sIgroup <- unlist(c(final.weigths,
+                                lik.dat$df$surveyindices[ind]/
+                                SS.table[paste(ind,collapse='.'),ind]))
       final.weights <- unlist(c(final.weights,final.SI))
     }
     main.final <- main.base
@@ -557,13 +561,29 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     likelihood.final <- likelihood.base
     likelihood.final$weights[names(final.weights),'weight'] <- final.weights
     write.gadget.likelihood(likelihood.final,file='likelihood.final')
-    comp <- 'final'
-    callGadget(l=1,
-               main=paste('main',comp,sep='.'),
-               i=params.file,
-               p=paste('params',comp,sep='.'),
-               opt='optinfofile',
-               gadget.exe=gadget.exe)
+
+    main.sIw <- main.base
+    main.sIw$likelihoodfiles <- 'likelihood.sIw'
+    write.gadget.main(main.sIw,'main.sIw')
+    likelihood.sIw <- likelihood.base
+    likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
+    write.gadget.likelihood(likelihood.sIw,file='likelihood.sIw')
+
+    main.sIgroup <- main.base
+    main.sIgroup$likelihoodfiles <- 'likelihood.sIgroup'
+    write.gadget.main(main.sIgroup,'main.sIgroup')
+    likelihood.sIgroup <- likelihood.base
+    likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
+    write.gadget.likelihood(likelihood.sIgroup,file='likelihood.sIgroup')
+
+    comp <- as.list(c('final','sIw','sIgroup'))
+    tmp <- mclapply(comp,run.iterative)
+#    callGadget(l=1,
+#               main=paste('main',comp,sep='.'),
+#               i=params.file,
+#               p=paste('params',comp,sep='.'),
+#               opt='optinfofile',
+#               gadget.exe=gadget.exe)
   }
   return(list(res=res,SS=SS.table,lik.dat=lik.dat))
 }
