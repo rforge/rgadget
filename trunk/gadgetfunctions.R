@@ -301,11 +301,68 @@ write.gadget.parameters <- function(params,file='params.out'){
           "; created automatically from Rgadget",
           paste(names(params),collapse='\t'),
           sep='\n')
-  write(input.text,paste('.',location,file,sep='/'))
+  write(input.text,file)
   write.table(params,file=file,
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
 }
+##' <description>
+##'
+##' <details>
+##' @title 
+##' @param file 
+##' @return 
+##' @author Bjarki Thor Elvarsson
+read.gadget.printfile <- function(file='printfile'){
+  printfile <- strip.comments(file)
+  comp.loc <- grep('component',printfile)
+  tmp.func <- function(restr){
+    names.tmp <- sapply(printfile[restr],       
+                        function(x) x[1])
+    tmp <- lapply(sapply(printfile[restr],                                
+                         function(x) x[-1]),unlist)
+    names(tmp) <- names.tmp
+    return(tmp)
+  }
+  print <- within(list(),
+                  for(i in 1:length(comp.loc)){
+                    if(i < length(comp.loc)){
+                      restr <- (comp.loc[i]+1):(comp.loc[i+1]-1)
+                    } else {
+                      restr <- (comp.loc[i]+1):length(printfile)
+                    }
+                    tmp <- tmp.func(restr)                    
+                    comp.name <- sapply(strsplit(tmp$printfile,'/'),
+                                        function(x) x[length(x)])
+                    
+                    assign(comp.name,tmp)
+                  }
+                  )
+  print$i <- NULL
+  print$restr <- NULL
+  print$tmp <- NULL
+  print$comp.name <- NULL
+  
+  return(print)
+}
+
+write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
+  print.text <- '; Printfile for gadget, created by Rgadget'
+  for(name in names(print)){
+    tmp <- print[name][[name]]
+    tmp[['printfile']] <- paste(output.dir,name,sep='/')
+    print.text <- paste(print.text,
+                        ';\n[component]',
+                        paste(names(tmp),sapply(tmp,function(x) paste(x,collapse='\t')),
+                              sep='\t',collapse='\n'),
+                        sep='\n')
+  }
+  write(print.text,file)
+  invisible(print.text)
+}
+
+
+
 ##' An implementation of the iterative reweigthing of likelihood components
 ##' in gadget. It analyzes a given gadget model and, after a series of
 ##' optimisations where each likelihood component is heavily weigthed,
@@ -529,6 +586,24 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## Do we want to run the final optimisation (only used for debug purposes,
   ## and the check should be removed in later revisions)
   if(run.final){
+    run.final <- function(comp){
+      callGadget(l=1,
+                 main=paste(paste(wgts,'main',sep='/'),comp,sep='.'),
+                 i=params.file,
+                 p=paste(wgts,paste('params',comp,sep='.'),sep='/'),
+                 opt='optinfofile',
+                 gadget.exe=gadget.exe)
+      
+      callGadget(s=1,
+                 main=paste(wgts,paste('main',comp,sep='.'),sep='/'),
+                 i=paste(wgts,paste('params',comp,sep='.'),sep='/'),
+                 o=paste(wgts,paste('lik',comp,sep='.'),sep='/'),
+                 gadget.exe=gadget.exe)
+      SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
+      return(SS.comp)
+    }
+
+
     num.comp <- sum(restr)
     tmpSS <- NULL
     tmp.restr <- restr
@@ -555,35 +630,51 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                 SS.table[paste(ind,collapse='.'),ind]))
       final.weights <- unlist(c(final.weights,final.SI))
     }
+    
     main.final <- main.base
-    main.final$likelihoodfiles <- 'likelihood.final'
-    write.gadget.main(main.final,'main.final')
+    printfile <- read.gadget.printfile(main$printfile)
+    write.gadget.printfile(prinfile,sprintf('%s/%s.final',wgts,main$printfile),
+                           sprintf('%s/out.final',wgts))
+    main.final$printfile <- sprintf('%s/%s.final',wgts,main$printfile)
+    main.final$likelihoodfiles <- paste(wgts,'likelihood.final',sep='/')
+    write.gadget.main(main.final,paste(wgts,'main.final',sep='/'))
+    
     likelihood.final <- likelihood.base
     likelihood.final$weights[names(final.weights),'weight'] <- final.weights
-    write.gadget.likelihood(likelihood.final,file='likelihood.final')
+    write.gadget.likelihood(likelihood.final,
+                            file=paste(wgts,'likelihood.final',sep='/'))
 
-    main.sIw <- main.base
-    main.sIw$likelihoodfiles <- 'likelihood.sIw'
-    write.gadget.main(main.sIw,'main.sIw')
-    likelihood.sIw <- likelihood.base
-    likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
-    write.gadget.likelihood(likelihood.sIw,file='likelihood.sIw')
+    
+    if(!rew.sI){
+      main.sIw <- main.base
+      main.sIw$likelihoodfiles <- paste(wgts,'likelihood.sIw',sep='/')
+      write.gadget.printfile(prinfile,sprintf('%s/%s.final',wgts,main$printfile),
+                             sprintf('%s/out.sIw',wgts))
+      main.sIw$printfile <- sprintf('%s/%s.sIw',wgts,main$printfile)
+      write.gadget.main(main.sIw,paste(wgts,'main.sIw',sep='/'))
+      likelihood.sIw <- likelihood.base
+      likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
+      write.gadget.likelihood(likelihood.sIw,
+                              file=paste(wgts,'likelihood.sIw',sep='/'))
+      
+      main.sIgroup <- main.base
+      main.sIgroup$likelihoodfiles <- paste(wgts,'likelihood.sIgroup',sep='/')
+      write.gadget.printfile(prinfile,sprintf('%s/%s.sIgroup',wgts,main$printfile),
+                             sprintf('%s/out.sIgroup',wgts))
+      main.final$printfile <- sprintf('%s/%s.sIgroup',wgts,main$printfile)
+      write.gadget.main(main.sIgroup,paste(wgts,'main.sIgroup',sep='/'))
+      likelihood.sIgroup <- likelihood.base
+      likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
+      write.gadget.likelihood(likelihood.sIgroup,
+                              file=paste(wgts,'likelihood.sIgroup',sep='/'))
+   
+      comp <- as.list(c('final','sIw','sIgroup'))
+    } else {
+      comp <- 'final'
+    }
 
-    main.sIgroup <- main.base
-    main.sIgroup$likelihoodfiles <- 'likelihood.sIgroup'
-    write.gadget.main(main.sIgroup,'main.sIgroup')
-    likelihood.sIgroup <- likelihood.base
-    likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
-    write.gadget.likelihood(likelihood.sIgroup,file='likelihood.sIgroup')
+    tmp <- mclapply(comp,run.final)
 
-    comp <- as.list(c('final','sIw','sIgroup'))
-    tmp <- mclapply(comp,run.iterative)
-#    callGadget(l=1,
-#               main=paste('main',comp,sep='.'),
-#               i=params.file,
-#               p=paste('params',comp,sep='.'),
-#               opt='optinfofile',
-#               gadget.exe=gadget.exe)
   }
   return(list(res=res,SS=SS.table,lik.dat=lik.dat))
 }
@@ -881,3 +972,11 @@ read.gadget.lik.out <- function(file='lik.out'){
   return(lik.out)
 }
 
+strip.comments <- function(file='main'){
+  main <- sub(' +$','',readLines(file))
+  main <- main[main!='']
+  main <- main[!grepl(';',substring(main,1,1))]
+  main <- sapply(strsplit(main,';'),function(x) x[1])
+  main <- clear.spaces(main)
+  return(main)
+}
