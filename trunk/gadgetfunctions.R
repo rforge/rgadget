@@ -550,7 +550,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       ind <- run.string$SI
       final.SI <- sIw/sum(sIw*SS.table[paste(ind,collapse='.'),ind])
       final.sIw <- unlist(c(final.weights,sIw))
-      final.sIgroup <- unlist(c(final.weigths,
+      final.sIgroup <- unlist(c(final.weights,
                                 lik.dat$df$surveyindices[ind]/
                                 SS.table[paste(ind,collapse='.'),ind]))
       final.weights <- unlist(c(final.weights,final.SI))
