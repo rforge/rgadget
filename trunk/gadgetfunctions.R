@@ -643,7 +643,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     likelihood.final$weights[names(final.weights),'weight'] <- final.weights
     write.gadget.likelihood(likelihood.final,
                             file=paste(wgts,'likelihood.final',sep='/'))
-
+    dir.create(sprintf('%s/out.final',wgts),showWarnings=FALSE)
+    comp <- 'final'
     
     if(!rew.sI){
       main.sIw <- main.base
@@ -656,6 +657,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
       write.gadget.likelihood(likelihood.sIw,
                               file=paste(wgts,'likelihood.sIw',sep='/'))
+
+      dir.create(sprintf('%s/out.sIw',wgts),showWarnings=FALSE)
+
       
       main.sIgroup <- main.base
       main.sIgroup$likelihoodfiles <- paste(wgts,'likelihood.sIgroup',sep='/')
@@ -667,10 +671,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
       write.gadget.likelihood(likelihood.sIgroup,
                               file=paste(wgts,'likelihood.sIgroup',sep='/'))
-   
+      dir.create(sprintf('%s/out.sIgroup',wgts),showWarnings=FALSE)
+      
       comp <- as.list(c('final','sIw','sIgroup'))
-    } else {
-      comp <- 'final'
     }
 
     tmp <- mclapply(comp,run.final)
