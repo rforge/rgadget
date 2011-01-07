@@ -846,10 +846,14 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' blank if we are using all variables
 ##' @param gadget.exe name of the gadget executable
 ##' @param sens.in name of the resulting gadget input file
-##' @param lik.out a string containing the name of the likelihood output file
+##' @param lik.out a string containing the name of the likelihood
+##' output file
 ##' @param within.bounds should gadget be restricted to 
 ##' @param main.file string naming the gadget main file used
-##' @param sens.dir a string naming the folder where the result and temporary files are stored. The funciton will create the folder if it has not already been created.
+##' @param sens.dir a string naming the folder where the result and
+##' temporary files are stored. The funciton will create the folder if
+##' it has not already been created.
+##' @param calc.full (USE WITH CARE) should the the full hypercube of function values be calculated
 ##' @param range The range of the sensitivity check
 ##' @param stepsize The stepsize used
 ##' @return results from lik.out
