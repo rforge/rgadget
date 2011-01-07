@@ -454,6 +454,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   }
   
   main <- read.gadget.main(main.file)
+  printfile <- read.gadget.printfile(main$printfile)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
   params.in <-read.gadget.parameters(params.file)
   
@@ -632,7 +633,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
     
     main.final <- main.base
-    printfile <- read.gadget.printfile(main$printfile)
     write.gadget.printfile(printfile,sprintf('%s/%s.final',wgts,main$printfile),
                            sprintf('%s/out.final',wgts))
     main.final$printfile <- sprintf('%s/%s.final',wgts,main$printfile)
@@ -648,7 +648,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(!rew.sI){
       main.sIw <- main.base
       main.sIw$likelihoodfiles <- paste(wgts,'likelihood.sIw',sep='/')
-      write.gadget.printfile(printfile,sprintf('%s/%s.final',wgts,main$printfile),
+      write.gadget.printfile(printfile,sprintf('%s/%s.sIw',wgts,main$printfile),
                              sprintf('%s/out.sIw',wgts))
       main.sIw$printfile <- sprintf('%s/%s.sIw',wgts,main$printfile)
       write.gadget.main(main.sIw,paste(wgts,'main.sIw',sep='/'))
