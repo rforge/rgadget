@@ -1,3 +1,87 @@
+##' \item{calcindex}{output survey index likelihood file}
+##' \item{calc.in.kilos}{output catches in kilos likelihood file}
+##' \item{estimate.recruits.by.year}{should recruits be estimated by year}
+##' \item{estimate.recruits.by.year.and.area}{should recruits be estimated by year and area}
+##' \item{estimate.recruits.by.year.constant.area}{should recruits be estimated by year with constant by area effect (fewer degrees of freedom used compared to the one above).}
+##' \item{randomised.recruits}{Should recruits be initialised randomly}
+##' \item{bylen}{output survey index likelihood file by length groups, 0 for age aggregation and 1 for length aggregation}
+##' \item{length.groups}{length groups for indices}
+##' \item{calcldist.c}{output length distribution likelihood data for the catch}
+##' \item{calcalk.c}{output age length distribution likelihood data for the catch}
+##' \item{calcldist.s}{output length distribution likelihood data for the survey}
+##' \item{calcalk.s}{output age length distribution likelihood data for the survey}
+##' \item{file.migration.ratio}{Output migration matricies (0) or ratios (1)}
+##' \item{alkagg}{aggregation level for age length distributions, will be used for both}
+##' \item{survey.sigma}{sigma for error in survey indices}
+##' \item{catch.sigma}{sigma for error in catchdistributions}
+##' \item{frac}{fraction of catch that should be put in likelihood files}
+##' \item{doesgrow}{do the stocks grow}
+##' \item{growthfunction}{What growth function should be used, currently only lengthvbsimple is implemented}
+##' \item{optim.params}{What parameters should Gadget optimise}
+##' \item{randomise.all.initial.values}{Should initial values be randomized} 
+gadget.file.options <- function(){
+  ##################################
+##
+## Gadget likelihood files
+## used when running gadget -l
+## ?should file options be here?
+#
+## output survey index likelihood file
+## this calculates 2 indices for each area
+## one for recruits and another representing all age2+ fish
+              calcindex = 1,
+              calc.in.kilos = 0,
+#                                        # should recruits be estimated
+              estimate.recruits.by.year=1,
+              estimate.recruits.by.year.and.area=0,
+              estimate.recruits.by.year.constant.area=0,
+              randomised.recruits=0,
+#              
+## output survey index likelihood file by length groups
+## 0 for age aggregation
+## 1 for length aggregation
+              bylen = 1,
+## length groups for indices
+## only 2 allowed - unless you edit files.splus
+## filesurveyindexlen()
+## filelikelihood()
+## fileaggregation()
+              length.groups=c(4,16,90),
+## output length distribution likelihood data for the catch
+              calcldist.c=1,
+# output age length distribution likelihood data for the catch
+              calcalk.c=1,
+
+# output length distribution likelihood data for the survey
+              calcldist.s=1,
+# output age length distribution likelihood data for the survey
+              calcalk.s=1,
+# output migration matricies or ratios
+              file.migration.ratio=0,
+# aggregation level for age length distributions
+# will be used for both
+              alkagg = 5,
+
+#########################
+#
+# lognormal error can be added to the likelihood data
+#
+
+# sigma for error in survey indices
+              survey.sigma=0,
+# sigma for error in catchdistributions
+              catch.sigma=0,
+
+# fraction of catch that should be put in likelihood files
+              frac=0.1,
+# growthfunction
+              doesgrow=1,
+              growthfunction='lengthvbsimple',
+# optimiser
+              optim.params='',
+              randomise.all.initial.values = 0
+}
+
 
 ############################################
 #
