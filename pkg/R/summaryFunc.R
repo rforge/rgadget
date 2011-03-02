@@ -22,13 +22,14 @@ survey.index <- function(sim,sigma=0){
                            age=ifelse(Index$age==1,'age1','ageother')),
                          sum)
   
-  
+  names(SurveyAgg)[5] <- 'index'
   temp <- exp(rnorm(opt$numobs,0,sigma^2)-sigma^2/2)
-  SurveyAgg$x <- SurveyAgg$x*temp
+  SurveyAgg$index <- SurveyAgg$index*temp
+  
   SurveyAgg$time <- SurveyAgg$year+(SurveyAgg$step - 1)/opt$numoftimesteps
-
+  
   class(SurveyAgg) <- c('Rgadget',class(SurveyAgg))
-  attr(SurveyAgg,'formula') <- x~time|area
+  attr(SurveyAgg,'formula') <- index~time|area
   attr(SurveyAgg,'plotGroups') <- 'age'
   attr(SurveyAgg,'plotType') <- 'l'
   attr(SurveyAgg,'xaxis') <- 'Year'
@@ -64,13 +65,14 @@ survey.indexlen <- function(sim,length.groups=c(4,14,90),sigma=0){
                           area=sprintf('area%s',Index$area),
                           length.group=Index$length.group),
                         sum)
-  IndexLen$x <- IndexLen$x*exp(rnorm(length(IndexLen$x),0,
+  names(IndexLen)[5] <- 'index'
+  IndexLen$x <- IndexLen$index*exp(rnorm(length(IndexLen$index),0,
                                      sigma^2) - sigma^2/2)
   
   IndexLen$time <- IndexLen$year+(IndexLen$step - 1)/opt$numoftimesteps
   
   class(IndexLen) <- c('Rgadget',class(IndexLen))
-  attr(IndexLen,'formula') <- x~time|area
+  attr(IndexLen,'formula') <- index~time|area
   attr(IndexLen,'plotGroups') <- 'length.group'
   attr(IndexLen,'plotType') <- 'l'
   attr(IndexLen,'xaxis') <- 'Year'
@@ -108,7 +110,6 @@ lengthDist <- function(sim,sigma=0){
                            length=as.numeric(Index$length),
                            fleet=Index$fleet),                           
                          sum)
-  
   IndexLen$x <- IndexLen$x*exp(rnorm(length(IndexLen$x),0,
                                      sigma^2) - sigma^2/2)
   IndexLen$time <- IndexLen$year+(IndexLen$step - 1)/opt$numoftimesteps
@@ -437,11 +438,12 @@ plot.gadget.options <- function(opt){
         more=TRUE)
   print(vonB.plot,position = c(.66,0,1,1))
 }
-##' Calculate the Von Bertanlaffy curve according to the formula L(a) = L_\infty \big[1-e^{-\kappa a}\big]. 
+##' Calculate the Von Bertanlaffy curve according to the formula
+##' \deqn{L(a) = L_\infty (1-e^{-\kappa a})}{L(a) = L_infty (1-e^{-kappa a})}
 ##' @title Von Bertalanffy 
-##' @param lsup L_\infty 
-##' @param k \kappa
-##' @param a age
+##' @param lsup \eqn{L_\infty }{L_infty} terminal length
+##' @param k \eqn{\kappa}{kappa}, the growth parameter
+##' @param a age of the individual
 ##' @return a vector of length(a) with the calculated VB curve at age(s) a.
 ##' @author Bjarki Þór Elvarsson
 vonB <- function(lsup,k,a){
