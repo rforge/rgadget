@@ -9,7 +9,7 @@
 ##' possible consists of two substocks, with the younger substock optionally
 ##' maturing into the older substock at a given age and timestep, ie the
 ##' maturation process is not modelled. Both substocks are subject to growth
-##' and natural mortality and live on two areas. Two fleets are possible, eg
+##' and natural mortality and live on a number of areas. Two fleets are possible, eg
 ##' one representing the commercial fleet and the other an annual survey, with
 ##' the timesteps on which these fleets operate optional. There can be
 ##' migration between the areas. The mature substock can also predate upon the
@@ -28,7 +28,8 @@
 ##' suitability functions of the form:
 ##'  \deqn{S_{pred,prey}(L,l) = \frac{\delta}{1+e^{-\alpha-\beta l-\gamma L}}}
 ##' where of l is the prey length and L predator length. For fleets L should be
-##' irrelevant and therefore \eqn{\gamma = 0}{gamma  = 0} for fleets. 
+##' irrelevant and therefore \eqn{\gamma = 0}{gamma  = 0} for fleets.
+##' 
 ##' Maturation from stock A to stock B is modelled by moving the oldest
 ##' agegroup of A into with the age increasing if done on the last timestep
 ##' of the year. This replicates the Gadget process \emph{doesmove}.
@@ -37,6 +38,7 @@
 ##' stipulated by the von Bertanlanffy curve.
 ##' 
 ##' The order of calculations is the same as in Gadget and is as follows:
+##'
 ##' 1. Migration between areas
 ##' 
 ##' 2. Consumption, including catch by the fleets
@@ -69,6 +71,10 @@
 ##' \item{immMort}{Natural mortality for the immature stock}
 ##' \item{matMort}{Natural mortality for the mature stock}
 ##' \item{opt}{Gadget options list used in the simulation}
+##'  @author Bjarki Thor Elvarsson, Asta Jenny Sigurdardottir and Elinborg Ingunn Olafsdottir
+##' @examples
+##' opt <- gadget.options()
+##' sim <- Rgadget(sim)
 Rgadget <- function(opt=gadget.options()){
   ## initialize the necessary variables  
   opt <- derivedOptions(opt)

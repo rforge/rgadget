@@ -1,18 +1,25 @@
 ##' This function creates a list of default values of all necessary switches
 ##' for the RGadget simulation. The user can then change the
 ##' values of the switches and use the changed list as input to RGadget.
+##' Here the default values for consumption (predation and fleet operations),
+##' migration, maturation (via stock 'movement'), number of areas and their
+##' basic properties, various attributes of the sub stocks such as age, length
+##' and weight along with growth parameters. Also length of the simulation is
+##' given a default value.
+##' If the user wants to change the default values he will need to make the
+##' changes on the resulting list.
 ##' @title Gagdet options
 ##' @return a list of swithes
 ##' \item{stocks}{names of the stocks in the simulation}
-##' \item{doeseat}{Does the mature stock eat the immature}
-##' \item{doescatchsurv}{Is there a survey}
-##' \item{doescatchcomm}{Is there a commercial effort}
+##' \item{doeseat}{Does the 'mature' stock eat the 'immature'}
+##' \item{doescatchsurv}{Is there a survey fleet}
+##' \item{doescatchcomm}{Is there a commercial fleet}
 ##' \item{doesmigrateimm}{Does the immature stock migrate}
 ##' \item{doesmigratemat}{Does the mature stock migrate}
 ##' \item{immMigration}{Migration matrix for the immmature substock}
 ##' \item{matMigration}{Migration matrix for the mature substock}
 ##' \item{doesfuncmigrate}{(migration) pde's used to describe migration.}
-##' \item{diffustion}{(migration) diffusion parameter}
+##' \item{diffusion}{(migration) diffusion parameter}
 ##' \item{driftx}{(migration) drift in x coordinate}
 ##' \item{drifty}{(migration) drift in y coordinate}
 ##' \item{doesmove}{Does the immature stock mature into the mature stock}
@@ -46,7 +53,7 @@
 ##' \item{m3}{m3 for the maximum consumption}
 ##' \item{H}{H The density (biomass per area unit) of available food at which the predator can consume half maximum consumption}
 ##' \item{otherfrac}{the fraction of otherfood that is eaten}
-##' \item{otherfood}{maxratioconsumed}{The maximum portion consumed, in Gadget it is 0.95, this is known as understaocking in Gadget}
+##' \item{otherfood}{The maximum portion consumed, in Gadget it is 0.95, this is known as understocking in Gadget}
 ##' \item{survstep}{timestep(s) for the survey}
 ##' \item{commstep}{timestep(s) for the commercial effort}
 ##' \item{salphasurv}{for the suitability function - survey}
@@ -61,6 +68,11 @@
 ##' \item{comm.catches}{What stocks does the commercial fleet catch from}
 ##' \item{commmultiplicative}{For the fleettype}
 ##' \item{Fycomm}{Fishing effort of the commercial catch}
+##' @author Bjarki Thor Elvarsson, Asta Jenny Sigurdardottir and Elinborg Ingunn Olafsdottir
+##' @examples
+##' opt <- gadget.options
+##' ## change the length of the simulation to 13 years
+##' opt$numobs <- 13
 gadget.options <- function(){
   opt <- list(
 #############################################################
@@ -215,7 +227,7 @@ gadget.options <- function(){
               sbetacomm =  0.22,
               commfleettype='totalfleet',
               commmultiplicative='1',
-              Fycomm=0.7,
+              Fycomm=0.7
 
 
               )
@@ -223,8 +235,8 @@ gadget.options <- function(){
   return(opt)
 }
 
-##' This function is a helper function for RGadget and all file export functions,
-##' it calculates all additional options and switches that can be derived from
+##' This function is a helper function for RGadget.
+##' it calculates additional options and switches that can be derived from
 ##' the gadget options lists.
 ##' @title Derived options
 ##' @param opt gadget options list
@@ -335,18 +347,17 @@ derivedOptions <- function(opt){
     opt$doesmigratemat <- 0
     opt$doesmigrateimm <- 0
   }
-  
+
   return(opt)
 }
 
 
 ##' For each prey an upper limit needs to be set on the total amount
 ##' consumed by all predators so as not to obtain more consumption than
-##' available biomass.  Consumption is limited to 95\% ($R_M$) of the available
-##' biomass. This is implemented by scaling target consumption by all
-##' predators. 
-##' Let \eqn{R_{prey}(l)}{R_prey(l)} be the Ratio consumed and \eqn{R_M} be the Maximum Ratio Consumed
-##' Then
+##' available biomass.  Consumption is limited to 95\% (\eqn{R_M}) of the
+##' available biomass. This is implemented by scaling target consumption by all
+##' predators. Let \eqn{R_{prey}(l)}{R_prey(l)} be the Ratio consumed and
+##' \eqn{R_M} be the maximum ratio consumed then
 ##' \deqn{R_{prey}(l)=\frac{\sum_{pred}\sum_{L}C_{pred,prey}(L,l)}{N_{prey}(l)W_{prey}(l)}}
 ##' If \eqn{R_{prey}(l)>R_M}{R_prey(l)>R_M} consumption is adjusted as follows
 ##' \deqn{C_{pred,prey}(L,l)=R_MN_{prey}(l)W_{prey}(l)\frac{C_{pred,prey}(L,l)}{\sum_{pred}C_{pred,prey}(L,l)}}
@@ -387,8 +398,7 @@ adjustconsumption <- function(C,
   return(list(C=C,S=S,E=E))
 }
 
-##' Catch is implemented using the Linearfleet
-##' option in Gadget. 
+##' Catch is implemented to be similar to the 'Linearfleet' in Gadget. 
 ##' Let \eqn{C_{fleet,prey}(l,a,t)} be the number of age \eqn{a} prey, in
 ##' lengthgroup \eqn{l} caught at timestep \eqn{t}, then
 ##' \deqn{C_{fleet,prey}(l,a,t) = F_{l,t}N_{prey}(l,a,t)\Delta t}
