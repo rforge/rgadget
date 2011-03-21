@@ -3,10 +3,42 @@ library(multicore)
 ##' This function sets up all necessary switches and calls gadget from R
 ##' and attempts to read the runtime output from gadget. This has currently
 ##' only been tested on unix based platforms (but should in principle work on
-##' windows) and requires gadget to be in the users path.
+##' windows).
 ##' The source code for gadget can be obtained from http://www.hafro.is/gadget
+##'
+##' Gadget is a flexible and powerful tool for creating ecosystem models.
+##' The program was developed for modelling marine ecosystems in a fisheries
+##' management and biology context, however there is nothing in the program
+##' that restricts it to fish , and models have been developed to examine
+##' marine mammal populations. Indeed there is nothing to demand that the
+##' populations being considered are marine, or even aquatic, in nature.
+##' Gadget allows you to include a number of features into your model:
+##' One or more species, each of which may be split into multiple stocks;
+##' multiple areas with migration between areas; predation between and within
+##' species; maturation; reproduction and recruitment; multiple commercial and
+##' survey fleets taking catches from the populations.
+##' Gadget does two separate, but related things. Firstly it takes a model
+##' specification and performs a simulation using that set up. The model
+##' specification dictates the form of the equations to be used to describe
+##' growth, recruitment, fleet selectivity and so on, and the exact parameters
+##' to be used in these equations. Gadget will calculate model population and
+##' catches through time for your given set up. Note that to do this it does
+##' not use real-world data (except possibly overall catch tonnage). The
+##' program then compares various aspects of the modelled catches with
+##' real-world data from actual catches, and produces numeric likelihood
+##' scores measuring how well the model matched each data set. The program
+##' also computes a single overall likelihood score. This is a single number
+##' representing the 'goodness of fit' between the simulation and the data.
+##' It is worth repeating this point. Gadget runs a complete simulation without
+##' reference to any data. It then compares the modelled and real catches, and
+##' produces a score evaluating the fit between the two.
+##' If Gadget is called upon to optimise a model solution it simply iterates
+##' this process, trying different parameter values for each iteration. The
+##' 'best fit' will be produced by the parameter set which produces a model
+##' with the lowest overall likelihood score. There are several different
+##' optimisation methods utilised.
 ##' @title Call GADGET
-##' @param l perform a likelihood (optimising) model run
+##' @param l performs a likelihood (optimising) model run
 ##' @param s perform a single (simulation) model run
 ##' @param n perform a network run (using paramin)
 ##' @param v display version information and exit
@@ -71,7 +103,39 @@ callGadget <- function(l=NULL,
   run.history <- try(system(run.string,intern=TRUE,ignore.stderr=TRUE))
   invisible(run.history)
 }
-                       
+##' <description>
+##'
+##' <details>
+##' @title 
+##' @param i 
+##' @param func 
+##' @param opt 
+##' @param network 
+##' @param o 
+##' @param scale 
+##' @param condor 
+##' @param paramin.exe 
+##' @return 
+##' @author Bjarki Thor Elvarsson
+callParamin <- function(i='params.in',
+                        func='gadget -s -n',
+                        opt='optinfo',
+                        network='network',
+                        o='params.out',
+                        scale=NULL,
+                        condor=NULL,
+                        paramin.exe='paramin'){
+  switches <- paste(ifelse(is.null(i),'',paste('-i',i)),
+                    ifelse(is.null(opt),'',paste('-opt',opt)),
+                    ifelse(is.null(o),'',paste('-o',o)),
+                    ifelse(is.null(scale),'',paste('-scale',scale)),
+                    ifelse(is.null(condor),'','-condor'),
+                    ifelse(is.null(network),'',paste('-network',network)),
+                    ifelse(is.null(func),'',paste('-function',func)))
+  run.string <- paste(paramin.exe,switches)
+  run.history <- try(system(run.string,intern=TRUE,ignore.stderr=TRUE))
+  invisible(run.history)
+}
 
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
@@ -306,12 +370,10 @@ write.gadget.parameters <- function(params,file='params.out'){
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
 }
-##' <description>
-##'
-##' <details>
-##' @title 
-##' @param file 
-##' @return 
+##' Read gadget printfile
+##' @title Read gadget printfile
+##' @param file string containing the path to the printfile
+##' @return list of the prinfile components.
 ##' @author Bjarki Thor Elvarsson
 read.gadget.printfile <- function(file='printfile'){
   printfile <- strip.comments(file)
@@ -345,7 +407,14 @@ read.gadget.printfile <- function(file='printfile'){
   
   return(print)
 }
-
+##' Write the gadget prinfile to file, optionally changing the output directory
+##' of the printfile components.
+##' @title Write Gadget printfile
+##' @param print printfile object
+##' @param file string containing the desired location of the printfile
+##' @param output.dir where should the output from the prinfile components be written, defaults to 'out'.
+##' @return (invisible) text of the printfile if desired.
+##' @author Bjarki Thor Elvarsson
 write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
   print.text <- '; Printfile for gadget, created by Rgadget'
   for(name in names(print)){
@@ -449,7 +518,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @author Bjarki Þór Elvarsson
   read.gadget.SS <- function(file='lik.out'){
     lik.out <- readLines(file)
-    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],'\t\t')[[1]][2]))
+    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
+                                           '\t\t')[[1]][2]))
     return(SS)
   }
   
@@ -774,7 +844,8 @@ read.gadget.data <- function(likelihood){
                     
                     )
   lik.dat$comp.type <- NULL
-  df <- sapply(lik.dat,function(x) sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
+  df <- lapply(lik.dat,function(x)
+               sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
   return(list(dat=lik.dat,df=df))
 }
 
@@ -832,15 +903,16 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
   invisible(opt.text)
 }
 
-##' The test will be run by changing each of the variables in your model
-##' by up to +/- some percentage of the initial value. Often we would like
-##' a higher resolution near the optimum than is requried elsewhere.
+##' This function implements a crude sensitivity analysis of a gadget simulation
+##' The test is run by changing each of the variables in your model
+##' by up to +/- some percentage of the initial value. Often 
+##' a higher resolution near the optimum is desired than is requried elsewhere.
 ##' @title Gadget sensitivity
 ##' @param file name of the input file with the initial point
-##' @param outer.range 
-##' @param outer.stepsize 
-##' @param inner.range 
-##' @param inner.stepsize 
+##' @param outer.range The outer ranges of the parameter value considered, defined in terms of percentages.
+##' @param outer.stepsize The increments/stepsize within in the outer range. 
+##' @param inner.range Inner range where the finer mesh should be used
+##' @param inner.stepsize Inner stepsize.
 ##' @param opt Will we be looking at only the optimized variables, or
 ##' all of them?
 ##' @param vars.all (logical) Will we be looking at all variables or
@@ -856,7 +928,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' @param sens.dir a string naming the folder where the result and
 ##' temporary files are stored. The funciton will create the folder if
 ##' it has not already been created.
-##' @param calc.full (USE WITH CARE) should the the full hypercube of function values be calculated
+##' @param calc.full (USE WITH CARE) should the the full hypercube of function values be calculated. Using this switch will increase the computation time required exponentially.
 ##' @param range The range of the sensitivity check
 ##' @param stepsize The stepsize used
 ##' @return results from lik.out
@@ -979,6 +1051,14 @@ read.gadget.lik.out <- function(file='lik.out'){
   return(lik.out)
 }
 
+
+
+##' Helper function created to clear out all comments (indicated by ';') and 
+##' unwanted spaces from gadget input and output files.
+##' @title Strip comments
+##' @param file location of the gadget input file
+##' @return list containing the lines from the file stripped of unwanted text.
+##' @author Bjarki Thor Elvarsson
 strip.comments <- function(file='main'){
   main <- sub(' +$','',readLines(file))
   main <- main[main!='']
@@ -986,4 +1066,32 @@ strip.comments <- function(file='main'){
   main <- sapply(strsplit(main,';'),function(x) x[1])
   main <- clear.spaces(main)
   return(main)
+}
+
+##' Gadget phasing 
+##' @title Gadget Phasing 
+##' @param phase a dataframe where the columns indicate the parameters
+##' that are to be optimised in that particular phase
+##' @param params.in either a filename or gadget.parameters objecet
+##' containing the initial value for the optimisation. 
+##' @param main name of the main file used in the optimisation.
+##' @param phase.dir output directory
+##' @return final optimised parameter values
+##' @author Bjarki Thor Elvarsson
+gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PHASING'){
+  dir.create(phase.dir, showWarnings = FALSE)
+  if(class(params.in)=='character'){
+    params.in <- read.gadget.parameters(params.in)
+  } else if(!('gadget.parameters' %in% class(params.in))) {
+    stop('params.in is not a valid gadget.parameters object')
+  }
+  tmp <- params.in$optimise
+  for(p in names(phase)){
+    params.in$optimise <- phase[[p]]
+    write.gadget.parameters(params.in,sprintf('%s/params.%s',phase.dir,p))
+    callGadget(l=1,main=main,i=sprintf('%s/params.%s',phase.dir,p),
+               p=sprintf('%s/params.out.%s',phase.dir,p))
+    params.in <- read.gadget.parameters(sprintf('%s/params.out.%s',phase.dir,p))
+  }
+  return(params.in)
 }
