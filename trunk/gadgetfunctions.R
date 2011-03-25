@@ -1095,3 +1095,165 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
   }
   return(params.in)
 }
+
+
+read.gadget.model <- function(main.file='main'){
+  gadget.model <-
+    within(list(),
+           main <- read.gadget.main(main.file),
+           time <- read.gadget.time(main$timefile),
+           area <- read.gadget.area(main$areafile),
+           print <- read.gadget.printfile(main$printfile),
+           stocks <- read.gadget.stockfiles(main$stockfiles),
+           tagging <- read.gadget.tagfiles(main$tagfiles),
+           otherfood <- read.gadget.otherfood(main$otherfoodfiles),
+           fleets <- read.gadget.fleet(main$fleetfiles),
+           likelihood <- read.gadget.likelihood(main$likelihoodfiles)
+           )
+  class(gadget.model) <- c('gadget.model',class(gadget.model))
+}
+
+read.gadget.stockfiles <- function(stock.files){
+  tmp.func <- function(sf){
+    stock <- strip.comments(sf)
+    st.names <- sapply(stock[1:9],function(x) x[1])
+    st <- sapply(stock[1:9],function(x) x[2])
+    names(st) <- st.names
+
+    ## pop from list
+    stock[1:9] <- NULL
+    
+    ## check 'doesgrow switch
+    if(stock[[1]][2]==0){ 
+      growthfunction <- NULL
+      stock[1] <- NULL
+    } else if(stock[[2]][2] == 'weightjones'){
+      growthfunction <-
+        list(wgrowthparameters = stock[[3]][-1],
+             lgrowthparameters = stock[[4]][-1])
+      stock[1:4] <- NULL
+    } else if(stock[[2]][2] == 'weightvbexpanded'){
+      growthfunction <-
+        list(wgrowthparameters = stock[[3]][-1],
+             lgrowthparameters = stock[[4]][-1],
+             yeareffect = stock[[5]][-1],
+             stepeffect = stock[[6]][-1],
+             areaeffect = stock[[7]][-1])
+      stock[1:7] <- NULL
+    } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
+      growthfunction <-
+        list(growthparameters = stock[[3]][-1],
+             weightparameters = stock[[4]][-1])
+      stock[1:4] <- NULL
+    } else {
+      growthfunction <-
+        list(growthparameters = stock[[3]][-1])
+      stock[1:3] <- NULL
+    }
+    implementation <- lapply(stock[1:2],function(x) x[-1])
+    names(implementation) <- lapply(stock[1:2],function(x) x[1])
+    stock[1:2] <- NULL
+    growth <- list(growthfunction=growthfunction,
+                   implementation=implementation)
+    
+    st$naturalmortality <- stock[[1]][-1]
+    stock[1] <- NULL
+
+    ## iseaten
+    if(stock[[1]][2]==0){
+      prey.info <- NULL
+      stock[1] <- NULL
+    } else {
+      prey.info <- lapply(stock[2:3],function(x) x[-1])
+      names(prey.info) <- lapply(stock[2:3],function(x) x[1])
+      stock[1:2] <- NULL
+    }
+
+    ## doeseat
+    if(stock[[1]][2]==0){
+      pred.info <- NULL
+      stock[1] <- NULL
+    } else {
+      stock[1] <- NULL
+      pref <- grep('preference',stock)
+      suit <- grep('suitability',stock)
+      maxcon <- grep('maxconsumption',stock)
+      
+      suitability <- lapply(stock[2:(pref-1)],function(x) x[-1])
+      names(suitability) <- sapply(stock[2:(pref-1)],function(x) x[1])
+
+      preference <- t(sapply(stock[pref:(maxcon-1)],function(x) x))
+      names(preference) <- c('preyname','preference')
+      pred.info <-
+        list(suitability=suitability,
+             preference=preference,
+             maxconsumption=stock[[maxcon]][-1])
+      stock[1:maxcon] <- NULL
+    }
+
+    
+    
+    
+  }
+  stocks <- within(list(),
+                   for(sf in stock.files){
+                     tmp.func(sf)
+                   })
+  stocks$sf <- NULL
+}
+
+read.gadget.area <- function(area.file='area'){
+  area <- strip.comments(area.file)
+  areas <- area[[1]][-1]
+  size <- area[[2]][-1]
+  temperature <-
+    as.data.frame(t(sapply(area[-c(1:3)],function(x) as.numeric(x))))
+  names(temperature) <- c('year','step','area','temperature')
+  area <- list(areas=areas,size=size,temperature=temperature)
+  class(area) <- c('gadget.area',class(area))
+  return(area)
+}
+
+write.gadget.area <- function(area,file='area'){
+  header <- '; time file created in Rgadget'
+  area.file <-
+    paste(header,
+          paste('areas',paste(area$areas,collapse=' '),sep='\t'),
+          paste('size',paste(area$size,collapse=' '),sep='\t'),
+          'temperature',
+          '; year - step - area - temperature',
+          sep='\n')
+  write(area.file,file=file)
+  write.table(area$temperature,file=file,col.names=FALSE,append=TRUE,
+              quote=FALSE,sep='\t',row.names=FALSE)
+}
+
+read.gadget.time <- function(time.file='time'){
+  time <- strip.comments(time.file)
+  time.names <- sapply(time,function(x) x[1])
+  time <- sapply(time,function(x) as.numeric(x[-1]))
+  names(time) <- time.names
+  if(sum(time$notimesteps[-1])!=12)
+    warning('Error in timefile - notimesteps does not sum to 12')
+  if(length(time$notimesteps[-1])!=time$notimesteps[1])
+    warning('Error in timefile - notimesteps does not contain the right number of timesteps')
+  time$notimesteps <- time$notimesteps[-1]
+  class(time) <- c('gadget.time',class(time))
+  return(time)
+}
+
+write.gadget.time <- function(time,file='time'){
+  header <- '; time file created in Rgadget'
+  time.file <-
+    paste(header,
+          paste('firstyear',time$firstyear,sep='\t'),
+          paste('firststep',time$firststep,sep='\t'),
+          paste('lastyear',time$lastyear,sep='\t'),
+          paste('laststep',time$laststep,sep='\t'),
+          paste('notimesteps',
+                paste(length(time$notimesteps),
+                      paste(time$notimesteps,collapse=' ')),
+                sep='\t'),
+          sep='\n')
+  write(time.file,file=file)
+}
