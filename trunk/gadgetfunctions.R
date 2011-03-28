@@ -305,7 +305,7 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @return character string corresponding to the likelihood file (if desired)
 ##' @author Bjarki Þór Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood'){
-  lik.text <- '; Likelihood file - created in Rgadget'
+  lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s',file)
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
@@ -348,7 +348,7 @@ read.gadget.main <- function(file='main'){
 ##' @return text of the main file (if desired)
 ##' @author Bjarki Þór Elvarsson
 write.gadget.main <- function(main,file='main'){
-  main.text <- '; main file for gadget - created in Rgadget'
+  main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s',file)
   if(is.null(main$printfiles)){
     main$printfiles <- '; no printfile supplied'  
   }
@@ -414,6 +414,7 @@ write.gadget.parameters <- function(params,file='params.out'){
   input.text <-
     paste("; input file for the gadget model",
           "; created automatically from Rgadget",
+          sprintf('; %s',file),
           paste(names(params),collapse='\t'),
           sep='\n')
   write(input.text,file)
@@ -467,7 +468,7 @@ read.gadget.printfile <- function(file='printfile'){
 ##' @return (invisible) text of the printfile if desired.
 ##' @author Bjarki Thor Elvarsson
 write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
-  print.text <- '; Printfile for gadget, created by Rgadget'
+  print.text <- sprintf('; Printfile for gadget, created by Rgadget\n; %s',file)
   for(name in names(print)){
     tmp <- print[name][[name]]
     tmp[['printfile']] <- paste(output.dir,name,sep='/')
@@ -735,11 +736,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                  main=paste(wgts,paste('main',comp,sep='.'),sep='/'),
                  i=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                  o=paste(wgts,paste('lik',comp,sep='.'),sep='/'),
-                 gadget.exe=gadget.exe,
-                 PBS=PBS,
-                 PBS.name=paste(wgts,comp,sep='/'))
-##     SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
-##     return(SS.comp)
+                 gadget.exe=gadget.exe)
     }
 
 
@@ -771,9 +768,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
     
     main.final <- main.base
-    write.gadget.printfile(printfile,sprintf('%s/%s.final',wgts,main$printfile),
+    write.gadget.printfile(printfile,sprintf('%s/%s.final',wgts,'printfile'),
                            sprintf('%s/out.final',wgts))
-    main.final$printfile <- sprintf('%s/%s.final',wgts,main$printfile)
+    main.final$printfile <- sprintf('%s/%s.final',wgts,'printfile')
     main.final$likelihoodfiles <- paste(wgts,'likelihood.final',sep='/')
     write.gadget.main(main.final,paste(wgts,'main.final',sep='/'))
     
@@ -787,9 +784,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(!rew.sI){
       main.sIw <- main.base
       main.sIw$likelihoodfiles <- paste(wgts,'likelihood.sIw',sep='/')
-      write.gadget.printfile(printfile,sprintf('%s/%s.sIw',wgts,main$printfile),
+      write.gadget.printfile(printfile,sprintf('%s/%s.sIw',wgts,'printfile'),
                              sprintf('%s/out.sIw',wgts))
-      main.sIw$printfile <- sprintf('%s/%s.sIw',wgts,main$printfile)
+      main.sIw$printfile <- sprintf('%s/%s.sIw',wgts,'printfile')
       write.gadget.main(main.sIw,paste(wgts,'main.sIw',sep='/'))
       likelihood.sIw <- likelihood.base
       likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
@@ -801,9 +798,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       
       main.sIgroup <- main.base
       main.sIgroup$likelihoodfiles <- paste(wgts,'likelihood.sIgroup',sep='/')
-      write.gadget.printfile(printfile,sprintf('%s/%s.sIgroup',wgts,main$printfile),
+      write.gadget.printfile(printfile,sprintf('%s/%s.sIgroup',wgts,'printfile'),
                              sprintf('%s/out.sIgroup',wgts))
-      main.final$printfile <- sprintf('%s/%s.sIgroup',wgts,main$printfile)
+      main.final$printfile <- sprintf('%s/%s.sIgroup',wgts,'printfile')
       write.gadget.main(main.sIgroup,paste(wgts,'main.sIgroup',sep='/'))
       likelihood.sIgroup <- likelihood.base
       likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
@@ -814,7 +811,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       comp <- as.list(c('final','sIw','sIgroup'))
     }
 
-    tmp <- mclapply(comp,run.final)
+    mclapply(comp,run.final)
 
   } else {
     comp <- NULL
@@ -996,6 +993,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
   opt.text <- 
     paste("; optimisation file for gadget",
           "; created in R-gadget",
+          sprint('; %s',file),
           sep='\n')
   for(comp in names(optinfo)){
     opt.text <-
@@ -1322,7 +1320,7 @@ read.gadget.area <- function(area.file='area'){
 }
 
 write.gadget.area <- function(area,file='area'){
-  header <- '; time file created in Rgadget'
+  header <- sprintf('; time file created in Rgadget\n; %s',file)
   area.file <-
     paste(header,
           paste('areas',paste(area$areas,collapse=' '),sep='\t'),
@@ -1350,7 +1348,7 @@ read.gadget.time <- function(time.file='time'){
 }
 
 write.gadget.time <- function(time,file='time'){
-  header <- '; time file created in Rgadget'
+  header <- sprintf('; time file created in Rgadget\n; %s',file)
   time.file <-
     paste(header,
           paste('firstyear',time$firstyear,sep='\t'),
