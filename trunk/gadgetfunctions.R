@@ -63,6 +63,12 @@ library(multicore)
 ##' information should be saved.
 ##' @param gadget.exe path to the gadget executable, if it is not in
 ##' the path
+##' @param PBS Logical, should, instead of running gadget directly,
+##' a pbs script be
+##' generated that can be submitted to a cluster queue (defaults to FALSE).
+##' @param qsub.script Should a qsub script be generated.
+##' @param PBS.name Name of the pbs script (.sh will be appended)
+##' @param qsub.output The directory where the output from the script is stored
 ##' @return the run history
 callGadget <- function(l=NULL,
                        s=NULL,
@@ -80,7 +86,12 @@ callGadget <- function(l=NULL,
                        log=NULL,
                        printinitial=NULL,
                        printfinal=NULL,
-                       gadget.exe='gadget'){
+                       gadget.exe='gadget',
+                       PBS=FALSE,
+                       qsub.script=NULL,
+                       PBS.name='run',
+                       qsub.output='output'
+                       ){
   switches <- paste(ifelse(is.null(l),'','-l'),
                     ifelse(is.null(s),'','-s'),
                     ifelse(is.null(n),'','-n'),
@@ -99,10 +110,50 @@ callGadget <- function(l=NULL,
                            paste('-printinitial',printinitial)),
                     ifelse(is.null(printfinal),'',
                            paste('-printfinal',printfinal)))
+
   run.string <- paste(gadget.exe,switches)
-  run.history <- try(system(run.string,intern=TRUE,ignore.stderr=TRUE))
+  if(!PBS){
+    run.history <- try(system(run.string,intern=TRUE,ignore.stderr=TRUE))
+  } else {
+    if(file.exists(sprintf('%s.sh',PBS.name))){
+      write(run.string, file=sprintf('%s.sh',PBS.name),append=TRUE)
+      qsub.script <- NULL
+    } else {
+      PBS.header <-
+        '#!/bin/bash
+# Copy evironment, join output and error, medium queue:
+#PBS -V
+#PBS -j oe
+#PBS -q medium
+#PBS -l cput=60:00:00
+#PBS -m n
+
+# Go to the directory where the job was submitted from
+cd $PBS_O_WORKDIR
+
+# run gadget'
+      PBS.script <- paste(PBS.header,
+                          run.string,
+                          sep='\n')
+      write(PBS.script, file=sprintf('%s.sh',PBS.name))
+      if(!is.null(qsub.script)){
+        dir.create(qsub.output)
+        qsub.string <-
+          sprintf('qsub -N gadget-%s -o %s/%1$s.txt %1$s.sh',
+                  PBS.name,qsub.output)
+        if(file.exists(qsub.script))
+          write(qsub.string,file=qsub.script,append=TRUE)
+        else
+          write(qsub.string,file=qsub.script)
+      }
+    }
+    
+    run.history <- NULL
+  }
+  
   invisible(run.history)
 }
+
 ##' <description>
 ##'
 ##' <details>
@@ -499,14 +550,19 @@ write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
 ##' @param wgts a string containing the path the folder where the
 ##' interim weighting results should be stored. 
 ##' @param grouping a list naming the groups of components that should be reweighted together. 
-##' @return a matrix containing the weights of the likelihood components at each iteration.
+##' @param PBS Logical, should the gadget runs be defined to be run in pbs
+##' scripts (defaults to FALSE).
+##' @param qsub.script Name of cluster submission script.
+##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              params.file='params.in',rew.sI=FALSE,
                              run.final=TRUE,
                              resume.final=FALSE,
                              wgts = 'WGTS',
-                             grouping = NULL
+                             grouping = NULL,
+                             PBS = FALSE,
+                             qsub.script = NULL
                              ) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
@@ -522,7 +578,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                            '\t\t')[[1]][2]))
     return(SS)
   }
-  
+
+  ## read model
   main <- read.gadget.main(main.file)
   printfile <- read.gadget.printfile(main$printfile)
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
@@ -629,49 +686,60 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                i=params.file,
                p=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                opt='optinfofile',
-               gadget.exe=gadget.exe)
+               gadget.exe=gadget.exe,
+               PBS=PBS,
+               qsub.script=qsub.script,
+               PBS.name=paste(wgts,comp,sep='/'))
     callGadget(s=1,
                main=paste(wgts,paste('main',comp,sep='.'),sep='/'),
                i=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                o=paste(wgts,paste('lik',comp,sep='.'),sep='/'),
-               gadget.exe=gadget.exe)
-    SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
-    return(SS.comp)
+               gadget.exe=gadget.exe,
+               PBS=PBS,
+               PBS.name=paste(wgts,comp,sep='/'))
+#    SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
+#    return(SS.comp)
   }
   ## 
-  if(resume.final){
+  if(!resume.final){
+    ## run the bloody thing
+    res <- mclapply(run.string,run.iterative)
+  }
+
+  ## Do we want to run the final optimisation (only used for debug purposes,
+  ## and the check should be removed in later revisions)
+
+  if(run.final){
     res <- lapply(run.string,
                   function(x)
                   read.gadget.SS(paste(wgts,
                                        paste('lik',
                                              paste(x,collapse='.'),
-                                             sep='.'),sep='/')))
-  } else {
-    ## run the bloody thing
-    res <- mclapply(run.string,run.iterative)
-  }
-  names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
-  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
-  names(SS.table) <- likelihood.base$weights$name
-
-  ## Do we want to run the final optimisation (only used for debug purposes,
-  ## and the check should be removed in later revisions)
-  if(run.final){
+                                             sep='.'),sep='/')))                
+    names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
+    SS.table <- as.data.frame(t(sapply(res,function(x) x)))
+    names(SS.table) <- likelihood.base$weights$name
+    
+    
     run.final <- function(comp){
       callGadget(l=1,
                  main=paste(paste(wgts,'main',sep='/'),comp,sep='.'),
                  i=params.file,
                  p=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                  opt='optinfofile',
-                 gadget.exe=gadget.exe)
-      
+                 gadget.exe=gadget.exe,
+                 PBS=PBS,
+                 PBS.name=paste(wgts,comp,sep='/'),
+                 qsub.script=qsub.script)
       callGadget(s=1,
                  main=paste(wgts,paste('main',comp,sep='.'),sep='/'),
                  i=paste(wgts,paste('params',comp,sep='.'),sep='/'),
                  o=paste(wgts,paste('lik',comp,sep='.'),sep='/'),
-                 gadget.exe=gadget.exe)
-      SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
-      return(SS.comp)
+                 gadget.exe=gadget.exe,
+                 PBS=PBS,
+                 PBS.name=paste(wgts,comp,sep='/'))
+##     SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
+##     return(SS.comp)
     }
 
 
@@ -748,8 +816,47 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
     tmp <- mclapply(comp,run.final)
 
+  } else {
+    comp <- NULL
   }
-  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
+  return(list(comp=run.string,final=comp,wgts=wgts))
+#  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
+}
+
+read.gadget.results <- function(comp,
+                                final,
+                                wgts='WGTS',
+                                likelihood.file='likelihood'
+                                ){
+  read.gadget.SS <- function(file='lik.out'){
+    lik.out <- readLines(file)
+    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
+                                           '\t\t')[[1]][2]))
+    return(SS)
+  }
+  likelihood <- read.gadget.likelihood(likelihood.file)
+  res <- lapply(comp,
+                function(x)
+                read.gadget.SS(paste(wgts,
+                                     paste('lik',
+                                           paste(x,collapse='.'),
+                                           sep='.'),sep='/')))                
+  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
+  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
+  names(SS.table) <- likelihood$weights$name
+
+  res <- lapply(final,
+                function(x)
+                read.gadget.SS(paste(wgts,
+                                     paste('lik',
+                                           paste(x,collapse='.'),
+                                           sep='.'),sep='/')))                
+  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
+  SS.table <- rbind(SS.table,
+                    as.data.frame(t(sapply(res,function(x) x)))
+                    )
+  lik.dat <- read.gadget.data(likelihood)
+  return(list(SS=SS.table,lik.out=lik.out))
 }
 
 

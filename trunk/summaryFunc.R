@@ -412,13 +412,18 @@ plot.gadget.options <- function(opt){
                     suitability=c(suitability(opt$salphasurv,
                       opt$sbetasurv,0,1,l),
                       suitability(opt$salphacomm,opt$sbetacomm,0,1,l)))
-  suit <- xyplot(suitability~length,groups=fleet,tmp,type='l',
-                 auto.key=list(lines=TRUE,points=FALSE),
-                 main='Suitability')
+#  suit <- xyplot(suitability~length,groups=fleet,tmp,type='l',
+#                 auto.key=list(lines=TRUE,points=FALSE),
+#                 main='Suitability')
+  suit <- qplot(length,suitability,data=tmp,colour=fleet,
+                geom='line',main='Suitability') +
+                  opts(legend.position=c(.85,0.15))
   ## length weight relationship
-  weight <- xyplot(weight~length,tmp[1:length(l),],main='Length-Weight',
-                   type='l')
- 
+#  weight <- xyplot(weight~length,tmp[1:length(l),],main='Length-Weight',
+#                   type='l')
+  weight <- qplot(length,weight,data=tmp[1:length(l),],
+                  main='Length-Weight',geom='line')
+
   tmp.imm <- data.frame(age=opt$immminage:opt$immmaxage,
                         stock='immature',
                         growth=vonB(opt$lsup,opt$k,
@@ -428,9 +433,13 @@ plot.gadget.options <- function(opt){
                         growth=vonB(opt$lsup,opt$k,
                           opt$matminage:opt$matmaxage))
   tmp.age <- rbind(tmp.imm,tmp.mat)
-  vonB.plot <- xyplot(growth~age,tmp.age,groups=stock,type='l',
-                      auto.key=list(lines=TRUE,points=FALSE),
-                      main='Growth curve')
+  vonB.plot <- qplot(age,growth,data=tmp.age,colour=stock,
+                     geom='line',main='Growth curve') +
+                       opts(legend.position=c(.85,0.15))
+  
+#  vonB.plot <- xyplot(growth~age,tmp.age,groups=stock,type='l',
+#                      auto.key=list(lines=TRUE,points=FALSE),
+#                      main='Growth curve')
   
   print(suit,position = c(0,0,.33,1),
         more=TRUE)
