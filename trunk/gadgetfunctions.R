@@ -120,7 +120,7 @@ callGadget <- function(l=NULL,
       qsub.script <- NULL
     } else {
       PBS.header <-
-        '#!/bin/bash
+        sprintf('#!/bin/bash
 # Copy evironment, join output and error, medium queue:
 #PBS -V
 #PBS -j oe
@@ -131,7 +131,7 @@ callGadget <- function(l=NULL,
 # Go to the directory where the job was submitted from
 cd $PBS_O_WORKDIR
 
-# run gadget'
+# run gadget - %s',date())
       PBS.script <- paste(PBS.header,
                           run.string,
                           sep='\n')
@@ -139,8 +139,8 @@ cd $PBS_O_WORKDIR
       if(!is.null(qsub.script)){
         dir.create(qsub.output)
         qsub.string <-
-          sprintf('qsub -N gadget-%s -o %s/%1$s.txt %1$s.sh',
-                  PBS.name,qsub.output)
+          sprintf('# %s\nqsub -N gadget-%s -o %s/%1$s.txt %1$s.sh',
+                  date(),PBS.name,qsub.output)
         if(file.exists(qsub.script))
           write(qsub.string,file=qsub.script,append=TRUE)
         else
@@ -348,7 +348,7 @@ read.gadget.main <- function(file='main'){
 ##' @return text of the main file (if desired)
 ##' @author Bjarki Þór Elvarsson
 write.gadget.main <- function(main,file='main'){
-  main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s',file)
+  main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s - %s',file,date())
   if(is.null(main$printfiles)){
     main$printfiles <- '; no printfile supplied'  
   }
@@ -414,7 +414,7 @@ write.gadget.parameters <- function(params,file='params.out'){
   input.text <-
     paste("; input file for the gadget model",
           "; created automatically from Rgadget",
-          sprintf('; %s',file),
+          sprintf('; %s - %s',file,date()),
           paste(names(params),collapse='\t'),
           sep='\n')
   write(input.text,file)
@@ -993,7 +993,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
   opt.text <- 
     paste("; optimisation file for gadget",
           "; created in R-gadget",
-          sprint('; %s',file),
+          sprint('; %s - %s',file,date()),
           sep='\n')
   for(comp in names(optinfo)){
     opt.text <-
@@ -1320,7 +1320,7 @@ read.gadget.area <- function(area.file='area'){
 }
 
 write.gadget.area <- function(area,file='area'){
-  header <- sprintf('; time file created in Rgadget\n; %s',file)
+  header <- sprintf('; time file created in Rgadget\n; %s - %s',file,date())
   area.file <-
     paste(header,
           paste('areas',paste(area$areas,collapse=' '),sep='\t'),
@@ -1348,7 +1348,7 @@ read.gadget.time <- function(time.file='time'){
 }
 
 write.gadget.time <- function(time,file='time'){
-  header <- sprintf('; time file created in Rgadget\n; %s',file)
+  header <- sprintf('; time file created in Rgadget\n; %s - %s',file,date())
   time.file <-
     paste(header,
           paste('firstyear',time$firstyear,sep='\t'),
