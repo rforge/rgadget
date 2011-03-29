@@ -120,31 +120,42 @@ callGadget <- function(l=NULL,
       qsub.script <- NULL
     } else {
       PBS.header <-
-        sprintf('#!/bin/bash
-# Copy evironment, join output and error, medium queue:
-#PBS -V
-#PBS -j oe
-#PBS -q medium
-#PBS -l cput=60:00:00
-#PBS -m n
+        paste('#!/bin/bash',
+              sprint('# job file for pbs queue created by Rgadget at %s',
+                     date()),
+              '# Copy evironment, join output and error, medium queue:',
+              '#PBS -V',
+              '#PBS -j oe',
+              '#PBS -q medium',
+              '#PBS -l cput=60:00:00'
+              '#PBS -m n',
+              '',
+              '# Go to the directory where the job was submitted from',
+              'cd $PBS_O_WORKDIR',
+              '',
+              '# run gadget',
+              sep='\n')
 
-# Go to the directory where the job was submitted from
-cd $PBS_O_WORKDIR
-
-# run gadget - %s',date())
       PBS.script <- paste(PBS.header,
                           run.string,
                           sep='\n')
       write(PBS.script, file=sprintf('%s.sh',PBS.name))
+      Sys.chmod(PBS.script,mode = '0777')
       if(!is.null(qsub.script)){
         dir.create(qsub.output)
         qsub.string <-
           sprintf('# %s\nqsub -N gadget-%s -o %s/%1$s.txt %1$s.sh',
                   date(),PBS.name,qsub.output)
-        if(file.exists(qsub.script))
+        if(file.exists(qsub.script)){
           write(qsub.string,file=qsub.script,append=TRUE)
-        else
-          write(qsub.string,file=qsub.script)
+        } else {
+          header <-
+            paste('#!/bin/bash',
+                  sprintf('# create by Rgadget at %s',date()),
+                  sep='\n')
+          write(paste(header,qsub.string,sep='\n'),file=qsub.script)
+          Sys.chmod(qsub.script,mode = '0777')
+        }
       }
     }
     
