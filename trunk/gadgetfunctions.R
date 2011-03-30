@@ -250,7 +250,8 @@ read.gadget.likelihood <- function(files='likelihood'){
   comp.loc <- grep('component',lik)
   name.loc <- comp.loc+3
   weights <- NULL
-  common <- c('name','weight','type','datafile')
+  common <- c('name','weight','type','datafile','areaaggfile','lenaggfile',
+              'ageaggfile')
   tmp.func <- function(comp){
     loc <- grep(comp,lik[name.loc])  
     if(sum(loc)==0){
@@ -269,23 +270,47 @@ read.gadget.likelihood <- function(files='likelihood'){
                                               collapse=' ')
                                       }),' '),
                       function(x) as.character(x))
-        names.tmp <- head(tmp,1)
-        tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
-        names(tmp) <- names.tmp
-        row.names(tmp) <- tmp$name
+        if(class(tmp)!='list'){
+          names.tmp <- head(tmp,1)
+          tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
+          names(tmp) <- names.tmp
+          row.names(tmp) <- tmp$name
+        } else {
+          names.tmp <- sapply(tmp,function(x) x[1])
+          tmp <- sapply(tmp,function(x) paste(x[-1],collapse='\t'))
+          names(tmp) <- names.tmp
+        }
         
         if(comp=='understocking'|comp=='migrationpenalty'){
           tmp$datafile <- ''
         }
-        weights <<-  rbind(weights,tmp[common])    
+        if(is.null(tmp$areaaggfile))
+          tmp$areaaggfile <- ''
+        if(is.null(tmp$lenaggfile))
+          tmp$lenaggfile <- ''
+        if(is.null(tmp$ageaggfile))
+          tmp$ageaggfile <- ''
+
+        weights <<-  rbind(weights,
+                           as.data.frame(t(unlist(tmp[common])),
+                                         stringsAsFactors=FALSE))
         if(comp=='understocking'|comp=='migrationpenalty'){
           tmp$datafile <- NULL
         }
+
+        if(tmp$areaaggfile=='')
+          tmp$areaaggfile <- NULL
+        if(tmp$lenaggfile=='')
+          tmp$lenaggfile <- NULL
+        if(tmp$ageaggfile=='')
+          tmp$ageaggfile <- NULL
+        
         tmp$weight <- NULL
         dat <- within(dat,assign(tmp$name,tmp))
         
         comp.loc <- c(comp.loc,length(lik) + 1)
       }
+      
       if(length(unique(comp.loc[loc+1]-comp.loc[loc]))<2 )
         dat <-
           as.data.frame(t(sapply(dat,function(x) unlist(x))),stringsAsFactors=FALSE)
@@ -323,18 +348,35 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
   lik$weights <- NULL
   weights$type <- NULL
   weights$datafile <- NULL
+  weights$lenaggfile <- NULL
+  weights$areaaggfile <- NULL
+  weights$ageaggfile <- NULL
   for(comp in lik){
-      comp <- merge(weights,comp,by='name',sort=FALSE)
-      comp.text <- paste(names(comp),t(comp))
-      dim(comp.text) <- dim(t(comp))
-      comp.text <- rbind('[component]',comp.text,';')
-      lik.text <- paste(lik.text,
-                        paste(comp.text,
-                              collapse='\n'),
-                        sep='\n')
+    comp <- merge(weights,comp,by='name',sort=FALSE)
+    comp.text <- paste(names(comp),t(comp))
+    dim(comp.text) <- dim(t(comp))
+    comp.text <- rbind('[component]',comp.text,';')
+    lik.text <- paste(lik.text,
+                      paste(comp.text,
+                            collapse='\n'),
+                      sep='\n')
   }
   write(lik.text,file=file)
   invisible(lik.text)
+}
+
+new.gadget.main <- function(){
+  main <-
+    list(timefile = '',
+         areafile = '',
+         printfiles = '',
+         stockfiles = '',
+         tagfiles = '',
+         otherfoodfiles = '',
+         fleetfiles = '',
+         likelihoodfiles = '')
+  class(main) <- c('gadget.main',class(main))
+  return(main)
 }
 
 ##' Read gadget's main file
@@ -361,7 +403,8 @@ read.gadget.main <- function(file='main'){
 ##' @return text of the main file (if desired)
 ##' @author Bjarki Þór Elvarsson
 write.gadget.main <- function(main,file='main'){
-  main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s - %s',file,date())
+  main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s - %s',
+                       file,date())
   if(is.null(main$printfiles)){
     main$printfiles <- '; no printfile supplied'  
   }
@@ -372,15 +415,15 @@ write.gadget.main <- function(main,file='main'){
           paste('printfiles',paste(main$printfiles,collapse='\t')),
           '[stock]',
           paste('stockfiles',paste(main$stockfiles,collapse='\t')),
-          ifelse(is.null(main$tagfiles),
+          ifelse(is.null(main$tagfiles) | main$tagfiles == '',
                  '[tagging]',
                  paste('[tagging]\ntagfiles',paste(main$tagfiles,
                                                    collapse='\t'))),
-          ifelse(is.null(main$otherfoodfiles),
+          ifelse(is.null(main$otherfoodfiles) | main$otherfoodfiles == '',
                  '[otherfood]',
                  paste('[otherfood]\notherfoodfiles',
                        paste(main$otherfoodfiles,collapse='\t'))),
-          ifelse(is.null(main$likelihoodfiles),
+          ifelse(is.null(main$likelihoodfiles) | main$likelihoodfiles == '',
                  '[fleet]',
                  paste('[fleet]\nfleetfiles',
                        paste(main$fleetfiles,collapse='\t'))),
@@ -1376,9 +1419,70 @@ write.gadget.time <- function(time,file='time'){
   write(time.file,file=file)
 }
 
-gadget.bootstrap <- function(bs.likfile = 'likelihood'){
+gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
+                             bs.wgts='WGTS/BS.WGTS',
+                             params.file = 'params.in',
+                             rew.sI = FALSE,
+                             grouping = NULL,
+                             qsub.script = 'bootstrap.sh',
+                             run.final = FALSE
+                             ){
+  main <- read.gadget.main(main)
   bs.lik <- read.gadget.likelihood(bs.likfile)
+  restr <- !(bs.lik$weights$type %in%
+             c('penalty','understocking','migrationpenalty'))
+  common.lik <- bs.lik[bs.lik$weights$type[!restr]]
   
-  
+  base.comp <-
+    unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
+                  function(x) paste(x[-length(x)],collapse='.')))
+  bs.samples <- unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
+                              function(x) paste(x[length(x)],collapse='.')))
+  if(run.final) {
+    ## NOT IMPLEMENTED YET
+    return(NULL)
+  } else {
+    
+    for(i in bs.samples){
+      bs.comp <- paste(base.comp,i,sep='.')
+      tmp.lik <- get.gadget.likelihood(bs.lik,bs.comp)
+      tmp.lik <- merge.gadget.likelihood(common.lik,tmp.lik)
+      bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
+      bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
+      bs.main <- main
+      bs.main$likelihoodfiles <- bs.lik.file
+      write.gadget.main(bs.main,bs.main.file)
+      write.gadget.likelihood(tmp.lik,bs.lik.file)
+      tmp <- gadget.iterative(main.file=bs.main.file,params.file = params.file,
+                              grouping=grouping,rew.sI = rew.sI,
+                              qsub.script = qsub.script)
+    }
+    return(NULL)
+  }
 }
-  
+
+merge.gadget.likelihood <- function(lik1,lik2){
+  tmp <- within(list(),
+                for(comp in unique(c(names(lik1),names(lik2)))){
+                  assign(comp,
+                         unique(rbind(lik1[[comp]],lik2[[comp]])))
+                })
+  class(tmp) <- c('gadget.likelihood',class(tmp))
+  return(tmp)
+}
+
+get.gadget.likelihood <- function(likelhood,comp){
+  weights <- likelihood$weights[likelihood$weights$name %in% comp,]
+  tmp <-
+    within(list(),
+           for(type in weights$type){
+             assign(type,
+                    likelihood[[type]][likelihood[[type]][['name']] %in% comp,])
+           }
+           )
+  tmp$type <- NULL
+  tmp$weigths <- weights
+  class(tmp) <- c('gadget.likelihood',class(tmp))
+  return(tmp)
+}
+
