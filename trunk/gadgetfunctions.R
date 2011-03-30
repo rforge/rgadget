@@ -66,8 +66,10 @@ library(multicore)
 ##' @param PBS Logical, should, instead of running gadget directly,
 ##' a pbs script be
 ##' generated that can be submitted to a cluster queue (defaults to FALSE).
-##' @param qsub.script Should a qsub script be generated.
-##' @param PBS.name Name of the pbs script (.sh will be appended)
+##' @param qsub.script The name of the qsub script that can be generated, if
+##' desired. As with the PBS script R tries to set the permission to 777
+##' (not wether or not this works on windows).
+##' @param PBS.name Name of the pbs script (.sh will be appended).
 ##' @param qsub.output The directory where the output from the script is stored
 ##' @return the run history
 callGadget <- function(l=NULL,
@@ -127,7 +129,7 @@ callGadget <- function(l=NULL,
               '#PBS -V',
               '#PBS -j oe',
               '#PBS -q medium',
-              '#PBS -l cput=60:00:00'
+              '#PBS -l cput=60:00:00',
               '#PBS -m n',
               '',
               '# Go to the directory where the job was submitted from',
@@ -1373,3 +1375,10 @@ write.gadget.time <- function(time,file='time'){
           sep='\n')
   write(time.file,file=file)
 }
+
+gadget.bootstrap <- function(bs.likfile = 'likelihood'){
+  bs.lik <- read.gadget.likelihood(bs.likfile)
+  
+  
+}
+  
