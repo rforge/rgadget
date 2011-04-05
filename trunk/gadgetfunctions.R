@@ -366,12 +366,15 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
     if(class(comp)=='list'){
       comp.text <- 
         sapply(comp,
-               function(x)
+               function(x){
+               y <- merge(weights,x,by='name',sort=FALSE)
                paste('[component]\n',
-                     paste(names(x),
-                           x,
+                     paste(names(y),
+                           y,
                            sep='\t',collapse='\n'),
-                     '\n',sep=''))
+                     '\n;',sep='')
+             }
+               )
       lik.text <- paste(lik.text,
                         paste(comp.text,
                               collapse = '\n'),
@@ -510,14 +513,22 @@ write.gadget.parameters <- function(params,file='params.out'){
 ##' @return list of the prinfile components.
 ##' @author Bjarki Thor Elvarsson
 read.gadget.printfile <- function(file='printfile'){
-  printfile <- strip.comments(file)
+  printfile <- read.gadgetLines(file)
   comp.loc <- grep('component',printfile)
   tmp.func <- function(restr){
-    names.tmp <- sapply(printfile[restr],       
-                        function(x) x[1])
-    tmp <- lapply(sapply(printfile[restr],                                
-                         function(x) x[-1]),unlist)
-    names(tmp) <- names.tmp
+    tmp <- clear.spaces(printfile[restr])
+    if(class(tmp)=='list'){
+      names.tmp <- sapply(tmp,       
+                          function(x) x[1])
+      tmp <- sapply(tmp,                                
+                    function(x) paste(x[-1],collapse='\t'))
+      names(tmp) <- names.tmp
+      tmp <- as.data.frame(t(tmp),stringsAsFactors=FALSE)
+    } else {
+      names.tmp <- tmp[1,]
+      tmp <- as.data.frame(t(tmp[-1,]),stringsAsFactors=FALSE)
+      names(tmp) <- names.tmp
+    }
     return(tmp)
   }
   print <- within(list(),
@@ -530,7 +541,6 @@ read.gadget.printfile <- function(file='printfile'){
                     tmp <- tmp.func(restr)                    
                     comp.name <- sapply(strsplit(tmp$printfile,'/'),
                                         function(x) x[length(x)])
-                    
                     assign(comp.name,tmp)
                   }
                   )
@@ -551,6 +561,7 @@ read.gadget.printfile <- function(file='printfile'){
 ##' @author Bjarki Thor Elvarsson
 write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
   print.text <- sprintf('; Printfile for gadget, created by Rgadget\n; %s',file)
+
   for(name in names(print)){
     tmp <- print[name][[name]]
     tmp[['printfile']] <- paste(output.dir,name,sep='/')
