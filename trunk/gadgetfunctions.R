@@ -234,6 +234,22 @@ read.printfiles <- function(path='.'){
   printfiles$printfile <- NULL
   return(printfiles)
 }
+##' Helper function to read gadget input files, strips away comments
+##' (indicated by ';'), trailing spaces and empty lines. It is based on readLines.
+##' @title Read gadget files
+##' @param file the name of the file which the data are to be read from.
+##' @return a character vector stripped of comments and crud.
+##' @author Bjarki Þór Elvarsson
+read.gadgetLines <- function(files){
+  tmp <- NULL
+  for(file in files)
+    tmp <- c(tmp,sub(' +$','',readLines(file)))
+  tmp <- tmp[tmp!='']
+  tmp <- tmp[!grepl(';',substring(tmp,1,1))]
+  tmp <- sapply(strsplit(tmp,';'),function(x) x[1])
+  return(tmp)
+}
+
 ##' This functions reads the likelihood (input) file for gadget. The format of
 ##' the likelihood file is described in gadget's user manual. 
 ##' @title Read likelihood
@@ -241,12 +257,7 @@ read.printfiles <- function(path='.'){
 ##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
 ##' @author Bjarki Þór Elvarsson
 read.gadget.likelihood <- function(files='likelihood'){
-  lik <- NULL
-  for(file in files)
-    lik <- c(lik,sub(' +$','',readLines(file)))
-  lik <- lik[lik!='']
-  lik <- lik[!grepl(';',substring(lik,1,1))]
-  lik <- sapply(strsplit(lik,';'),function(x) x[1])
+  lik <- read.gadgetLines(files)
   comp.loc <- grep('component',lik)
   name.loc <- comp.loc+3
   weights <- NULL
@@ -352,14 +363,29 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
   weights$areaaggfile <- NULL
   weights$ageaggfile <- NULL
   for(comp in lik){
-    comp <- merge(weights,comp,by='name',sort=FALSE)
-    comp.text <- paste(names(comp),t(comp))
-    dim(comp.text) <- dim(t(comp))
-    comp.text <- rbind('[component]',comp.text,';')
-    lik.text <- paste(lik.text,
-                      paste(comp.text,
-                            collapse='\n'),
-                      sep='\n')
+    if(class(comp)=='list'){
+      comp.text <- 
+        sapply(comp,
+               function(x)
+               paste('[component]\n',
+                     paste(names(x),
+                           x,
+                           sep='\t',collapse='\n'),
+                     '\n',sep=''))
+      lik.text <- paste(lik.text,
+                        paste(comp.text,
+                              collapse = '\n'),
+                        sep='\n')
+    } else {
+      comp <- merge(weights,comp,by='name',sort=FALSE)
+      comp.text <- paste(names(comp),t(comp))
+      dim(comp.text) <- dim(t(comp))
+      comp.text <- rbind('[component]',comp.text,';')
+      lik.text <- paste(lik.text,
+                        paste(comp.text,
+                              collapse='\n'),
+                        sep='\n')
+    }
   }
   write(lik.text,file=file)
   invisible(lik.text)
@@ -1213,276 +1239,55 @@ read.gadget.lik.out <- function(file='lik.out'){
 }
 
 
-
-##' Helper function created to clear out all comments (indicated by ';') and 
-##' unwanted spaces from gadget input and output files.
-##' @title Strip comments
-##' @param file location of the gadget input file
-##' @return list containing the lines from the file stripped of unwanted text.
-##' @author Bjarki Thor Elvarsson
-strip.comments <- function(file='main'){
-  main <- sub(' +$','',readLines(file))
-  main <- main[main!='']
-  main <- main[!grepl(';',substring(main,1,1))]
-  main <- sapply(strsplit(main,';'),function(x) x[1])
-  main <- clear.spaces(main)
-  return(main)
-}
-
-##' Gadget phasing 
-##' @title Gadget Phasing 
-##' @param phase a dataframe where the columns indicate the parameters
-##' that are to be optimised in that particular phase
-##' @param params.in either a filename or gadget.parameters objecet
-##' containing the initial value for the optimisation. 
-##' @param main name of the main file used in the optimisation.
-##' @param phase.dir output directory
-##' @return final optimised parameter values
-##' @author Bjarki Thor Elvarsson
-gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PHASING'){
-  dir.create(phase.dir, showWarnings = FALSE)
-  if(class(params.in)=='character'){
-    params.in <- read.gadget.parameters(params.in)
-  } else if(!('gadget.parameters' %in% class(params.in))) {
-    stop('params.in is not a valid gadget.parameters object')
-  }
-  tmp <- params.in$optimise
-  for(p in names(phase)){
-    params.in$optimise <- phase[[p]]
-    write.gadget.parameters(params.in,sprintf('%s/params.%s',phase.dir,p))
-    callGadget(l=1,main=main,i=sprintf('%s/params.%s',phase.dir,p),
-               p=sprintf('%s/params.out.%s',phase.dir,p))
-    params.in <- read.gadget.parameters(sprintf('%s/params.out.%s',phase.dir,p))
-  }
-  return(params.in)
-}
-
-
-read.gadget.model <- function(main.file='main'){
-  gadget.model <-
-    within(list(),
-           main <- read.gadget.main(main.file),
-           time <- read.gadget.time(main$timefile),
-           area <- read.gadget.area(main$areafile),
-           print <- read.gadget.printfile(main$printfile),
-           stocks <- read.gadget.stockfiles(main$stockfiles),
-           tagging <- read.gadget.tagfiles(main$tagfiles),
-           otherfood <- read.gadget.otherfood(main$otherfoodfiles),
-           fleets <- read.gadget.fleet(main$fleetfiles),
-           likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-           )
-  class(gadget.model) <- c('gadget.model',class(gadget.model))
-}
-
-read.gadget.stockfiles <- function(stock.files){
-  tmp.func <- function(sf){
-    stock <- strip.comments(sf)
-    st.names <- sapply(stock[1:9],function(x) x[1])
-    st <- sapply(stock[1:9],function(x) x[2])
-    names(st) <- st.names
-
-    ## pop from list
-    stock[1:9] <- NULL
-    
-    ## check 'doesgrow switch
-    if(stock[[1]][2]==0){ 
-      growthfunction <- NULL
-      stock[1] <- NULL
-    } else if(stock[[2]][2] == 'weightjones'){
-      growthfunction <-
-        list(wgrowthparameters = stock[[3]][-1],
-             lgrowthparameters = stock[[4]][-1])
-      stock[1:4] <- NULL
-    } else if(stock[[2]][2] == 'weightvbexpanded'){
-      growthfunction <-
-        list(wgrowthparameters = stock[[3]][-1],
-             lgrowthparameters = stock[[4]][-1],
-             yeareffect = stock[[5]][-1],
-             stepeffect = stock[[6]][-1],
-             areaeffect = stock[[7]][-1])
-      stock[1:7] <- NULL
-    } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
-      growthfunction <-
-        list(growthparameters = stock[[3]][-1],
-             weightparameters = stock[[4]][-1])
-      stock[1:4] <- NULL
-    } else {
-      growthfunction <-
-        list(growthparameters = stock[[3]][-1])
-      stock[1:3] <- NULL
-    }
-    implementation <- lapply(stock[1:2],function(x) x[-1])
-    names(implementation) <- lapply(stock[1:2],function(x) x[1])
-    stock[1:2] <- NULL
-    growth <- list(growthfunction=growthfunction,
-                   implementation=implementation)
-    
-    st$naturalmortality <- stock[[1]][-1]
-    stock[1] <- NULL
-
-    ## iseaten
-    if(stock[[1]][2]==0){
-      prey.info <- NULL
-      stock[1] <- NULL
-    } else {
-      prey.info <- lapply(stock[2:3],function(x) x[-1])
-      names(prey.info) <- lapply(stock[2:3],function(x) x[1])
-      stock[1:2] <- NULL
-    }
-
-    ## doeseat
-    if(stock[[1]][2]==0){
-      pred.info <- NULL
-      stock[1] <- NULL
-    } else {
-      stock[1] <- NULL
-      pref <- grep('preference',stock)
-      suit <- grep('suitability',stock)
-      maxcon <- grep('maxconsumption',stock)
-      
-      suitability <- lapply(stock[2:(pref-1)],function(x) x[-1])
-      names(suitability) <- sapply(stock[2:(pref-1)],function(x) x[1])
-
-      preference <- t(sapply(stock[pref:(maxcon-1)],function(x) x))
-      names(preference) <- c('preyname','preference')
-      pred.info <-
-        list(suitability=suitability,
-             preference=preference,
-             maxconsumption=stock[[maxcon]][-1])
-      stock[1:maxcon] <- NULL
-    }
-
-    
-    
-    
-  }
-  stocks <- within(list(),
-                   for(sf in stock.files){
-                     tmp.func(sf)
-                   })
-  stocks$sf <- NULL
-}
-
-read.gadget.area <- function(area.file='area'){
-  area <- strip.comments(area.file)
-  areas <- area[[1]][-1]
-  size <- area[[2]][-1]
-  temperature <-
-    as.data.frame(t(sapply(area[-c(1:3)],function(x) as.numeric(x))))
-  names(temperature) <- c('year','step','area','temperature')
-  area <- list(areas=areas,size=size,temperature=temperature)
-  class(area) <- c('gadget.area',class(area))
-  return(area)
-}
-
-write.gadget.area <- function(area,file='area'){
-  header <- sprintf('; time file created in Rgadget\n; %s - %s',file,date())
-  area.file <-
-    paste(header,
-          paste('areas',paste(area$areas,collapse=' '),sep='\t'),
-          paste('size',paste(area$size,collapse=' '),sep='\t'),
-          'temperature',
-          '; year - step - area - temperature',
-          sep='\n')
-  write(area.file,file=file)
-  write.table(area$temperature,file=file,col.names=FALSE,append=TRUE,
-              quote=FALSE,sep='\t',row.names=FALSE)
-}
-
-read.gadget.time <- function(time.file='time'){
-  time <- strip.comments(time.file)
+read.gadget.time <- function(file='time'){
+  time <- read.gadgetLines(file)
   time.names <- sapply(time,function(x) x[1])
-  time <- sapply(time,function(x) as.numeric(x[-1]))
+  time <- lapply(time,function(x) x[-1])
   names(time) <- time.names
-  if(sum(time$notimesteps[-1])!=12)
-    warning('Error in timefile - notimesteps does not sum to 12')
-  if(length(time$notimesteps[-1])!=time$notimesteps[1])
-    warning('Error in timefile - notimesteps does not contain the right number of timesteps')
-  time$notimesteps <- time$notimesteps[-1]
-  class(time) <- c('gadget.time',class(time))
+  time$numoftimesteps <- time$notimesteps[1]
+  time$timesteps <- time$notimesteps[-1]
+  time$notimesteps <- NULL
   return(time)
 }
 
 write.gadget.time <- function(time,file='time'){
-  header <- sprintf('; time file created in Rgadget\n; %s - %s',file,date())
-  time.file <-
-    paste(header,
-          paste('firstyear',time$firstyear,sep='\t'),
-          paste('firststep',time$firststep,sep='\t'),
-          paste('lastyear',time$lastyear,sep='\t'),
-          paste('laststep',time$laststep,sep='\t'),
-          paste('notimesteps',
-                paste(length(time$notimesteps),
-                      paste(time$notimesteps,collapse=' ')),
-                sep='\t'),
+  time$notimesteps <- c(time$numoftimesteps,time$timesteps)
+  time$numoftimesteps <- NUL
+  time$timesteps <- NULL
+  time.text <- sapply(time,function(x) paste(x,collapse='\t'))
+  time.text <- paste(names(time),time.text,sep='\t',collapse='\n')
+  time.text <- paste('; time file for gadget',
+                     '; created by Rgadget',
+                     time.text,
+                     sep='\n')
+  write(time.text,file)
+  invisible(time.text)
+}
+
+read.gadget.area <- function(file){
+  area <- read.gadgetLines(file)[1:2]
+  area.names <- sapply(area,function(x) x[1])
+  area <- sapply(area,function(x) x[-1])
+  names(area) <- area.names
+  area$temperature <- read.table(file,skip=3)
+  return(area)
+}
+
+write.gadget.area <- function(area){
+  area.text <-
+    paste("; area file for gadget",
+          "; created by Rgadget",
+          paste(c("areas",area$areas),collapse='\t'),
+          paste(c("size",area$size),collapse='\t'),
+          "temperature",
           sep='\n')
-  write(time.file,file=file)
-}
-
-gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
-                             bs.wgts='WGTS/BS.WGTS',
-                             params.file = 'params.in',
-                             rew.sI = FALSE,
-                             grouping = NULL,
-                             qsub.script = 'bootstrap.sh',
-                             run.final = FALSE
-                             ){
-  main <- read.gadget.main(main)
-  bs.lik <- read.gadget.likelihood(bs.likfile)
-  restr <- !(bs.lik$weights$type %in%
-             c('penalty','understocking','migrationpenalty'))
-  common.lik <- bs.lik[bs.lik$weights$type[!restr]]
-  
-  base.comp <-
-    unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
-                  function(x) paste(x[-length(x)],collapse='.')))
-  bs.samples <- unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
-                              function(x) paste(x[length(x)],collapse='.')))
-  if(run.final) {
-    ## NOT IMPLEMENTED YET
-    return(NULL)
-  } else {
-    
-    for(i in bs.samples){
-      bs.comp <- paste(base.comp,i,sep='.')
-      tmp.lik <- get.gadget.likelihood(bs.lik,bs.comp)
-      tmp.lik <- merge.gadget.likelihood(common.lik,tmp.lik)
-      bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
-      bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
-      bs.main <- main
-      bs.main$likelihoodfiles <- bs.lik.file
-      write.gadget.main(bs.main,bs.main.file)
-      write.gadget.likelihood(tmp.lik,bs.lik.file)
-      tmp <- gadget.iterative(main.file=bs.main.file,params.file = params.file,
-                              grouping=grouping,rew.sI = rew.sI,
-                              qsub.script = qsub.script)
-    }
-    return(NULL)
-  }
-}
-
-merge.gadget.likelihood <- function(lik1,lik2){
-  tmp <- within(list(),
-                for(comp in unique(c(names(lik1),names(lik2)))){
-                  assign(comp,
-                         unique(rbind(lik1[[comp]],lik2[[comp]])))
-                })
-  class(tmp) <- c('gadget.likelihood',class(tmp))
-  return(tmp)
-}
-
-get.gadget.likelihood <- function(likelhood,comp){
-  weights <- likelihood$weights[likelihood$weights$name %in% comp,]
-  tmp <-
-    within(list(),
-           for(type in weights$type){
-             assign(type,
-                    likelihood[[type]][likelihood[[type]][['name']] %in% comp,])
-           }
-           )
-  tmp$type <- NULL
-  tmp$weigths <- weights
-  class(tmp) <- c('gadget.likelihood',class(tmp))
-  return(tmp)
-}
+  write(area.text,file)
+  write.table(area$temperature,
+              file,
+              sep="\t",
+              row.names=F,
+              col.names=F,
+              quote=F,
+              append=T)
+}    
 
