@@ -1,5 +1,5 @@
 library(multicore)
-source('gadgetFileIO.R')
+#source('gadgetFileIO.R')
 
 ##' This function sets up all necessary switches and calls gadget from R
 ##' and attempts to read the runtime output from gadget. This has currently
@@ -506,43 +506,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
 
       comp <- 'final'
-      write.files(comp,final.weigths)
+      write.files(comp,final.weights)
     if(!rew.sI){
       write.files('sIw',final.sIw)
       write.files('sIgroup',final.sIgroup)
       comp <- as.list(c('final','sIw','sIgroup'))
     }
     
-#    if(!rew.sI){
-#      main.sIw <- main.base
-#      main.sIw$likelihoodfiles <- paste(wgts,'likelihood.sIw',sep='/')
-#      write.gadget.printfile(printfile,sprintf('%s/%s.sIw',wgts,'printfile'),
-#                             sprintf('%s/out.sIw',wgts))
-#      main.sIw$printfile <- sprintf('%s/%s.sIw',wgts,'printfile')
-#      write.gadget.main(main.sIw,paste(wgts,'main.sIw',sep='/'))
-#      likelihood.sIw <- likelihood.base
-#      likelihood.sIw$weights[names(final.weights),'weight'] <- final.sIw
-#      write.gadget.likelihood(likelihood.sIw,
-#                              file=paste(wgts,'likelihood.sIw',sep='/'))
-#
-#      dir.create(sprintf('%s/out.sIw',wgts),showWarnings=FALSE)
-
-      
-#      main.sIgroup <- main.base
-#      main.sIgroup$likelihoodfiles <- paste(wgts,'likelihood.sIgroup',sep='/')
-#      write.gadget.printfile(printfile,
-#                             sprintf('%s/%s.sIgroup',wgts,'printfile'),
-#                             sprintf('%s/out.sIgroup',wgts))
-#      main.final$printfile <- sprintf('%s/%s.sIgroup',wgts,'printfile')
-#      write.gadget.main(main.sIgroup,paste(wgts,'main.sIgroup',sep='/'))
-#      likelihood.sIgroup <- likelihood.base
-#      likelihood.sIgroup$weights[names(final.weights),'weight'] <- final.sIgroup
-#      write.gadget.likelihood(likelihood.sIgroup,
-#                              file=paste(wgts,'likelihood.sIgroup',sep='/'))
-#      dir.create(sprintf('%s/out.sIgroup',wgts),showWarnings=FALSE)
-      
-#      comp <- as.list(c('final','sIw','sIgroup'))
-#    }
 
     mclapply(comp,run.final)
 
