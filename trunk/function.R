@@ -437,6 +437,19 @@ catch <- function(N,
   return(C)
 }
 
+whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
+  tmp<-suitability(salpha,sbeta,0,1,as.numeric(dimnames(N)$age))
+  Sl<-tmp[1,]
+  F <- quota/sum(Sl*apply((N+NTagged),2,sum))
+  #Proportion caught each year
+  
+  Fly<-Sl*F
+  if(length(dimnames(N)$stock)>0)
+    Fly <- rep(Fly,each=dim(N)[1]) 
+  C <- Fly*N 
+  CT <- Fly*NTagged 
+  return(list(C=C,CT=CT))
+}
 
 ##' This is a helper function for the firststep function. This defines the
 ##' length distribution for each age group
@@ -788,3 +801,35 @@ suitability <- function(salpha,
   return(S)
 }
 
+
+overlap <- function(Abundance,mixing){
+  for(stock in dimnames(Abundance)$stock){
+    Abundance[stock,,] <-
+      aaply(Abundance[stock,,],2,sum)*rep(mixing[,stock],
+                                           each=length(dimnames(Abundance)$age))
+  }
+  return(Abundance)
+}
+
+dispersion <- function(Abundance,dispersion){
+  tmp <- Abundance
+  Abundance <- 0*tmp
+  for(from in dimnames(Abundance)$stock){
+    for(to in dimnames(Abundance)$stock){
+      Abundance[to,,] <- Abundance[to,,] +
+        tmp[from,,]*dispersion[from,to]
+    }
+  }
+  return(Abundance)
+}
+
+init.pop <- function(init.abund,M,maxage,probarea){
+  x <- init.abund*(1-exp(-M))/(1-exp(-M*(maxage+1)))
+  array(rep(x*exp(-M*(0:maxage)),
+            each=length(probarea))*probarea,
+        c(length(probarea),1,maxage+1))
+}
+
+#tag.experiment <- function(Abundance,tag.number){
+#  tag.number*Abundance/sum(Abundance)
+#}
