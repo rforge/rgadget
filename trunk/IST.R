@@ -54,16 +54,19 @@ opt$doescatchcomm <- 'WI'
 opt$doescathcsurv <- ''
 opt$quota <- 150
 names(opt$quota) <- 'WI'
-opt$salphacomm <- -3.6/0.57
-opt$sbetacomm <- 1/0.57
+opt$salpha <- c(Male=-3.6/0.57,Female=-4.1)
+opt$sbeta <- c(Male=1/0.57,Female=1)
 
 opt$doeseat <- 0
 opt$doesgrow <- 0
 
-opt$mort <- rep(opt$z,maxage+1)
+opt$mort <- rep(opt$z,opt$maxage+1)
 opt$doescatchsurv <- NULL
 
 opt$num.tags <- 100
 names(opt$num.tags) <- 'EG'
 
 opt$tag.loss <- 1
+opt$recapture.lambda <- 2
+opt$gender.division <- c(Male=1/2,Female=1/2)
+

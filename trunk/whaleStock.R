@@ -79,7 +79,7 @@ Rgadget <- function(opt=gadget.options()){
   ## initialize the necessary variables  
 #  opt <- derivedOptions(opt)
   ## what areas are commercially exploited
-  commAreas <- opt$areas %in% opt$doescatchcomm
+  #commAreas <- opt$areas %in% opt$doescatchcomm
   ## define survey areas 
 #  surveyAreas <- 1:opt$numofareas %in% opt$doescatchsurv
 
@@ -89,11 +89,13 @@ Rgadget <- function(opt=gadget.options()){
 # preN(k)=[N_{i,1,j}] is a matrix where immN(k)_{i,1,j} 7is the number
 # of recruits in lengthgroup i at timestep j, area k
   Abundance <- array(0,c(length(opt$stocks),
+                         2,
                          opt$numofareas,
                          opt$numoflgroups,
                          opt$maxage+1,
                          (opt$numobs*opt$numoftimesteps)))
   dimnames(Abundance) <- list(stock=opt$stocks,
+                              gender=c('Male','Female'),
                               area=opt$areas,
                               length=opt$minlen:(opt$maxlen-1),
                               age=0:opt$maxage,
@@ -125,20 +127,24 @@ Rgadget <- function(opt=gadget.options()){
   if(length(catch.switch)>0){
     Catches <- array(0,c(length(opt$fleets),
                          length(opt$stocks),
+                         2,
                          length(catch.switch),
                          opt$numoflgroups,
                          opt$numofagegroups,
                          (opt$numobs*opt$numoftimesteps)))
     dimnames(Catches) <- list(fleets=opt$fleets,
                               stock=opt$stocks,
+                              gender=c('Male','Female'),
                               area=catch.switch,
                               length=opt$minlen:(opt$maxlen-1),
                               age=0:opt$maxage,
-                              time=paste(sprintf('Year_%s',rep(1:opt$numobs,
-                                each=opt$numoftimesteps)
+                              time=paste(sprintf('Year_%s',
+                                rep(1:opt$numobs,
+                                    each=opt$numoftimesteps)
                                 ),
-                                sprintf('Step_%s',rep(1:opt$numoftimesteps,
-                                                      opt$numobs)),
+                                sprintf('Step_%s',
+                                        rep(1:opt$numoftimesteps,
+                                            opt$numobs)),
                                 sep='_'))
     Tagged.C <- Catches
   } else {
@@ -152,15 +158,15 @@ Rgadget <- function(opt=gadget.options()){
 #
 
 # The number eaten of immature by mature, the default is zero
-  if(opt$doeseat==1){
-    Eat <- array(0,c(opt$numofareas,
-                     opt$numoflgroups,
-                     opt$numofagegroups,
-                     opt$numobs*opt$numoftimesteps))
-    dimnames(Eat) <- dimnames(immNumRec)
-  } else {
-    Eat <- NULL
-  }
+#  if(opt$doeseat==1){
+#    Eat <- array(0,c(opt$numofareas,
+#                     opt$numoflgroups,
+#                     opt$numofagegroups,
+#                     opt$numobs*opt$numoftimesteps))
+#    dimnames(Eat) <- dimnames(immNumRec)
+#  } else {
+#    Eat <- NULL
+#  }
   
 #################################
 
@@ -199,151 +205,125 @@ Rgadget <- function(opt=gadget.options()){
 
 #G[i,j] is the probability of going from lengthgroup i to lengthgroup j
 #Same in both areas
-  if(opt$doesgrow==1){
-    
-    G <- growthprob(opt$lt,
-                    opt$beta,
-                    opt$lsup,
-                    opt$k,
-                    opt$dt,
-                    opt$lengthgrouplen,
-                    opt$binn)
-  } else {
-    G <- diag(opt$numoflgroups)
-  }
+#  if(opt$doesgrow==1){
+#    
+#    G <- growthprob(opt$lt,
+#                    opt$beta,
+#                    opt$lsup,
+#                    opt$k,
+#                    opt$dt,
+#                    opt$lengthgrouplen,
+#                    opt$binn)
+#  } else {
+#    G <- diag(opt$numoflgroups)
+#  }
+
+ 
+  
 ####################################
 #  Calculations for all timesteps  #
 ####################################
-  for(i in 1:(opt$numobs*opt$numoftimesteps)){
-    num<-i%%opt$numoftimesteps
-    if(num==0)
-      num <- opt$numoftimesteps
-    if(num!=1){      ############## if we are not in timestep 1  #########
-      Abundance[,,,,i] <- Abundance[,,,,i-1]
-    } else if(i==1){ ### we have a special update in the 1st timestep ###
+  for(i in 1:(opt$numobs*opt$numoftimesteps)){        
+
+    if(i==1){
       for(stock in opt$stocks){
-        Abundance[stock,,,,1] <- init.pop(opt$init.abund[stock],opt$z,opt$maxage,
-                                          opt$mixing[,stock])
+        tmp <- init.pop(opt$init.abund[stock],opt$z,
+                        opt$maxage,
+                        opt$mixing[,stock])
+        Abundance[stock,'Male',,,,1] <- opt$gender.division['Male']*tmp
+        Abundance[stock,'Female',,,,1] <- opt$gender.division['Female']*tmp
+        
       }
       ## ASUMES ONE TAGGING AREA ONLY!!!!!!!!!!!!!!!!!!!!!!!!!!
-      Tagged[,names(opt$num.tags),,,1] <-
-        opt$num.tags*Abundance[,names(opt$num.tags),,,1]/sum(Abundance[,names(opt$num.tags),,,1])
-    } else { ###### if we are in timestep 1 we have to update age ######
-        
-    #############
-    # Age update
-    # NOTE this is the last step of the
-    # calculations done in previous timestep
-
-    
+      Tagged[,,names(opt$num.tags),,,1] <-
+        opt$num.tags*Abundance[,,names(opt$num.tags),,,1]/
+          sum(Abundance[,,names(opt$num.tags),,,1])
+    } else {
+      ## ###########
+      ## Age update
+      ## NOTE this is the last step of the
+      ## calculations done in previous timestep
       
       ## Update age for mature
-      Abundance[,,,-1,i] <- Abundance[,,,-opt$numofagegroups,i-1]
-    # Adding up the maxage ones
-      Abundance[,,,opt$numofagegroups,i] <-
-        Abundance[,,,opt$numofagegroups,i] +
-          Abundance[,,,opt$numofagegroups,i-1]
-
-      ## do the same for the tagged population
-      Tagged[,,,-1,i] <- Tagged[,,,-opt$numofagegroups,i-1]
-    # Adding up the maxage ones
-      Tagged[,,,opt$numofagegroups,i] <-
-        Tagged[,,,opt$numofagegroups,i] +
-          Tagged[,,,opt$numofagegroups,i-1]
-    }
-############
-                                        # Migration Assume only two areas atm
-    if(!is.null(opt$mixing)){
-      Abundance[,,,,i] <- overlap(Abundance[,,,,i],opt$mixing)
-      Tagged[,,,,i] <- overlap(Tagged[,,,,i],opt$mixing)
-    }
-    
-    if(!is.null(opt$dispersion)){
-      Abundance[,,,,i] <- dispersion(Abundance[,,,,i],opt$dispersion)
-      Tagged[,,,,i] <- dispersion(Tagged[,,,,i],opt$dispersion)
-    }
-        
-#    if(opt$doesmigratemat==1){
-#      matNumRec[,,,i] <- migrate(matNumRec[,,,i],opt$matMigration[,,num])
-#    }
-
-
-  ############
-  # Consumption calculations
-#    if(opt$doeseat==1){
-#      Eat[,,,i] <- eat(immNumRec,matNumRec,i,opt)
-#    }
+      Abundance[,,,,-1,i] <- Abundance[,,,,-opt$numofagegroups,i-1]
+      ## Adding up the maxage ones
+      Abundance[,,,,opt$numofagegroups,i] <-
+        Abundance[,,,,opt$numofagegroups,i] +
+          Abundance[,,,,opt$numofagegroups,i-1]
       
-  ############
-  # Catch calculations
-    
-    if(num %in% opt$commstep){
-      if(length(catch.switch)>0){
-        tmp <- whaleCatch(Abundance[,catch.switch,,,i],
-                          Tagged[,catch.switch,,,i],
-                          opt$quota,
-                          opt$salphacomm,
-                          opt$sbetacomm                       
-                          )
-        Catches['Comm',,catch.switch,,,i] <- tmp$C
-        Tagged.C['Comm',,catch.switch,,,i] <- tmp$CT
+      ## do the same for the tagged population
+      Tagged[,,,,-1,i] <- Tagged[,,,,-opt$numofagegroups,i-1]
+      ## Adding up the maxage ones
+      Tagged[,,,,opt$numofagegroups,i] <-
+        Tagged[,,,,opt$numofagegroups,i] +
+          Tagged[,,,,opt$numofagegroups,i-1]
+      
+      if(!is.null(opt$mixing)){
+        Abundance[,'Male',,,,i] <-
+          overlap(Abundance[,'Male',,,,i],opt$mixing)
+        Abundance[,'Female',,,,i] <-
+          overlap(Abundance[,'Female',,,,i],opt$mixing)
+        Tagged[,'Male',,,,i] <-
+          overlap(Tagged[,'Male',,,,i],opt$mixing)
+        Tagged[,'Female',,,,i] <-
+          overlap(Tagged[,'Female',,,,i],opt$mixing)
+      }
+      
+      if(!is.null(opt$dispersion)){
+        Abundance[,'Male',,,,i] <-
+          dispersion(Abundance[,'Male',,,,i],opt$dispersion)
+        Abundance[,'Female',,,,i] <-
+          dispersion(Abundance[,'Female',,,,i],opt$dispersion)
+        Tagged[,'Male',,,,i] <-
+          dispersion(Tagged[,'Male',,,,i],opt$dispersion)
+        Tagged[,'Female',,,,i] <-
+          dispersion(Tagged[,'Female',,,,i],opt$dispersion)
       }
     }
+          
+    ## ##########
+    ## Catch calculations    
+    if(length(catch.switch)>0){
+      tmp <- whaleCatch(Abundance[,,catch.switch,,,i],
+                        Tagged[,,catch.switch,,,i],
+                        opt$quota[catch.switch],
+                        opt$salpha,
+                        opt$sbeta                    
+                        )
+      Catches['Comm',,,catch.switch,,,i] <- tmp$C
+      Tagged.C['Comm',,,catch.switch,,,i] <- tmp$CT
+    }
     
+    ## ########
+    ## Subtract Catch from stock
+    Abundance[,,catch.switch,,,i] <-
+      Abundance[,,catch.switch,,,i]-Catches['Comm',,,,,,i]
+    Tagged[,,catch.switch,,,i] <-
+      Tagged[,,catch.switch,,,i]-Tagged.C['Comm',,,,,,i]
     
-
-  #############
-  # Overconsumption check
-#    tempimmC<-adjustconsumption(C=immCcomm[,,,i],
-#                                S=immCsurv[,,,i],
-#    E=Eat[,,,i],
-#                                N=immNumRec[,,,i],
-#                                opt$maxratioconsumed,
-#                                opt$numofareas)
-#    tempmatC<-adjustconsumption(C=matCcomm[,,,i],
-#                                S=matCsurv[,,,i],
-#                                ,
-#                                N=matNumRec[,,,i],
-#                                opt$maxratioconsumed,
-#                                opt$numofareas)
-
-  #############
-  # Subtract Consumption from stock
-#    if(opt$doeseat==1){
-#      immNumRec[,,,i] <- immNumRec[,,,i] - tempimmC$E[,,]
-#    }
-    
-  ##########
-  # Subtract Catch from stock
-    Abundance[,catch.switch,,,i] <- Abundance[,catch.switch,,,i]-Catches['Comm',,,,,i]
-    Tagged[,catch.switch,,,i] <- Tagged[,catch.switch,,,i]-Tagged.C['Comm',,,,,i]
-    
-
-    
-
-  ###########
-  # Length update and natural mortality
+    ## #########
+    ## Length update and natural mortality
     for(stock in opt$stocks){
       for(area in opt$areas){
-        Abundance[stock,area,,,i] <- t(G)%*%Abundance[stock,area,,,i]%*%Mort +
-          (1-opt$tag.loss)*t(G)%*%Tagged[stock,area,,,i]%*%Mort
-        Tagged[stock,area,,,i] <- opt$tag.loss*t(G)%*%Tagged[stock,area,,,i]%*%Mort
+        Abundance[stock,,area,,,i] <-
+          Abundance[stock,,area,,,i]%*%Mort +
+            (1-opt$tag.loss)*Tagged[stock,,area,,,i]%*%Mort
+        Tagged[stock,,area,,,i] <-
+          opt$tag.loss*Tagged[stock,,area,,,i]%*%Mort
       }
     }
     
-  ###########
-  # Recruits
-#    if(opt$doesmove!=1){
-#      matNumRec[,,1,i]<-matNumRec[,,1,i]+Rec[,,i]
-#    }
-#    immNumRec[,,1,i]<-immNumRec[,,1,i]+Rec[,,i]
+    ## #########
+    ## Recruits
+
+    
   }
 
   
   sim <- list(Abundance=Abundance,
               Tagged=Tagged,
               Catches=Catches,
-              Catches.T=Catches.T,
+              Tagged.C=Tagged.C,
               opt=opt)
   class(sim) <- c('gadget.sim',class(sim))
   return(sim)

@@ -438,16 +438,21 @@ catch <- function(N,
 }
 
 whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
-  tmp<-suitability(salpha,sbeta,0,1,as.numeric(dimnames(N)$age))
-  Sl<-tmp[1,]
-  F <- quota/sum(Sl*apply((N+NTagged),2,sum))
+  MaleS <- suitability(salpha['Male'],sbeta['Male'],
+                       0,1,as.numeric(dimnames(N)$age))[1,]
+  FemaleS <- suitability(salpha['Female'],sbeta['Female'],
+                         0,1,as.numeric(dimnames(N)$age))[1,]
+  sl <- cbind(MaleS,FemaleS)
+  F <- quota/sum(sl*t(apply((N+NTagged),2:3,sum)))
   #Proportion caught each year
   
-  Fly<-Sl*F
-  if(length(dimnames(N)$stock)>0)
-    Fly <- rep(Fly,each=dim(N)[1]) 
-  C <- Fly*N 
-  CT <- Fly*NTagged 
+  Fly<-F*sl
+#  if(length(dimnames(N)$stock)>0)
+#    Fly <- rep(Fly,each=dim(N)[1])
+#  else
+#    Fly <- rep(Fly,each=2)
+  C <- aaply(N,1,function(x) x*t(Fly))
+  CT <- aaply(NTagged,1,function(x) x*t(Fly)) 
   return(list(C=C,CT=CT))
 }
 
@@ -823,11 +828,12 @@ dispersion <- function(Abundance,dispersion){
   return(Abundance)
 }
 
-init.pop <- function(init.abund,M,maxage,probarea){
+init.pop <- function(init.abund,M,maxage,probarea,
+                     gender.division){
   x <- init.abund*(1-exp(-M))/(1-exp(-M*(maxage+1)))
   array(rep(x*exp(-M*(0:maxage)),
             each=length(probarea))*probarea,
-        c(length(probarea),1,maxage+1))
+        c(length(probarea),maxage+1))
 }
 
 #tag.experiment <- function(Abundance,tag.number){
