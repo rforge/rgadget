@@ -128,7 +128,9 @@ if(FALSE){
 
 run.tag.experiment <- function(num.tags){
   opt.h4$num.tags <- num.tags
+  names(opt.h4$num.tags) <- 'EG'
   opt.h3$num.tags <- num.tags
+  names(opt.h3$num.tags) <- 'EG'
   ## run the simulation
   sim.h4 <- Rgadget(opt.h4)
   sim.h3 <- Rgadget(opt.h3)
