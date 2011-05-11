@@ -224,7 +224,7 @@ Rgadget <- function(opt=gadget.options()){
 #  Calculations for all timesteps  #
 ####################################
   for(i in 1:(opt$numobs*opt$numoftimesteps)){        
-
+    #print(sprintf('simulating year %s', i))
     if(i==1){
       for(stock in opt$stocks){
         tmp <- init.pop(opt$init.abund[stock],opt$z,
@@ -269,18 +269,19 @@ Rgadget <- function(opt=gadget.options()){
           overlap(Tagged[,'Female',,,,i],opt$mixing)
       }
       
-      if(!is.null(opt$dispersion)){
-        Abundance[,'Male',,,,i] <-
-          dispersion(Abundance[,'Male',,,,i],opt$dispersion)
-        Abundance[,'Female',,,,i] <-
-          dispersion(Abundance[,'Female',,,,i],opt$dispersion)
-        Tagged[,'Male',,,,i] <-
-          dispersion(Tagged[,'Male',,,,i],opt$dispersion)
-        Tagged[,'Female',,,,i] <-
-          dispersion(Tagged[,'Female',,,,i],opt$dispersion)
-      }
     }
-          
+
+    if(!is.null(opt$dispersion)){
+      Abundance[,'Male',,,,i] <-
+        dispersion(Abundance[,'Male',,,,i],opt$dispersion)
+      Abundance[,'Female',,,,i] <-
+        dispersion(Abundance[,'Female',,,,i],opt$dispersion)
+      Tagged[,'Male',,,,i] <-
+        dispersion(Tagged[,'Male',,,,i],opt$dispersion)
+      Tagged[,'Female',,,,i] <-
+        dispersion(Tagged[,'Female',,,,i],opt$dispersion)
+    }
+
     ## ##########
     ## Catch calculations    
     if(length(catch.switch)>0){

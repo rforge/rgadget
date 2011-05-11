@@ -491,19 +491,13 @@ length.at.age <- function(sim){
   
 }
 
-tagging.recaptures <- function(sim,lambda){
+tagging.recaptures <- function(sim,lambda,N){
   ## recaptures in WI
-  U <- aaply(sim$Tagged.C,7,sum)
+  U <- apply(sim$Tagged.C,7,sum)
   p <- lambda/(1+lambda)
-  rec <- data.frame(y1 = rnbinom(100,size=U[2],prob=p),
-                    y2 = rnbinom(100,size=U[3],prob=p),
-                    y3 = rnbinom(100,size=U[4],prob=p),
-                    y4 = rnbinom(100,size=U[5],prob=p),
-                    y5 = rnbinom(100,size=U[6],prob=p),
-                    y6 = rnbinom(100,size=U[7],prob=p),
-                    y7 = rnbinom(100,size=U[8],prob=p),
-                    y8 = rnbinom(100,size=U[9],prob=p),
-                    y9 = rnbinom(100,size=U[10],prob=p))
   
- return(rec)
+  rec <- adply(U[-1],1,function(x) rnbinom(N,size=x,prob=p))
+  rec <- melt(rec,id='X1')
+  
+  return(rec)
 }

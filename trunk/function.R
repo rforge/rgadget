@@ -451,8 +451,8 @@ whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
 #    Fly <- rep(Fly,each=dim(N)[1])
 #  else
 #    Fly <- rep(Fly,each=2)
-  C <- aaply(N,1,function(x) x*t(Fly))
-  CT <- aaply(NTagged,1,function(x) x*t(Fly)) 
+  C <- aaply(N,1,function(x) x*t(Fly))[dimnames(N)$stock,,]
+  CT <- aaply(NTagged,1,function(x) x*t(Fly))[dimnames(N)$stock,,]
   return(list(C=C,CT=CT))
 }
 
@@ -808,11 +808,11 @@ suitability <- function(salpha,
 
 
 overlap <- function(Abundance,mixing){
-  for(stock in dimnames(Abundance)$stock){
-    Abundance[stock,,] <-
-      aaply(Abundance[stock,,],2,sum)*rep(mixing[,stock],
-                                           each=length(dimnames(Abundance)$age))
-  }
+  stock.num <- aaply(Abundance,c(1,3),
+                     function(x) sum(x))[dimnames(Abundance)$stock,
+                                         dimnames(Abundance)$age]
+  for(stock in dimnames(Abundance)$stock)
+    Abundance[stock,,] <- t(stock.num[stock,]%o%mixing[,stock])
   return(Abundance)
 }
 

@@ -150,14 +150,27 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
   weights$areaaggfile <- NULL
   weights$ageaggfile <- NULL
   for(comp in lik){
-    comp <- merge(weights,comp,by='name',sort=FALSE)
-    comp.text <- paste(names(comp),t(comp))
-    dim(comp.text) <- dim(t(comp))
-    comp.text <- rbind('[component]',comp.text,';')
-    lik.text <- paste(lik.text,
-                      paste(comp.text,
+    if(class(comp) == 'data.frame'){
+      comp <- merge(weights,comp,by='name',sort=FALSE)
+      comp.text <- paste(names(comp),t(comp))
+      dim(comp.text) <- dim(t(comp))
+      comp.text <- rbind('[component]',comp.text,';')
+      lik.text <- paste(lik.text,
+                        paste(comp.text,
                             collapse='\n'),
-                      sep='\n')
+                        sep='\n')
+    } else {
+      for(sub.comp in comp){
+        sub.comp <- merge(weights,sub.comp,by='name',sort=FALSE)
+        comp.text <- paste(names(sub.comp),t(sub.comp))
+        dim(comp.text) <- dim(t(sub.comp))
+        comp.text <- rbind('[component]',comp.text,';')
+        lik.text <- paste(lik.text,
+                          paste(comp.text,
+                                collapse='\n'),
+                          sep='\n')
+      }
+    }
   }
   write(lik.text,file=file)
   invisible(lik.text)
