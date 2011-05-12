@@ -498,8 +498,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
       
       likelihood <- likelihood.base
-      likelihood$weights[likelihood$weights$name %in% names(weights),
-                         'weight'] <- weights
+      likelihood$weights[names(weights),'weight'] <- weights
       write.gadget.likelihood(likelihood,
                               file=sprintf('%s/likelihood.%s',wgts,comp))
       dir.create(sprintf('%s/out.%s',wgts,comp),showWarnings=FALSE)

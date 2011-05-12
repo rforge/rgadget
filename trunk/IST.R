@@ -104,10 +104,10 @@ names(opt.h4$init.abund) <- opt$stocks
 
 power.analysis <- function(rec){
   tmp.year <- function(x){
-    AIC(negbin(value~year,~1,x,method='SANN'))@istats$AIC
+    AIC(negbin(value~year,~1,x,method='SANN'))@istats$AICc
   }
   tmp.0 <- function(x){
-    AIC(negbin(value~1,~1,x,method='SANN'))@istats$AIC
+    AIC(negbin(value~1,~1,x,method='SANN'))@istats$AICc
   }
 
   AIC.year <- ddply(rec,'variable', tmp.year)
@@ -136,9 +136,9 @@ run.tag.experiment <- function(num.tags){
   sim.h3 <- Rgadget(opt.h3)
   
   ## tags..
-  rec.h4 <- tagging.recaptures(sim.h4,2,100)
+  rec.h4 <- tagging.recaptures(sim.h4,2,1000)
   rec.h4$year <- 2:10
-  rec.h3 <- tagging.recaptures(sim.h3,2,100)
+  rec.h3 <- tagging.recaptures(sim.h3,2,1000)
   rec.h3$year <- 2:10
   ## test power
   p.h3 <- power.analysis(rec.h3)
