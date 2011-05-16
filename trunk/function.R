@@ -843,3 +843,7 @@ init.pop <- function(init.abund,M,maxage,probarea){
 #tag.experiment <- function(Abundance,tag.number){
 #  tag.number*Abundance/sum(Abundance)
 #}
+
+Births <- function(B,N,A,z,K){
+  b <- B*N*(1+A*(1-(N/K)^z))
+}

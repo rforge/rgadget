@@ -1,4 +1,4 @@
-source('function.R')
+>source('function.R')
 source('whaleStock.R')
 source('summaryFunc.R')
 library(plyr)
@@ -46,6 +46,13 @@ opt$tag.loss <- 1
 opt$recapture.lambda <- 2
 opt$gender.division <- c(Male=1/2,Female=1/2)
 
+## birth parameters obtained in the IST-trial 
+opt$density.z <- 2.38980
+opt$age.of.parturation <- 6
+opt$resiliance.a <- c(r1=0.17031,r2=0.42577,r4=0.68123)
+opt$avg.B <- 2/(opt$maxage-opt$age.of.parturation)
+opt$msyl <- 0.72
+opt$msyr <- c(r1=0.01,r2=0.02,r4=0.04)
 
 ## migration and dispersion
 opt$gamma.mix <- 0.8
@@ -103,10 +110,11 @@ names(opt.h4$init.abund) <- opt$stocks
 
 
 power.analysis <- function(rec){
-  tmp.func <- function(x){
-    tmp.year <- negbin(value~year,~1,x,method='SANN')
-    tmp.0 <- negbin(value~1,~1,x,method='SANN')
-    anova(tmp.year,tmp.0)@anova.table[2,11]
+  tmp.year <- function(x){
+    AIC(negbin(value~year,~1,x,method='SANN'))@istats$AICc
+  }
+  tmp.0 <- function(x){
+    AIC(negbin(value~1,~1,x,method='SANN'))@istats$AICc
   }
 
 #  AIC.year <- ddply(rec,'variable', tmp.year)
