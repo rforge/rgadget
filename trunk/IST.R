@@ -110,11 +110,10 @@ names(opt.h4$init.abund) <- opt$stocks
 
 
 power.analysis <- function(rec){
-  tmp.year <- function(x){
-    AIC(negbin(value~year,~1,x,method='SANN'))@istats$AICc
-  }
-  tmp.0 <- function(x){
-    AIC(negbin(value~1,~1,x,method='SANN'))@istats$AICc
+  tmp.func <- function(x){
+    tmp.year <- negbin(value~year,~1,x,method='SANN')
+    tmp.0 <- negbin(value~1,~1,x,method='SANN')
+    return(anova(tmp.year,tmp0)@anova.table$P[2])
   }
 
 #  AIC.year <- ddply(rec,'variable', tmp.year)
