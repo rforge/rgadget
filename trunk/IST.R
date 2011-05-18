@@ -1,4 +1,4 @@
->source('function.R')
+source('function.R')
 source('whaleStock.R')
 source('summaryFunc.R')
 library(plyr)

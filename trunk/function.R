@@ -845,5 +845,13 @@ init.pop <- function(init.abund,M,maxage,probarea){
 #}
 
 Births <- function(B,N,A,z,K){
-  b <- B*N*(1+A*(1-(N/K)^z))
+  b <- array(0,c(dim(N)[1],2,dim(N)[2]),
+             dimnames=list(stock=dimnames(N)$stock,
+               gender=c('Male','Female'),
+               area=dimnames(N)$area))
+  for(stock in dimnames(N)$stock){
+    b[stock,'Male',] <- 0.5*B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
+    b[stock,'Female',] <- 0.5*B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
+  }
+  return(b)
 }

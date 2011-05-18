@@ -316,13 +316,12 @@ Rgadget <- function(opt=gadget.options()){
     
     ## #########
     ## Recruits
-    N <- apply(Abundance[,'Females',,,
-                         1+opt$age.of.parturation:opt:maxage,i],
-               1,sum)
-    Abundance[,,,,'0',i] <- Births(Abundance[,'Females',,,
-                                             1+opt$age.of.parturation:opt:maxage,i],
-                                opt$avg.B,opt$resiliance.a,
-                                opt$density.z,opt$init.abund)
+    N <- apply(Abundance[,'Female',,,
+                         opt$age.of.parturation:opt$maxage + 1,i],
+               1:2,sum)
+    Abundance[,,,,'0',i] <-
+      Births(opt$avg.B,N,opt$resiliance.a['r1'],
+             opt$density.z,opt$init.abund)
     
   }
 
