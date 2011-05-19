@@ -257,6 +257,17 @@ Rgadget <- function(opt=gadget.options()){
       Tagged[,,,,opt$numofagegroups,i] <-
         Tagged[,,,,opt$numofagegroups,i] +
           Tagged[,,,,opt$numofagegroups,i-1]
+
+      if(!is.null(opt$dispersion)){
+        Abundance[,'Male',,,,i] <-
+          dispersion(Abundance[,'Male',,,,i],opt$dispersion)
+        Abundance[,'Female',,,,i] <-
+          dispersion(Abundance[,'Female',,,,i],opt$dispersion)
+        Tagged[,'Male',,,,i] <-
+          dispersion(Tagged[,'Male',,,,i],opt$dispersion)
+        Tagged[,'Female',,,,i] <-
+          dispersion(Tagged[,'Female',,,,i],opt$dispersion)
+      }
       
       if(!is.null(opt$mixing)){
         Abundance[,'Male',,,,i] <-
@@ -271,16 +282,7 @@ Rgadget <- function(opt=gadget.options()){
       
     }
 
-    if(!is.null(opt$dispersion)){
-      Abundance[,'Male',,,,i] <-
-        dispersion(Abundance[,'Male',,,,i],opt$dispersion)
-      Abundance[,'Female',,,,i] <-
-        dispersion(Abundance[,'Female',,,,i],opt$dispersion)
-      Tagged[,'Male',,,,i] <-
-        dispersion(Tagged[,'Male',,,,i],opt$dispersion)
-      Tagged[,'Female',,,,i] <-
-        dispersion(Tagged[,'Female',,,,i],opt$dispersion)
-    }
+
 
     ## ##########
     ## Catch calculations    

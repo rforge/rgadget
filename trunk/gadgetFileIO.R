@@ -744,6 +744,7 @@ read.gadget.stockfiles <- function(stock.files){
                    })
   stocks$sf <- NULL
 }
+
 ##' <description>
 ##'
 ##' <details>
@@ -803,6 +804,7 @@ read.gadget.time <- function(time.file='time'){
   class(time) <- c('gadget.time',class(time))
   return(time)
 }
+
 ##' <description>
 ##'
 ##' <details>
