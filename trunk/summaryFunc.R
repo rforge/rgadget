@@ -497,7 +497,23 @@ tagging.recaptures <- function(sim,lambda,N){
   p <- lambda/(1+lambda)
   
   rec <- adply(U[-1],1,function(x) rnbinom(N,size=x,prob=p))
-  rec <- melt(rec,id='X1')
+
+  if(!is.null(sim$opt$dispersion)){
+    Cstock <- c('C1','C2','C3')
+    ci <- sim$opt$quota*10
+    Ri <- ci*(ci-1)/(2*sum(sim$opt$init.abund[Cstock]))
+    rho <- apply(rec[,-1],2,sum)/Ri
+  } else {
+    ci <-t(rmultinom(N,
+                     size=sum(sim$Catches),
+                     prob=apply(sim$Catches,2,sum)
+                     ))
+    names(ci) <- dimnames(sim$Abundance)$stocks
+    Ri <- ci*(ci-1)/(2*sim$opt$init.abund)
+    rho <- apply(rec[,-1],2,sum)/apply(Ri,1,sum)
+  }
   
-  return(rec)
+
+  rec <- melt(rec,id='X1')  
+  return(list(rec=rec,rho=rho,ci=ci,Ri=Ri))
 }

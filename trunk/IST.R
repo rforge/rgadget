@@ -143,16 +143,16 @@ run.tag.experiment <- function(num.tags){
   
   ## tags..
   rec.h4 <- tagging.recaptures(sim.h4,2,1000)
-  rec.h4$year <- 2:10
+  rec.h4$rec$year <- 2:10
   rec.h3 <- tagging.recaptures(sim.h3,2,1000)
-  rec.h3$year <- 2:10
-  ## test power
-  p.h3 <- power.analysis(rec.h3)
-  p.h4 <- power.analysis(rec.h4)
-  
+  rec.h3$rec$year <- 2:10
+  ## test power of a regular tagging experiment
+  p.h3 <- power.analysis(rec.h3$rec)
+  p.h4 <- power.analysis(rec.h4$rec)
+ 
   save(sim.h4,sim.h3,rec.h4,rec.h3,p.h3,p.h4,
        file=sprintf('tag%s.RData',num.tags))
   return(list(h3=p.h3,h4=p.h4))
 }
 
-hypo.test <- mclapply(100*(1:10),run.tag.experiment)
+hypo.test <- mclapply(100*(1:15),run.tag.experiment)
