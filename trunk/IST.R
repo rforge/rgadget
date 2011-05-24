@@ -1,6 +1,6 @@
-source('function.R')
-source('whaleStock.R')
-source('summaryFunc.R')
+#source('function.R')
+#source('whaleStock.R')
+#source('summaryFunc.R')
 library(plyr)
 library(reshape)
 library(aod)
@@ -110,15 +110,41 @@ names(opt.h4$init.abund) <- opt$stocks
 
 
 power.analysis <- function(rec){
-  tmp.func <- function(x){
-    tmp.year <- negbin(value~year,~1,x,method='SANN')
-    tmp.0 <- negbin(value~1,~1,x,method='SANN')
-    return(anova(tmp.year,tmp.0)@anova.table$P[2])
-  }
+#  tmp.func <- function(x){
+#    tmp.year <- negbin(value~year,~1,x,method='SANN')
+#    tmp.0 <- negbin(value~1,~1,x,method='SANN')
+#    return(anova(tmp.year,tmp.0)@anova.table$P[2])
+#  }
 
 #  AIC.year <- ddply(rec,'variable', tmp.year)
 #  AIC.0 <- ddply(rec,'variable', tmp.0)
- 
+
+  tagLik <- function(y,theta){
+    
+    sum(-(lgamma(y+theta)+theta*log(1/3) + y*log(2/3) - (lgamma(y+1) + lgamma(theta))))
+  }
+  
+  tagMin <- function(x,y){
+    if(x[1] < 0 | x[2] < 0)
+      1e6
+    else
+      tagLik(y,2:10*x[1]+x[2])
+  }
+  
+  tagMin0 <- function(x,y){
+    if(x < 0)
+      1e6
+    else
+      tagLik(y,x)
+  }
+
+  tmp.func <- function(x){
+    tmp.year <- optim(c(1,1),tagMin,y=x$value,method='SANN')
+    tmp.0 <- optim(1,tagMin0,y=x$value,method='SANN')
+    lrt <- 2*(tmp.0$value - tmp.year$value)
+    return(1-pchisq(lrt,df=1))
+  }
+  
   return(ddply(rec,'variable', tmp.func))
   
 }
