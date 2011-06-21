@@ -1,6 +1,6 @@
-#source('function.R')
-#source('whaleStock.R')
-#source('summaryFunc.R')
+source('function.R')
+source('whaleStock.R')
+source('summaryFunc.R')
 library(plyr)
 library(reshape)
 library(aod)
@@ -182,3 +182,12 @@ run.tag.experiment <- function(num.tags){
 }
 
 hypo.test <- mclapply(100*(1:15),run.tag.experiment)
+
+rho.test <- within(list(h3=1:15,h4=1:15),
+                   for(i in 1:15){
+                     load(sprintf('tag%s.RData',i*100))
+                     qq <- quantile(rec.h4$rho,0.95)
+                     h4[i] <- sum(rec.h4$rho>qq)/1000
+                     h3[i] <- sum(rec.h3$rho>qq)/1000
+                   }
+                   )
