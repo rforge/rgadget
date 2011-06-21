@@ -671,7 +671,20 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 }
 
 
-
+##' <description>
+##'
+##' <details>
+##' @title Bootstrap control 
+##' @param bs.likfile Likelihood file from the DW
+##' @param main Main file for the gagdet model
+##' @param bs.wgts folder containing the resulting reweights
+##' @param bs.data folder containing the bootstrap dataset obtain from the DW
+##' @param rew.sI should the survey indices be reweighted seperately
+##' @param grouping list of grouped likelihood components
+##' @param qsub.script name of the qsub script if the calculations is meant to be run on a cluser
+##' @param run.final logical, is this the final run or weighting run. 
+##' @return NULL
+##' @author Bjarki Thor Elvarsson
 gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
                              bs.wgts='WGTS/BS.WGTS',
                              bs.data='DataB'
