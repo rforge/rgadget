@@ -140,7 +140,8 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @param file name of the likelihood file
 ##' @return character string corresponding to the likelihood file (if desired)
 ##' @author Bjarki Şór Elvarsson
-write.gadget.likelihood <- function(lik,file='likelihood'){
+write.gadget.likelihood <- function(lik,file='likelihood',
+                                    data.folder=NULL){
   lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s',file)
   weights <- lik$weights
   lik$weights <- NULL
@@ -151,6 +152,9 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
   weights$ageaggfile <- NULL
   for(comp in lik){
     if(class(comp) == 'data.frame'){
+      if(!is.null(data.folder)){
+        comp$datafile <- paste(data.folder,comp$datafile,sep='/')
+      }
       comp <- merge(weights,comp,by='name',sort=FALSE)
       comp.text <- paste(names(comp),t(comp))
       dim(comp.text) <- dim(t(comp))
@@ -161,6 +165,9 @@ write.gadget.likelihood <- function(lik,file='likelihood'){
                         sep='\n')
     } else {
       for(sub.comp in comp){
+        if(!is.null(data.folder)){
+          sub.comp$datafile <- paste(data.folder,sub.comp$datafile,sep='/')
+        }
         sub.comp <- merge(weights,sub.comp,by='name',sort=FALSE)
         comp.text <- paste(names(sub.comp),t(sub.comp))
         dim(comp.text) <- dim(t(sub.comp))

@@ -674,6 +674,7 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 
 gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
                              bs.wgts='WGTS/BS.WGTS',
+                             bs.data='DataB'
                              params.file = 'params.in',
                              rew.sI = FALSE,
                              grouping = NULL,
@@ -691,27 +692,35 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
                   function(x) paste(x[-length(x)],collapse='.')))
   bs.samples <- unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
                               function(x) paste(x[length(x)],collapse='.')))
-  if(run.final) {
-    ## NOT IMPLEMENTED YET
-    return(NULL)
-  } else {
+
     
-    for(i in bs.samples){
+  for(i in bs.samples){
+    bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
+    bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
+    if(!run.final) {
       bs.comp <- paste(base.comp,i,sep='.')
       tmp.lik <- get.gadget.likelihood(bs.lik,bs.comp)
-      tmp.lik <- merge.gadget.likelihood(common.lik,tmp.lik)
-      bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
-      bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
+      tmp.lik <- merge.gadget.likelihood(common.lik,tmp.lik)      
       bs.main <- main
       bs.main$likelihoodfiles <- bs.lik.file
       write.gadget.main(bs.main,bs.main.file)
-      write.gadget.likelihood(tmp.lik,bs.lik.file)
-      tmp <- gadget.iterative(main.file=bs.main.file,params.file = params.file,
+      write.gadget.likelihood(tmp.lik,bs.lik.file,bs.data)
+      tmp <- gadget.iterative(main.file=bs.main.file,
+                              params.file = params.file,
                               grouping=grouping,rew.sI = rew.sI,
-                              qsub.script = qsub.script)
+                              qsub.script = qsub.script,
+                              wgts=sprintf('%s/BS%s',bs.wgts,i),
+                              run.final=FALSE)
+    } else {
+      tmp <- gadget.iterative(main.file=bs.main.file,
+                              params.file = params.file,
+                              grouping=grouping,rew.sI = rew.sI,
+                              qsub.script = qsub.script,
+                              wgts=sprintf('%s/BS%s',bs.wgts,i),
+                              run.final=TRUE)
     }
-    return(NULL)
   }
+  return(NULL)
 }
 
 
