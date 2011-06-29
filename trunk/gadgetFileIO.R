@@ -40,17 +40,17 @@ read.printfiles <- function(path='.'){
 read.gadget.likelihood <- function(files='likelihood'){
   lik <- NULL
   for(file in files)
-    lik <- c(lik,sub(' +$','',readLines(file)))
+    lik <- c(lik,sub(' +$','',gsub('\t',' ',readLines(file))))
   lik <- lik[lik!='']
   lik <- lik[!grepl(';',substring(lik,1,1))]
-  lik <- sapply(strsplit(lik,';'),function(x) x[1])
+  lik <- sapply(strsplit(lik,';'),function(x) sub(' +$','',x[1]))
   comp.loc <- grep('component',lik)
   name.loc <- comp.loc+3
   weights <- NULL
   common <- c('name','weight','type','datafile','areaaggfile','lenaggfile',
               'ageaggfile')
   tmp.func <- function(comp){
-    loc <- grep(comp,lik[name.loc])  
+    loc <- grep(tolower(comp),tolower(lik[name.loc]))  
     if(sum(loc)==0){
       return(NULL)
     }else {
@@ -72,13 +72,16 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp <- as.data.frame(tmp,stringsAsFactors=FALSE)[2,]
           names(tmp) <- names.tmp
           row.names(tmp) <- tmp$name
+          tmp$type <- tolower(tmp$type)
         } else {
           names.tmp <- sapply(tmp,function(x) x[1])
-          tmp <- sapply(tmp,function(x) paste(x[-1],collapse='\t'))
+          tmp <- sapply(tmp,function(x) paste(x[-1], collapse='\t'))
           names(tmp) <- names.tmp
+          tmp <- as.data.frame(t(tmp),stringsAsFactors=FALSE)
+          tmp$type <- tolower(tmp$type)
         }
         
-        if(comp=='understocking'|comp=='migrationpenalty'){
+        if(tolower(comp)=='understocking'|tolower(comp)=='migrationpenalty'){
           tmp$datafile <- ''
         }
         if(is.null(tmp$areaaggfile))
@@ -89,9 +92,10 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp$ageaggfile <- ''
 
         weights <<-  rbind(weights,
-                           as.data.frame(t(unlist(tmp[common])),
-                                         stringsAsFactors=FALSE))
-        if(comp=='understocking'|comp=='migrationpenalty'){
+                           tmp[common])
+#                           as.data.frame(t(unlist(tmp[common])),
+#                                         stringsAsFactors=FALSE))
+        if(tolower(comp)=='understocking'|tolower(comp)=='migrationpenalty'){
           tmp$datafile <- NULL
         }
 
@@ -138,10 +142,12 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @title Write likelihood
 ##' @param lik object of class gadget.likelihood
 ##' @param file name of the likelihood file
+##' @param data.folder 
+##' @param bs.sample 
 ##' @return character string corresponding to the likelihood file (if desired)
 ##' @author Bjarki Þór Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',
-                                    data.folder=NULL){
+                                    data.folder=NULL, bs.sample=NULL){
   lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s',file)
   weights <- lik$weights
   lik$weights <- NULL
@@ -179,7 +185,7 @@ write.gadget.likelihood <- function(lik,file='likelihood',
       }
     }
   }
-  write(lik.text,file=file)
+  write(sprintf(lik.text,bs.sample),file=file)
   invisible(lik.text)
 }
 
