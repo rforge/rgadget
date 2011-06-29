@@ -493,7 +493,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       write.gadget.printfile(printfile,
                              sprintf('%s/%s.%s',wgts,'printfile',comp),
                              sprintf('%s/out.%s',wgts,comp))
-      main$printfile <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+      main$printfiles <- sprintf('%s/%s.%s',wgts,'printfile',comp)
       main$likelihoodfiles <- sprintf('%s/likelihood.%s',wgts,comp)
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
       
