@@ -573,7 +573,7 @@ read.gadget.results <- function(comp,
   names(res) <- names(SS.table)
   SS.table <- rbind(SS.table,res)
   lik.dat <- read.gadget.data(likelihood)
-  return(list(SS=SS.table,lik.out=lik.out))
+  return(list(SS=SS.table,lik.dat=lik.dat))
 }
 
 
