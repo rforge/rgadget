@@ -270,6 +270,7 @@ callParamin <- function(i='params.in',
 ##' @param wgts a string containing the path the folder where the
 ##' interim weighting results should be stored. 
 ##' @param grouping a list naming the groups of components that should be reweighted together. 
+##' @param optinfofile optinfofile used in the reweighting
 ##' @param PBS Logical, should the gadget runs be defined to be run in pbs
 ##' scripts (defaults to FALSE).
 ##' @param qsub.script Name of cluster submission script.
@@ -282,6 +283,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              resume.final=FALSE,
                              wgts = 'WGTS',
                              grouping = NULL,
+                             optinfofile='optinfofile',
                              PBS = FALSE,
                              qsub.script = NULL
                              ) {
@@ -406,7 +408,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                main=paste(paste(wgts,'main',sep='/'),comp,sep='.'),
                i=params.file,
                p=paste(wgts,paste('params',comp,sep='.'),sep='/'),
-               opt='optinfofile',
+               opt=optinfofile,
                gadget.exe=gadget.exe,
                PBS=PBS,
                qsub.script=qsub.script,
@@ -447,7 +449,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                  main=sprintf('%s/main.%s',wgts,comp),
                  i=params.file,
                  p=sprintf('%s/params.%s',wgts,comp),
-                 opt='optinfofile',
+                 opt=optinfofile,
                  gadget.exe=gadget.exe,
                  PBS=PBS,
                  PBS.name=paste(wgts,comp,sep='/'),
@@ -493,7 +495,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       write.gadget.printfile(printfile,
                              sprintf('%s/%s.%s',wgts,'printfile',comp),
                              sprintf('%s/out.%s',wgts,comp))
-      main$printfiles <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+      main$printfile <- sprintf('%s/%s.%s',wgts,'printfile',comp)
       main$likelihoodfiles <- sprintf('%s/likelihood.%s',wgts,comp)
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
       
@@ -520,6 +522,58 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   }
   return(list(comp=run.string,final=comp,wgts=wgts))
 #  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
+}
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param comp list of likelihood components (with groupings if necessary)
+##' @param final 
+##' @param wgts 
+##' @param likelihood.file 
+##' @return 
+##' @author Bjarki Þór Elvarsson
+read.gadget.results <- function(comp,
+                                final,
+                                wgts='WGTS',
+                                likelihood.file='likelihood'
+                                ){
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param file 
+##' @return 
+##' @author Bjarki Þór Elvarsson
+  read.gadget.SS <- function(file='lik.out'){
+    lik.out <- readLines(file)
+    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
+                                           '\t\t')[[1]][2]))
+    return(SS)
+  }
+  likelihood <- read.gadget.likelihood(likelihood.file)
+  res <- lapply(comp,
+                function(x)
+                read.gadget.SS(paste(wgts,
+                                     paste('lik',
+                                           paste(x,collapse='.'),
+                                           sep='.'),sep='/')))                
+  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
+  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
+  names(SS.table) <- likelihood$weights$name
+
+  res <- lapply(final,
+                function(x)
+                read.gadget.SS(paste(wgts,
+                                     paste('lik',
+                                           paste(x,collapse='.'),
+                                           sep='.'),sep='/')))                
+  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
+  SS.table <- rbind(SS.table,
+                    as.data.frame(t(sapply(res,function(x) x)))
+                    )
+  lik.dat <- read.gadget.data(likelihood)
+  return(list(SS=SS.table,lik.out=lik.out))
 }
 
 
@@ -687,7 +741,7 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 ##' @author Bjarki Thor Elvarsson
 gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
                              bs.wgts='WGTS/BS.WGTS',
-                             bs.data='DataB'
+                             bs.data='DataB',
                              params.file = 'params.in',
                              rew.sI = FALSE,
                              grouping = NULL,
