@@ -569,9 +569,9 @@ read.gadget.results <- function(comp,
                                            paste(x,collapse='.'),
                                            sep='.'),sep='/')))                
   names(res) <- sapply(final,function(x) paste(x,collapse='.'))
-  SS.table <- rbind(SS.table,
-                    as.data.frame(t(sapply(res,function(x) x)))
-                    )
+  res <- as.data.frame(t(sapply(res,function(x) x)))
+  names(res) <- names(SS.table)
+  SS.table <- rbind(SS.table,res)
   lik.dat <- read.gadget.data(likelihood)
   return(list(SS=SS.table,lik.out=lik.out))
 }
