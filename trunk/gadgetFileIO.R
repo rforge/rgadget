@@ -322,7 +322,62 @@ read.gadget.parameters <- function(file='params.in'){
   params <- read.table(file,header=TRUE,
                        comment.char=';',
                        stringsAsFactors=FALSE)
+
+  ## digg through the data written in the header
+  header <- readLines(file)
+  header <- header[grepl(';',substring(header,1,1))]
+
+  num.func <- function(pre){
+    post <- ' function evaluations'
+    num <- as.numeric(gsub(post,'',gsub(pre,'',header[grepl(pre,header)])))
+    return(num)
+  }
+
+  ## Number of function evaluations
+  sim.func.str <- '; Simulated Annealing algorithm ran for '
+  sim.pos <- grep(sim.func.str,header)
+  
+  hook.func.str <- '; Hooke & Jeeves algorithm ran for '
+  hook.pos <- grep(hook.func.str,header)
+  
+  bfgs.func.str <- '; BFGS algorithm ran for '
+  bfgs.pos <- grep(bfgs.func.str,header)
+  
+
+  
+  ## final likelihood values from each component
+  lik.func <- function(i){
+    as.numeric(gsub('; and stopped when the likelihood value was ','',
+                    header[i]))
+  }
+  
+  ## convergence
+  conv.func <- function(i){
+    error <- '; because an error occured during the optimisation'
+    converged <- '; because the convergence criteria were met'
+    maxiter <-
+      '; because the maximum number of function evaluations was reached'
+    ifelse(header[i]==error,'Error in optimisation',
+           ifelse(header[i]==converged,'Convergence criteria were met',
+                  ifelse(header[i]==maxiter,'Maximum number of iterations',
+                         'No information')))
+  }
+  
+  
+  tmp <- list(simann=data.frame(numFunc=num.func(sim.func.str),
+                lik.val=lik.func(sim.pos+1),
+                convergence=conv.func(sim.pos+2),
+                stringsAsFactors=FALSE),
+              hooke=data.frame(numFunc=num.func(hook.func.str),
+                lik.val=lik.func(hook.pos+1),
+                convergence=conv.func(hook.pos+2),
+                stringsAsFactors=FALSE),
+              bfgs=data.frame(numFunc=num.func(bfgs.func.str),
+                lik.val=lik.func(bfgs.pos+1),
+                convergence=conv.func(bfgs.pos+2),
+                stringsAsFactors=FALSE))
   class(params) <- c('gadget.parameters',class(params))
+  attr(params,'optim.info') <- tmp
   return(params)
 }
 ##' Write gadget input parameters
