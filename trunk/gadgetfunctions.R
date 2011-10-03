@@ -1,4 +1,7 @@
 library(multicore)
+library(doMC)
+library(foreach)
+registerDoMC()
 #source('gadgetFileIO.R')
 
 ##' This function sets up all necessary switches and calls gadget from R
@@ -761,7 +764,7 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
                               function(x) paste(x[length(x)],collapse='.')))
 
     
-  for(i in bs.samples){
+  foreach(i=bs.samples) %dopar% {
     bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
     bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
     if(!run.final) {
