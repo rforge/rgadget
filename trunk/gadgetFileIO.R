@@ -185,7 +185,10 @@ write.gadget.likelihood <- function(lik,file='likelihood',
       }
     }
   }
-  write(sprintf(lik.text,bs.sample),file=file)
+  if(!is.null(bs.sample))
+    write(sprintf(lik.text,bs.sample),file=file)
+  else
+    write(lik.text,file=file)
   invisible(lik.text)
 }
 

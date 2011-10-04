@@ -127,7 +127,7 @@ callGadget <- function(l=NULL,
     } else {
       PBS.header <-
         paste('#!/bin/bash',
-              sprint('# job file for pbs queue created by Rgadget at %s',
+              sprintf('# job file for pbs queue created by Rgadget at %s',
                      date()),
               '# Copy evironment, join output and error, medium queue:',
               '#PBS -V',
@@ -146,18 +146,18 @@ callGadget <- function(l=NULL,
                           run.string,
                           sep='\n')
       write(PBS.script, file=sprintf('%s.sh',PBS.name))
-      Sys.chmod(PBS.script,mode = '0777')
+      Sys.chmod(sprintf('%s.sh',PBS.name),mode = '0777')
       if(!is.null(qsub.script)){
         dir.create(qsub.output)
         qsub.string <-
-          sprintf('# %s\nqsub -N gadget-%s -o %s/%1$s.txt %1$s.sh',
-                  date(),PBS.name,qsub.output)
+          sprintf('# %1$s\nqsub -N gadget-%2$s -o %3$s/%4$s.txt %2$s.sh \n',
+                  date(),PBS.name,qsub.output,gsub('/','.',PBS.name))
         if(file.exists(qsub.script)){
           write(qsub.string,file=qsub.script,append=TRUE)
         } else {
           header <-
             paste('#!/bin/bash',
-                  sprintf('# create by Rgadget at %s',date()),
+                  sprintf('# created by Rgadget at %s',date()),
                   sep='\n')
           write(paste(header,qsub.string,sep='\n'),file=qsub.script)
           Sys.chmod(qsub.script,mode = '0777')
@@ -307,9 +307,12 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   ## read model
   main <- read.gadget.main(main.file)
-  printfile <- read.gadget.printfile(main$printfile)
+  if(!is.null(main$printfile))
+    printfile <- read.gadget.printfile(main$printfile)
+  else
+    printfile <- NULL
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-  params.in <-read.gadget.parameters(params.file)
+#  params.in <-read.gadget.parameters(params.file)
   
   ## initial run (to determine the initial run)
   main.init <- main
@@ -495,10 +498,12 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     ## final run
     write.files <- function(comp,weights){
       main <- main.base
-      write.gadget.printfile(printfile,
-                             sprintf('%s/%s.%s',wgts,'printfile',comp),
-                             sprintf('%s/out.%s',wgts,comp))
-      main$printfile <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+      if(!is.null(printfile)){
+        write.gadget.printfile(printfile,
+                               sprintf('%s/%s.%s',wgts,'printfile',comp),
+                               sprintf('%s/out.%s',wgts,comp))
+        main$printfile <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+      }
       main$likelihoodfiles <- sprintf('%s/likelihood.%s',wgts,comp)
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
       
@@ -518,7 +523,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
     
 
-    mclapply(comp,run.final)
+    lapply(comp,run.final)
 
   } else {
     comp <- NULL
@@ -564,7 +569,7 @@ read.gadget.results <- function(comp,
   names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
   SS.table <- as.data.frame(t(sapply(res,function(x) x)))
   names(SS.table) <- likelihood$weights$name
-
+  
   res <- lapply(final,
                 function(x)
                 read.gadget.SS(paste(wgts,
@@ -576,7 +581,7 @@ read.gadget.results <- function(comp,
   names(res) <- names(SS.table)
   SS.table <- rbind(SS.table,res)
   lik.dat <- read.gadget.data(likelihood)
-  return(list(SS=SS.table,lik.dat=lik.dat))
+  return(list(SS=SS.table,,lik.dat=lik.dat))
 }
 
 
@@ -733,61 +738,75 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 ##' <details>
 ##' @title Bootstrap control 
 ##' @param bs.likfile Likelihood file from the DW
+##' @param bs.samples 
 ##' @param main Main file for the gagdet model
+##' @param optinfofile 
 ##' @param bs.wgts folder containing the resulting reweights
 ##' @param bs.data folder containing the bootstrap dataset obtain from the DW
+##' @param params.file 
 ##' @param rew.sI should the survey indices be reweighted seperately
 ##' @param grouping list of grouped likelihood components
 ##' @param qsub.script name of the qsub script if the calculations is meant to be run on a cluser
 ##' @param run.final logical, is this the final run or weighting run. 
+##' @param PBS logical, is this a cluster run? 
 ##' @return NULL
 ##' @author Bjarki Thor Elvarsson
-gadget.bootstrap <- function(bs.likfile = 'likelihood',main='main',
-                             bs.wgts='WGTS/BS.WGTS',
-                             bs.data='DataB',
+gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
+                             bs.samples = 1,
+                             main='main',
+                             optinfofile='optinfo',
+                             bs.wgts='BS.WGTS',
+                             bs.data=NULL,
                              params.file = 'params.in',
                              rew.sI = FALSE,
                              grouping = NULL,
                              qsub.script = 'bootstrap.sh',
-                             run.final = FALSE
+                             run.final = FALSE,
+                             PBS=TRUE
                              ){
+  
+  dir.create(bs.wgts,showWarnings=FALSE)
   main <- read.gadget.main(main)
   bs.lik <- read.gadget.likelihood(bs.likfile)
-  restr <- !(bs.lik$weights$type %in%
-             c('penalty','understocking','migrationpenalty'))
-  common.lik <- bs.lik[bs.lik$weights$type[!restr]]
-  
-  base.comp <-
-    unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
-                  function(x) paste(x[-length(x)],collapse='.')))
-  bs.samples <- unique(sapply(strsplit(bs.lik$weights$name[restr],'\\.'),
-                              function(x) paste(x[length(x)],collapse='.')))
-
     
   foreach(i=bs.samples) %dopar% {
-    bs.lik.file <- sprintf('%s/likelihood.%s',bs.wgts,i)
-    bs.main.file <- sprintf('%s/main.%s',bs.wgts,i)
+    dir.create(sprintf('%s/BS.%s',bs.wgts,i),showWarnings=FALSE)
+    bs.lik.file <- sprintf('%s/BS.%s/likelihood',bs.wgts,i)
+    bs.main.file <- sprintf('%s/BS.%s/main',bs.wgts,i)
     if(!run.final) {
-      bs.comp <- paste(base.comp,i,sep='.')
-      tmp.lik <- get.gadget.likelihood(bs.lik,bs.comp)
-      tmp.lik <- merge.gadget.likelihood(common.lik,tmp.lik)      
       bs.main <- main
       bs.main$likelihoodfiles <- bs.lik.file
       write.gadget.main(bs.main,bs.main.file)
-      write.gadget.likelihood(tmp.lik,bs.lik.file,bs.data)
+      write.gadget.likelihood(bs.lik,bs.lik.file,bs.data,sprintf('.%s',i))
       tmp <- gadget.iterative(main.file=bs.main.file,
                               params.file = params.file,
-                              grouping=grouping,rew.sI = rew.sI,
+                              grouping = grouping,
+                              optinfofile = optinfofile,
+                              rew.sI = rew.sI,
+                              PBS = PBS,
                               qsub.script = qsub.script,
-                              wgts=sprintf('%s/BS%s',bs.wgts,i),
-                              run.final=FALSE)
+                              wgts = sprintf('%s/BS.%s',bs.wgts,i),
+                              run.final = FALSE)
+      if(PBS)
+        write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
+      if(i > 100 & PBS)
+        write('sleep 6m',file=qsub.script,append=TRUE)
+      
     } else {
-      tmp <- gadget.iterative(main.file=bs.main.file,
+      tmp <- gadget.iterative(main.file = bs.main.file,
                               params.file = params.file,
-                              grouping=grouping,rew.sI = rew.sI,
+                              grouping = grouping,
+                              PBS = PBS,
+                              optinfofile = optinfofile,
+                              rew.sI = rew.sI,
                               qsub.script = qsub.script,
-                              wgts=sprintf('%s/BS%s',bs.wgts,i),
-                              run.final=TRUE)
+                              wgts = sprintf('%s/BS.%s',bs.wgts,i),
+                              resume.final = TRUE,
+                              run.final = TRUE)
+      if(PBS)
+        write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
+      if(i > 100 & PBS)
+        write('sleep 6m',file=qsub.script,append=TRUE)
     }
   }
   return(NULL)
