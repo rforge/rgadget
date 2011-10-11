@@ -1,3 +1,5 @@
+library(reshape2)
+library(plyr)
 library(multicore)
 library(doMC)
 library(foreach)
@@ -299,6 +301,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @return vector of likelihood values
   ##' @author Bjarki Þór Elvarsson
   read.gadget.SS <- function(file='lik.out'){
+    print(file)
     lik.out <- readLines(file)
     SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
                                            '\t\t')[[1]][2]))
@@ -437,7 +440,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   ## Do we want to run the final optimisation (only used for debug purposes,
   ## and the check should be removed in later revisions)
-
+  
   if(run.final){
     res <- lapply(run.string,
                   function(x)
@@ -812,4 +815,20 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   return(NULL)
 }
 
+read.gadget.bootstrap <- function(params.file='params.in',
+                                  bs.wgts='BS.WGTS',
+                                  bs.samples=1:100){
+  params.in <- read.gadget.parameters(params.file)
+  param.frame <- as.data.frame(t(params.in['value']))
+  param.frame$method <- 'Init'
+  param.
+  files <- list.files(sprint('%s/BS.%s',i))
+  ## read in all parameterfiles
+  params <- files[grep('params',files)]
+  dparam <- data.frame(m
+  for(p in param){
+    
+  }
+  
+}
 

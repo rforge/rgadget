@@ -325,7 +325,7 @@ read.gadget.parameters <- function(file='params.in'){
   params <- read.table(file,header=TRUE,
                        comment.char=';',
                        stringsAsFactors=FALSE)
-
+  row.names(params) <- params$switch
   ## digg through the data written in the header
   header <- readLines(file)
   header <- header[grepl(';',substring(header,1,1))]
