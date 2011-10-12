@@ -322,6 +322,18 @@ clear.spaces <- function(text){
 ##' @return dataframe
 ##' @author Bjarki Þór Elvarsson
 read.gadget.parameters <- function(file='params.in'){
+  
+  if(!file.exists(file)){
+    warning(sprintf('Error in read.gadget.parameters -- file named %s not found',
+                 file))
+    return(NULL)
+  }
+  if(substr(system(sprintf('wc -l %s', file),intern=TRUE),1,1) == 0){
+    warning(sprintf('Error in read.gadget.parameters -- file named %s is empty',
+                 file))
+    return(NULL)
+
+  }
   params <- read.table(file,header=TRUE,
                        comment.char=';',
                        stringsAsFactors=FALSE)
@@ -333,6 +345,7 @@ read.gadget.parameters <- function(file='params.in'){
   num.func <- function(pre){
     post <- ' function evaluations'
     num <- as.numeric(gsub(post,'',gsub(pre,'',header[grepl(pre,header)])))
+    num <- ifelse(length(num) == 0,NA,num)
     return(num)
   }
 
@@ -350,8 +363,10 @@ read.gadget.parameters <- function(file='params.in'){
   
   ## final likelihood values from each component
   lik.func <- function(i){
-    as.numeric(gsub('; and stopped when the likelihood value was ','',
-                    header[i]))
+    lik <- as.numeric(gsub('; and stopped when the likelihood value was ','',
+                           header[i]))
+    lik <- ifelse(length(lik) == 0,NA,lik)
+    return(lik)
   }
   
   ## convergence
@@ -360,10 +375,12 @@ read.gadget.parameters <- function(file='params.in'){
     converged <- '; because the convergence criteria were met'
     maxiter <-
       '; because the maximum number of function evaluations was reached'
-    ifelse(header[i]==error,'Error in optimisation',
-           ifelse(header[i]==converged,'Convergence criteria were met',
-                  ifelse(header[i]==maxiter,'Maximum number of iterations',
-                         'No information')))
+    msg <- ifelse(header[i]==error,'Error in optimisation',
+                  ifelse(header[i]==converged,'Convergence criteria were met',
+                         ifelse(header[i]==maxiter,
+                                'Maximum number of iterations',
+                                'No information')))
+    ifelse(length(msg)==0,NA,msg)
   }
   
   

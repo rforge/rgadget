@@ -3,7 +3,7 @@ library(plyr)
 library(multicore)
 library(doMC)
 library(foreach)
-registerDoMC()
+#registerDoMC()
 #source('gadgetFileIO.R')
 
 ##' This function sets up all necessary switches and calls gadget from R
@@ -301,7 +301,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @return vector of likelihood values
   ##' @author Bjarki Þór Elvarsson
   read.gadget.SS <- function(file='lik.out'){
-    print(file)
     lik.out <- readLines(file)
     SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
                                            '\t\t')[[1]][2]))
@@ -736,14 +735,16 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 }
 
 
+
 ##' <description>
 ##'
 ##' <details>
 ##' @title Bootstrap control 
 ##' @param bs.likfile Likelihood file from the DW
-##' @param bs.samples 
+##' @param bs.samples number (or vector of numbers) indicating what bootstrap
+##' samples should be used
 ##' @param main Main file for the gagdet model
-##' @param optinfofile 
+##' @param optinfofile optinfofile used in the optimization.
 ##' @param bs.wgts folder containing the resulting reweights
 ##' @param bs.data folder containing the bootstrap dataset obtain from the DW
 ##' @param params.file 
@@ -817,18 +818,79 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
 
 read.gadget.bootstrap <- function(params.file='params.in',
                                   bs.wgts='BS.WGTS',
-                                  bs.samples=1:100){
+                                  bs.samples=1:100,
+                                  bs.lik='likelihood'){
   params.in <- read.gadget.parameters(params.file)
-  param.frame <- as.data.frame(t(params.in['value']))
-  param.frame$method <- 'Init'
-  param.
-  files <- list.files(sprint('%s/BS.%s',i))
-  ## read in all parameterfiles
-  params <- files[grep('params',files)]
-  dparam <- data.frame(m
-  for(p in param){
-    
-  }
+  bs.lik <- read.gadget.likelihood(bs.lik)
+
+  #param.frame <- as.data.frame(t(params.in['value']))
+  #param.frame$bs.data <- 'INIT' 
+  #param.frame$method <- 'Prior'
+  #tmp <- ldply(attributes(params.in)$optim.info,function(x) cbind(fake.id=1,x))
+  #param.frame <- cbind(param.frame,
+  #                     reshape(tmp,idvar='fake.id',
+  #                             timevar='.id',direction='wide'),
+  #                     t(bs.lik$weights['weight']))
+  #param.frame$fake.id <- NULL
   
+  files <- unique(list.files(sprintf('%s/BS.%s',bs.wgts,bs.samples)))
+  ## read in all parameterfiles
+  ## params <- unique(files[grep('params',files)])
+  liks <- unique(files[grep('lik.',files,fixed=TRUE)])
+  comps <- gsub('lik.','',liks)
+
+
+  tmp.func <- function(path){
+    read.gadget.SS <- function(file='lik.out'){
+      if(!file.exists(file)){
+        SS <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
+      } else {
+        lik.out <- readLines(file)
+        SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
+                                               '\t\t')[[1]][2]))
+        SS <- as.data.frame(t(SS))
+      }
+      names(SS) <- bs.lik$weights$name
+      return(SS)
+    }
+    path.f <- list.files(path)
+    liks <- files[grep('lik.',path.f,fixed=TRUE)]
+    params <- files[grep('params.',path.f,fixed=TRUE)]
+#    restr.p <- gsub('params.','',params) %in% comps
+#    restr.l <- gsub('lik.','',liks) %in% comps
+    ldply(intersect(comps,unique(c(gsub('params.','',params),
+                                   'init'))),
+          function(x){
+            if(x=='init')
+              tmp <- params.in
+            else
+              tmp <- read.gadget.parameters(sprintf('%s/params.%s',path,x))
+            if(is.null(tmp)){
+              tmp <- params.in
+              tmp$value <- NA*tmp$value
+              ss <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
+              names(ss) <- bs.lik$weights$name
+            } else {
+              ss <- read.gadget.SS(sprintf('%s/lik.%s',path,x))
+            }
+            optim  <- ldply(attributes(tmp)$optim.info,
+                            function(x) cbind(fake.id=1,x))
+            optim <- reshape(optim,idvar='fake.id',
+                             timevar='.id',direction='wide')
+            optim$fake.id <- NULL
+            dtmp <- cbind(bs.data=gsub(sprintf('%s/',bs.wgts),'',path),
+                          comp=x,
+                          t(tmp['value']),
+                          ss,
+                          optim)
+            
+            return(dtmp)
+          }
+          )
+  }
+  dparam <- ldply(sprintf('%s/BS.%s',bs.wgts,bs.samples),tmp.func,
+                  .parallel=TRUE)
+  attr(dparam,'init.param') <- params.in
+  return(dparam)
 }
 
