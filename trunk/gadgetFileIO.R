@@ -1,3 +1,5 @@
+library(plyr)
+
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
 ##' designed to read a few nice examples, so it may work for some instances
@@ -5,30 +7,82 @@
 ##' is the line describing the column names and is the last comment line.
 ##' @title Read gadget printfiles
 ##' @param path a character string with the name of the folder containing the printfiles
+##' @param printfile gadget printfile object that was used to create the output.
+##' Defaults to NULL
+##' @param likelihood gadget likelihood object pointing to the dataset used in
+##' the fit.
 ##' @return a list containing the data that has been read in named after the files found in path.
-read.printfiles <- function(path='.'){
+read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
+##' worker function
+##' @title 
+##' @param file 
+##' @return 
+##' @author Bjarki Thor Elvarsson
   read.printfile <- function(file){
-     tmp <- readLines(file)
-     skip <- max(grep(tmp,';'))
-     header <- unlist(sapply(strsplit(tmp[skip],' '),
-                             function(x) strsplit(x[2],'-')))
-     data <- read.table(file,comment.char=';',header=FALSE)
-     if(length(names(data)) != length(header)){
-       warning(sprintf('Error in read.printfile -- Header could no be read from file %s',file))
-     } else {
-       names(data) <- header
-     }
-     return(data)
+    file <- paste(path,file,sep='/')
+    tmp <- readLines(file)
+    skip <- max(grep(';',tmp[1:10]))
+    header <- gsub('; ','',tmp[skip])
+    header <- gsub(' ','.',unlist(strsplit(header,'-')))
+    data <- read.table(file,comment.char=';',header=FALSE)
+    if(length(names(data)) != length(header)){
+      warning(sprintf('Error in read.printfile -- Header could not be read from file %s',file))
+    } else {
+      names(data) <- header
+    }
+    pos <- grep('Regression information',tmp)
+    if(length(pos)!=0){
+      regr <- as.numeric(unlist(strsplit(gsub('; ','',
+                                              tmp[pos+1]),' '))[c(3,5,7)])
+      data[c('intercept','slope','sse')] <- as.data.frame(t(regr))
+      data <- mutate(data,
+                     predict = exp(intercept)*number^slope) ## 1000 hmm
+    }
+    return(data)
   }
   out.files <- list.files(path=path)
-  printfiles <- within(list(),
-                       for(printfile in out.files){
-                         assign(printfile,
-                                read.printfile(paste(path,
-                                                     printfile,
-                                                     sep='/')))
-                       })
-  printfiles$printfile <- NULL
+  printfiles <- llply(out.files,read.printfile)
+  names(printfiles) <- out.files
+  if(!is.null(printfile)){
+    tmp <- ldply(printfile,
+                 function(x){
+                   c(x$type,gsub('out/','',x$printfile),
+                     ifelse(is.null(x$likelihood),'',
+                            x$likelihood))
+                 })
+    names(tmp) <- c('print.name','type','filename','likelihood')
+    lik.data <- read.gadget.data(likelihood)      
+    lik.comps <- llply(lik.data$dat,
+                       function(x) intersect(names(x),tmp$likelihood))
+    for(type in names(lik.comps)){
+      for(comp in lik.comps[[type]]){
+        restr <- tmp$print.name[tmp$likelihood %in% comp]
+        if(length(restr)>0){
+          print.tmp <- printfiles[[restr]]
+          lik.tmp <- lik.data$dat[[type]][[comp]]
+          col.x <- intersect(c('year', 'step', 'area', 'age', 'length','label'),
+                             names(print.tmp))
+          col.y <- intersect(c('year', 'step', 'area', 'age', 'length',
+                               'survey','fleet'),
+                             names(lik.tmp))
+          res.tmp <- merge(print.tmp, lik.tmp,
+                           by.x = col.x, by.y = col.y,
+                           suffixes = c(".fit",".dat"),
+                           all=TRUE)
+          if(type!='surveyindices'){
+            res.tmp <- mutate(res.tmp,
+                              resid = number.dat - number.fit)
+          } else {
+            res.tmp <- mutate(res.tmp,
+                              resid = log(number.dat) - log(predict))
+          }          
+          printfiles <- 
+            within(printfiles,
+                   assign(restr,res.tmp))
+        }
+      }
+    }
+  }
   return(printfiles)
 }
 ##' This functions reads the likelihood (input) file for gadget. The format of
@@ -426,6 +480,15 @@ write.gadget.parameters <- function(params,file='params.out'){
 read.gadget.printfile <- function(file='printfile'){
   printfile <- strip.comments(file)
   comp.loc <- grep('component',printfile)
+  name.loc <- grep('printfile',printfile)
+  name.print <- sapply(printfile[grep('printfile',printfile)],function(x) x[2])
+  name.print <- sapply(strsplit(name.print,'/'),function(x) tail(x,1))
+  diff.comp <- diff(c(comp.loc,length(printfile)+1))-1
+#  type.loc <- grep('type',printfile)
+#  types <- unique(sapply(printfile[type.loc],function(x) x[2]))
+#  print.types <- llply(types,function(x) grep(x,printfile))
+#  names(print.types) <- types
+  
   tmp.func <- function(restr){
     names.tmp <- sapply(printfile[restr],       
                         function(x) x[1])
@@ -434,25 +497,10 @@ read.gadget.printfile <- function(file='printfile'){
     names(tmp) <- names.tmp
     return(tmp)
   }
-  print <- within(list(),
-                  for(i in 1:length(comp.loc)){
-                    if(i < length(comp.loc)){
-                      restr <- (comp.loc[i]+1):(comp.loc[i+1]-1)
-                    } else {
-                      restr <- (comp.loc[i]+1):length(printfile)
-                    }
-                    tmp <- tmp.func(restr)                    
-                    comp.name <- sapply(strsplit(tmp$printfile,'/'),
-                                        function(x) x[length(x)])
-                    
-                    assign(comp.name,tmp)
-                  }
-                  )
-  print$i <- NULL
-  print$restr <- NULL
-  print$tmp <- NULL
-  print$comp.name <- NULL
   
+  print <- llply(1:length(comp.loc),
+                 function(x) tmp.func(comp.loc[x]+1:diff.comp[x]))
+  names(print) <- name.print
   return(print)
 }
 ##' Write the gadget prinfile to file, optionally changing the output directory
@@ -926,4 +974,98 @@ write.gadget.penalty <- function(file='penaltyfile'){
                    "default\t2\t10000\t10000 ; defaults",
                    sep='\n')
   write(penalty,file=file)
+}
+
+
+
+read.gadget.bootstrap <- function(params.file='params.in',
+                                  bs.wgts='BS.WGTS',
+                                  bs.samples=1:100,
+                                  bs.lik='likelihood'){
+  params.in <- read.gadget.parameters(params.file)
+  bs.lik <- read.gadget.likelihood(bs.lik)
+  
+  files <- unique(list.files(sprintf('%s/BS.%s',bs.wgts,bs.samples)))
+  ## read in all parameterfiles
+  ## params <- unique(files[grep('params',files)])
+  liks <- unique(files[grep('lik.',files,fixed=TRUE)])
+  comps <- gsub('lik.','',liks)
+
+
+  tmp.func <- function(path){
+    read.gadget.SS <- function(file='lik.out'){
+      if(!file.exists(file)){
+        SS <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
+      } else {
+        lik.out <- readLines(file)
+        SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
+                                               '\t\t')[[1]][2]))
+        SS <- as.data.frame(t(SS))
+      }
+      names(SS) <- bs.lik$weights$name
+      return(SS)
+    }
+    path.f <- list.files(path)
+    liks <- files[grep('lik.',path.f,fixed=TRUE)]
+    params <- files[grep('params.',path.f,fixed=TRUE)]
+#    restr.p <- gsub('params.','',params) %in% comps
+#    restr.l <- gsub('lik.','',liks) %in% comps
+    ldply(intersect(comps,unique(c(gsub('params.','',params),
+                                   'init'))),
+          function(x){
+            if(x=='init')
+              tmp <- params.in
+            else
+              tmp <- read.gadget.parameters(sprintf('%s/params.%s',path,x))
+            if(is.null(tmp)){
+              tmp <- params.in
+              tmp$value <- NA*tmp$value
+              ss <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
+              names(ss) <- bs.lik$weights$name
+            } else {
+              ss <- read.gadget.SS(sprintf('%s/lik.%s',path,x))
+            }
+            optim  <- ldply(attributes(tmp)$optim.info,
+                            function(x) cbind(fake.id=1,x))
+            optim <- reshape(optim,idvar='fake.id',
+                             timevar='.id',direction='wide')
+            optim$fake.id <- NULL
+            dtmp <- cbind(bs.data=gsub(sprintf('%s/',bs.wgts),'',path),
+                          comp=x,
+                          t(tmp['value']),
+                          ss,
+                          optim)
+            
+            return(dtmp)
+          }
+          )
+  }
+  dparam <- ldply(sprintf('%s/BS.%s',bs.wgts,bs.samples),tmp.func,
+                  .parallel=TRUE)
+  attr(dparam,'init.param') <- params.in
+  return(dparam)
+}
+
+read.gadget.bootprint <- function(params.file='params.in',
+                                  bs.wgts='BS.WGTS',
+                                  bs.samples=1:100,
+                                  bs.lik='likelihood',
+                                  printfile='printfile'){
+  printfile <- read.gadget.printfile(printfile)
+  run.func <- function(bs.data){
+    path <- sprintf('%s/BS.%s',bs.wgts,bs.data)
+    main.print <- read.gadget.main(sprintf('%s/main.final',path))
+    main.print$printfiles <- sprintf('%s/print.final',path)
+    write.gadget.main(main.print,sprintf('%s/main.print',path))
+    bs.print <- llply(printfile,function(x){
+      x$printfile <- paste(path,x$printfile,sep='/')
+      return(x)
+    })
+    write.gadget.printfile(bs.print,file=sprintf('%s/print.final',path))
+    callGadget(s=1,main=sprintf('%s/main.print',path),
+               i=sprintf('%s/params.final',path),
+               o=sprintf('%s/lik.print',path))
+    read.printfiles(sprintf('%s/out',path))
+  }
+  llply(printfile,function(x) ldply())
 }

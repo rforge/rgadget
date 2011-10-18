@@ -290,7 +290,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              grouping = NULL,
                              optinfofile='optinfofile',
                              PBS = FALSE,
-                             qsub.script = NULL
+                             qsub.script = NULL,
+                             run.base=FALSE
                              ) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
@@ -354,8 +355,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   
   restr.SI <- (likelihood$weights$type == 'surveyindices')  
   if(!rew.sI){
-    run.string <- c('base',
-                    likelihood$weights$name[restr&(!restr.SI)&
+    run.string <- c(likelihood$weights$name[restr&(!restr.SI)&
                                             !(likelihood$weights$name %in%
                                               unlist(grouping))])
     run.string <- as.list(run.string)
@@ -363,8 +363,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     sIw <- sI.weights(lik.dat)
     run.string$SI <- likelihood$weights$name[restr.SI]
   } else {
-    run.string <- c('base',
-                    likelihood$weights$name[restr&
+    run.string <- c(likelihood$weights$name[restr&
                                             !(likelihood$weights$name %in%
                                               unlist(grouping))])
     
@@ -476,10 +475,12 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(!is.null(grouping)){
       tmp.restr <- restr&(!(likelihood$weights$name %in% unlist(grouping)))
       for(group in grouping){
-        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),likelihood$weights$name %in% group])
+        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),
+                                  likelihood$weights$name %in% group])
       }      
     }
-    final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],tmp.restr])),tmpSS)
+    final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],
+                                          tmp.restr])),tmpSS)
     final.SS <- final.SS[likelihood$weights$name[restr]]
     df <- rep(0,num.comp)
     lik.tmp <- likelihood$weights[restr,]
@@ -533,6 +534,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   return(list(comp=run.string,final=comp,wgts=wgts))
 #  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
 }
+
+
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -815,82 +818,3 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   }
   return(NULL)
 }
-
-read.gadget.bootstrap <- function(params.file='params.in',
-                                  bs.wgts='BS.WGTS',
-                                  bs.samples=1:100,
-                                  bs.lik='likelihood'){
-  params.in <- read.gadget.parameters(params.file)
-  bs.lik <- read.gadget.likelihood(bs.lik)
-
-  #param.frame <- as.data.frame(t(params.in['value']))
-  #param.frame$bs.data <- 'INIT' 
-  #param.frame$method <- 'Prior'
-  #tmp <- ldply(attributes(params.in)$optim.info,function(x) cbind(fake.id=1,x))
-  #param.frame <- cbind(param.frame,
-  #                     reshape(tmp,idvar='fake.id',
-  #                             timevar='.id',direction='wide'),
-  #                     t(bs.lik$weights['weight']))
-  #param.frame$fake.id <- NULL
-  
-  files <- unique(list.files(sprintf('%s/BS.%s',bs.wgts,bs.samples)))
-  ## read in all parameterfiles
-  ## params <- unique(files[grep('params',files)])
-  liks <- unique(files[grep('lik.',files,fixed=TRUE)])
-  comps <- gsub('lik.','',liks)
-
-
-  tmp.func <- function(path){
-    read.gadget.SS <- function(file='lik.out'){
-      if(!file.exists(file)){
-        SS <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
-      } else {
-        lik.out <- readLines(file)
-        SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
-                                               '\t\t')[[1]][2]))
-        SS <- as.data.frame(t(SS))
-      }
-      names(SS) <- bs.lik$weights$name
-      return(SS)
-    }
-    path.f <- list.files(path)
-    liks <- files[grep('lik.',path.f,fixed=TRUE)]
-    params <- files[grep('params.',path.f,fixed=TRUE)]
-#    restr.p <- gsub('params.','',params) %in% comps
-#    restr.l <- gsub('lik.','',liks) %in% comps
-    ldply(intersect(comps,unique(c(gsub('params.','',params),
-                                   'init'))),
-          function(x){
-            if(x=='init')
-              tmp <- params.in
-            else
-              tmp <- read.gadget.parameters(sprintf('%s/params.%s',path,x))
-            if(is.null(tmp)){
-              tmp <- params.in
-              tmp$value <- NA*tmp$value
-              ss <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
-              names(ss) <- bs.lik$weights$name
-            } else {
-              ss <- read.gadget.SS(sprintf('%s/lik.%s',path,x))
-            }
-            optim  <- ldply(attributes(tmp)$optim.info,
-                            function(x) cbind(fake.id=1,x))
-            optim <- reshape(optim,idvar='fake.id',
-                             timevar='.id',direction='wide')
-            optim$fake.id <- NULL
-            dtmp <- cbind(bs.data=gsub(sprintf('%s/',bs.wgts),'',path),
-                          comp=x,
-                          t(tmp['value']),
-                          ss,
-                          optim)
-            
-            return(dtmp)
-          }
-          )
-  }
-  dparam <- ldply(sprintf('%s/BS.%s',bs.wgts,bs.samples),tmp.func,
-                  .parallel=TRUE)
-  attr(dparam,'init.param') <- params.in
-  return(dparam)
-}
-
