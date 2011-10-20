@@ -978,18 +978,38 @@ write.gadget.penalty <- function(file='penaltyfile'){
 
 
 
-read.gadget.bootstrap <- function(params.file='params.in',
-                                  bs.wgts='BS.WGTS',
-                                  bs.samples=1:100,
-                                  bs.lik='likelihood'){
-  params.in <- read.gadget.parameters(params.file)
-  bs.lik <- read.gadget.likelihood(bs.lik)
+
+read.gadget.bootsrap <- function(params.file='params.in',
+                                 bs.wgts='BS.WGTS',
+                                 bs.samples=1:100,
+                                 bs.lik='likelihood',
+                                 lik.pre = 'lik.',
+                                 params.pre = 'param.',
+                                 parallel=FALSE
+                                 ){
+  wgts <- sprintf('%s/BS.%s',bs.wgts,bs.samples)
+  dboot <- read.gadget.wgts(params.file,wgts,
+                            likelihood,lik.pre,params.pre,parallel)
+  return(dboot)
+}
+
+
+read.gadget.wgts <- function(params.file = 'params.in',
+                             wgts = 'WGTS',
+                             likelihood = 'likelihood',
+                             lik.pre = 'lik.',
+                             params.pre = 'param.',
+                             parallel=FALSE){
   
-  files <- unique(list.files(sprintf('%s/BS.%s',bs.wgts,bs.samples)))
+  params.in <- read.gadget.parameters(params.file)
+  bs.lik <- read.gadget.likelihood(likelihood)
+  
+  files <- unique(list.files(wgts))
+
   ## read in all parameterfiles
   ## params <- unique(files[grep('params',files)])
-  liks <- unique(files[grep('lik.',files,fixed=TRUE)])
-  comps <- gsub('lik.','',liks)
+  liks <- unique(files[grep(lik.pre,files,fixed=TRUE)])
+  comps <- gsub(lik.pre,'',liks)
 
 
   tmp.func <- function(path){
@@ -1006,24 +1026,23 @@ read.gadget.bootstrap <- function(params.file='params.in',
       return(SS)
     }
     path.f <- list.files(path)
-    liks <- files[grep('lik.',path.f,fixed=TRUE)]
-    params <- files[grep('params.',path.f,fixed=TRUE)]
-#    restr.p <- gsub('params.','',params) %in% comps
-#    restr.l <- gsub('lik.','',liks) %in% comps
-    ldply(intersect(comps,unique(c(gsub('params.','',params),
+    liks <- files[grep(lik.pre,path.f,fixed=TRUE)]
+    params <- files[grep(params.pre,path.f,fixed=TRUE)]
+    ldply(intersect(comps,unique(c(gsub(params.pre,'',params),
                                    'init'))),
           function(x){
             if(x=='init')
               tmp <- params.in
             else
-              tmp <- read.gadget.parameters(sprintf('%s/params.%s',path,x))
+              tmp <- read.gadget.parameters(sprintf('%s/%s%s',
+                                                    path,params.pre,x))
             if(is.null(tmp)){
               tmp <- params.in
               tmp$value <- NA*tmp$value
               ss <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
               names(ss) <- bs.lik$weights$name
             } else {
-              ss <- read.gadget.SS(sprintf('%s/lik.%s',path,x))
+              ss <- read.gadget.SS(sprintf('%s/%s%s',path,lik.pre,x))
             }
             optim  <- ldply(attributes(tmp)$optim.info,
                             function(x) cbind(fake.id=1,x))
@@ -1040,8 +1059,7 @@ read.gadget.bootstrap <- function(params.file='params.in',
           }
           )
   }
-  dparam <- ldply(sprintf('%s/BS.%s',bs.wgts,bs.samples),tmp.func,
-                  .parallel=TRUE)
+  dparam <- ldply(wgts,tmp.func,.parallel=parallel)
   attr(dparam,'init.param') <- params.in
   return(dparam)
 }
