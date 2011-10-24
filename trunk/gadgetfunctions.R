@@ -279,6 +279,9 @@ callParamin <- function(i='params.in',
 ##' @param PBS Logical, should the gadget runs be defined to be run in pbs
 ##' scripts (defaults to FALSE).
 ##' @param qsub.script Name of cluster submission script.
+##' @param run.base should the base (inverse initial SS) parameters be estimated
+##' @param run.serial should the weighting run be run in parallel (used in
+##' bootstrap). 
 ##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
@@ -291,7 +294,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              optinfofile='optinfofile',
                              PBS = FALSE,
                              qsub.script = NULL,
-                             run.base=FALSE
+                             run.base=FALSE,
+                             run.serial = FALSE 
                              ) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
@@ -433,7 +437,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## 
   if(!resume.final){
     ## run the bloody thing
-    res <- mclapply(run.string,run.iterative)
+    if(run.serial)
+      res <- lapply(run.string,run.iterative)
+    else
+      res <- mclapply(run.string,run.iterative)
   }
 
   ## Do we want to run the final optimisation (only used for debug purposes,
