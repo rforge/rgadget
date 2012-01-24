@@ -8,13 +8,13 @@
 ##' @return is the hessian matrix
 run.hessegadget <- function(file.in="refinputfile",
                             result="foo",
-                            location='',
+                            location='.',
                             h=TRUE){
   options(digits=19)
   #source("hessegadget.r")
   #source("gadgetfunctions.R")
   ##  gogn <- read.gadget(file.in)
-  tmp <- read.table(file.in,header=TRUE,skip=4,stringsAsFactors=FALSE)
+  tmp <- read.table(file.in,header=TRUE,comment.char=';',stringsAsFactors=FALSE)
   gogn <- matrix(tmp$value,ncol=length(tmp$value),nrow=1,
                  dimnames=list(value='value',swithes=tmp$switch))
   hgrid <- hesse.grid(as.vector(gogn),h=h)
