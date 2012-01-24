@@ -184,7 +184,9 @@ read.gadget.likelihood <- function(files='likelihood'){
                      recaptures = tmp.func('recaptures'),
                      recstatistics = tmp.func('recstatistics'),
                      migrationpenalty = tmp.func('migrationpenalty'),
-                     catchinkilos = tmp.func('catchinkilos'))
+                     catchinkilos = tmp.func('catchinkilos'),
+                     stockdistribution = tmp.func('stockdistribution')
+                     )
   likelihood$weights <- weights
   row.names(likelihood$weights) <- weights$name
   likelihood$weights$weight <- as.numeric(weights$weight)
@@ -572,7 +574,7 @@ read.gadget.results <- function(comp,
 read.gadget.data <- function(likelihood){
   read.agg <- function(x){
     if(!is.null(x))
-      return(read.table(x,stringsAsFactors=FALSE,comment.char=';')[,1])
+      return(read.table(x,stringsAsFactors=FALSE,comment.char=';'))
 #      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1]))
     else
       return(NULL)
@@ -630,16 +632,20 @@ read.gadget.data <- function(likelihood){
         names(dat) <- c('year','step','area','fleet','biomass')
     }
     
-    restr.area <- (dat$area %in% area.agg)
+    restr.area <- (dat$area %in% area.agg[,1])
     if(length(restr.area)==0)
       restr.area <- TRUE
-    restr.age <- (dat$age %in% age.agg)
+    restr.age <- (dat$age %in% age.agg[,1])
     if(length(restr.age)==0)
       restr.age <- TRUE
-    restr.len <- (dat$length %in% len.agg)
+    restr.len <- (dat$length %in% len.agg[,1])
     if(length(restr.len)==0)
       restr.len <- TRUE
     dat <- dat[restr.area&restr.age&restr.len,]
+    if('length' %in% names(dat)){
+      names(len.agg)[1:3] <- c('length','lower','upper')
+      dat <- merge(dat,len.agg,all.x=TRUE)
+    }
     return(dat)
   }
   lik.dat <- within(list(),
@@ -741,6 +747,8 @@ read.gadget.lik.out <- function(file='lik.out'){
   
   data <- read.table(file,skip=(i2+1))
   names(data) <- c('iteration',names(switches),weights$Component,'score')
+  attr(data,'Likelihood components') <- weights$Component
+  attr(data,'Parameters') <- names(switches)
   lik.out <- list(switches=switches,weights=weights,data=data)
   class(lik.out) <- c('gadget.lik.out',class(lik.out))
   return(lik.out)
@@ -979,17 +987,17 @@ write.gadget.penalty <- function(file='penaltyfile'){
 
 
 
-read.gadget.bootsrap <- function(params.file='params.in',
+read.gadget.bootstrap <- function(params.file='params.in',
                                  bs.wgts='BS.WGTS',
                                  bs.samples=1:100,
                                  bs.lik='likelihood',
                                  lik.pre = 'lik.',
-                                 params.pre = 'param.',
+                                 params.pre = 'params.',
                                  parallel=FALSE
                                  ){
   wgts <- sprintf('%s/BS.%s',bs.wgts,bs.samples)
   dboot <- read.gadget.wgts(params.file,wgts,
-                            likelihood,lik.pre,params.pre,parallel)
+                            bs.lik,lik.pre,params.pre,parallel)
   return(dboot)
 }
 
@@ -998,7 +1006,7 @@ read.gadget.wgts <- function(params.file = 'params.in',
                              wgts = 'WGTS',
                              likelihood = 'likelihood',
                              lik.pre = 'lik.',
-                             params.pre = 'param.',
+                             params.pre = 'params.',
                              parallel=FALSE){
   
   params.in <- read.gadget.parameters(params.file)
@@ -1016,18 +1024,16 @@ read.gadget.wgts <- function(params.file = 'params.in',
     read.gadget.SS <- function(file='lik.out'){
       if(!file.exists(file)){
         SS <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
+        names(SS) <- bs.lik$weights$name
       } else {
-        lik.out <- readLines(file)
-        SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
-                                               '\t\t')[[1]][2]))
-        SS <- as.data.frame(t(SS))
+        lik.out <- read.gadget.lik.out(file)
+        SS <- lik.out$data[intersect(bs.lik$weights$name,names(lik.out$data))]
       }
-      names(SS) <- bs.lik$weights$name
       return(SS)
     }
     path.f <- list.files(path)
-    liks <- files[grep(lik.pre,path.f,fixed=TRUE)]
-    params <- files[grep(params.pre,path.f,fixed=TRUE)]
+    liks <- path.f[grep(lik.pre,path.f,fixed=TRUE)]
+    params <- path.f[grep(params.pre,path.f,fixed=TRUE)]
     ldply(intersect(comps,unique(c(gsub(params.pre,'',params),
                                    'init'))),
           function(x){
@@ -1049,7 +1055,7 @@ read.gadget.wgts <- function(params.file = 'params.in',
             optim <- reshape(optim,idvar='fake.id',
                              timevar='.id',direction='wide')
             optim$fake.id <- NULL
-            dtmp <- cbind(bs.data=gsub(sprintf('%s/',bs.wgts),'',path),
+            dtmp <- cbind(bs.data=tail(unlist(strsplit(path,'/')),1),
                           comp=x,
                           t(tmp['value']),
                           ss,
@@ -1064,26 +1070,30 @@ read.gadget.wgts <- function(params.file = 'params.in',
   return(dparam)
 }
 
-read.gadget.bootprint <- function(params.file='params.in',
-                                  bs.wgts='BS.WGTS',
-                                  bs.samples=1:100,
-                                  bs.lik='likelihood',
-                                  printfile='printfile'){
+read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
+                                  bs.samples=1:1000,
+                                  printfile='printfile',
+                                  final = 'final'){
   printfile <- read.gadget.printfile(printfile)
   run.func <- function(bs.data){
     path <- sprintf('%s/BS.%s',bs.wgts,bs.data)
-    main.print <- read.gadget.main(sprintf('%s/main.final',path))
-    main.print$printfiles <- sprintf('%s/print.final',path)
+    dir.create(paste(path,sprintf('out.%s',final),sep='/'))
+    main.print <- read.gadget.main(sprintf('%s/main.%s',path,final))
+    main.print$printfiles <- sprintf('%s/print.%s',path,final)
     write.gadget.main(main.print,sprintf('%s/main.print',path))
-    bs.print <- llply(printfile,function(x){
-      x$printfile <- paste(path,x$printfile,sep='/')
-      return(x)
-    })
-    write.gadget.printfile(bs.print,file=sprintf('%s/print.final',path))
+    write.gadget.printfile(printfile,file=sprintf('%s/print.%s',path,final),
+                           output.dir=paste(path,sprintf('out.%s',final),
+                             sep='/'))
     callGadget(s=1,main=sprintf('%s/main.print',path),
-               i=sprintf('%s/params.final',path),
+               i=sprintf('%s/params.%s',path,final),
                o=sprintf('%s/lik.print',path))
-    read.printfiles(sprintf('%s/out',path))
+    read.printfiles(sprintf('%s/out.%s',path,final))
   }
-  llply(printfile,function(x) ldply())
+  bs.print <- llply(bs.samples,
+                    run.func,.parallel=TRUE)
+  names(bs.print) <- sprintf('BS.%s',bs.samples)
+  tmp <- llply(names(printfile),function(x) ldply(bs.print,function(y) y[[x]]))
+  names(tmp) <- names(printfile)
+  return(tmp)
 }
+

@@ -88,6 +88,8 @@ Rgadget <- function(opt=gadget.options()){
 # The stocks
 # preN(k)=[N_{i,1,j}] is a matrix where immN(k)_{i,1,j} 7is the number
 # of recruits in lengthgroup i at timestep j, area k
+  stocks <- array(0,c(length(opt$stocks),
+                      opt$
   immNumRec <- array(0,c(opt$numofareas,
                          opt$numoflgroups,
                          opt$immmax,

@@ -314,10 +314,11 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   ## read model
   main <- read.gadget.main(main.file)
-  if(!is.null(main$printfile))
+  if(!is.null(main$printfile)){
     printfile <- read.gadget.printfile(main$printfile)
-  else
+  } else {
     printfile <- NULL
+  }
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
 #  params.in <-read.gadget.parameters(params.file)
   
@@ -645,7 +646,7 @@ sensitivity.gadget <- function(file='params.out',
                                    by=inner.stepsize))))
   restr <- TRUE
   if(opt){
-    restr <- restr&(params$opt==1)
+    restr <- restr&(params$optimise==1)
   }
   if(!vars.all){
     restr <- restr&(params$switch %in% var.names)
@@ -705,10 +706,36 @@ sensitivity.gadget <- function(file='params.out',
   lik.sens <- read.gadget.lik.out(lik.out)
   sens.data <- lik.sens$data
   sens.data$parameter <- row.names(param.table)
+#  attr(sens.data,'params') <- params
+#  attr(sens.data,'comps') <- 
   class(sens.data) <- c('gadget.sens',class(sens.data))
   return(sens.data)
 }
 
+plot.gadget.sens <- function(sens,comp='score',ylimit=NULL,ncol=10,nrow=4){
+  
+  sens$parameter <- sapply(strsplit(sens$parameter,'.',fixed=TRUE),
+                           function(x) paste(x[-length(x)],collapse='.'))
+  lik.comps <- attr(sens,'Likelihood components')
+  if(!(comp %in% c(lik.comps,'score')))
+    stop(sprintf('Component %s not found in lik.comps',comp))
+  params <- attr(sens,'Parameters')
+  tmp <- ddply(sens,'parameter',
+               function(x){
+                 tmp <- cbind(x[x$parameter[1]],x[comp])
+                 names(tmp) <- c('Value','score')
+                 tmp
+               })
+  plo <- ggplot(tmp, aes(Value,score)) +
+    geom_line() +
+      facet_wrap(~parameter,scale='free') +
+        xlab('') + ylab('') +
+          opts(axis.text.x=theme_text(angle=-90,hjust=0))
+                   
+  
+  return(plo)
+  
+}
 
 ##' Gadget phasing 
 ##' @title Gadget Phasing 
@@ -794,11 +821,14 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                               PBS = PBS,
                               qsub.script = qsub.script,
                               wgts = sprintf('%s/BS.%s',bs.wgts,i),
-                              run.final = FALSE)
+                              run.final = FALSE,
+                              run.serial = TRUE)
       if(PBS)
         write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
       if(i > 100 & PBS)
         write('sleep 6m',file=qsub.script,append=TRUE)
+      else
+        print(sprintf('# bootstrap sample %s',i))
       
     } else {
       tmp <- gadget.iterative(main.file = bs.main.file,
@@ -815,6 +845,9 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
         write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
       if(i > 100 & PBS)
         write('sleep 6m',file=qsub.script,append=TRUE)
+      else
+        print(sprintf('# bootstrap (final) sample %s',i))
+
     }
   }
   return(NULL)
