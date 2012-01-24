@@ -543,28 +543,22 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 }
 
 
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
-##' @title 
+##' Read the results from the gadget run, in particular the sums of squares
+##' table which is useful for further analysis. TODO: add optional read
+##' printfiles
+##' @title read gadget results
 ##' @param comp list of likelihood components (with groupings if necessary)
-##' @param final 
-##' @param wgts 
-##' @param likelihood.file 
-##' @return 
+##' @param final final postfix
+##' @param wgts wgts folder (defaults to WGTS)
+##' @param likelihood.file likelihood file for the model
+##' @return a list containing the sums of squares table for the various likelihood components while heavily weighted and the likelihood data. 
 ##' @author Bjarki Þór Elvarsson
 read.gadget.results <- function(comp,
                                 final,
                                 wgts='WGTS',
                                 likelihood.file='likelihood'
                                 ){
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
-##' @title 
-##' @param file 
-##' @return 
-##' @author Bjarki Þór Elvarsson
+
   read.gadget.SS <- function(file='lik.out'){
     lik.out <- readLines(file)
     SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
