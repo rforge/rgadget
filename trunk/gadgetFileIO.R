@@ -1097,3 +1097,17 @@ read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
   return(tmp)
 }
 
+merge.formula <- function(txt){
+  openP <- grep('(',txt,fixed=TRUE)
+  closeP <- grep(')',txt,fixed=TRUE)
+  if(length(openP) != length(closeP))
+    stop('numbers of paranthesis dont match in gadget formula')
+  i <- 1
+  while(i < length(openP)){
+    n <- length(which(openP < closeP[i]))
+    txt[openP[i]] <- paste(txt[openP[i]:closeP[i+n-1]],collapse='')
+    txt <- txt[-c((openP[i]+1):closeP[i+n-1])]
+    i <- i + n - 1
+  }
+  return(txt)
+}

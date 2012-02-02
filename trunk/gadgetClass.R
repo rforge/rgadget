@@ -1,3 +1,4 @@
+
 setClass('gadget-stock',
          representation(stockname = 'character',
                         ## setup
@@ -20,7 +21,7 @@ setClass('gadget-stock',
                         preylengths = 'data.frame',
                         energycontent = 'numeric',
                         doeseat = 'numeric',
-                        suitability = 'data.frame',
+                        suitability = 'list',
                         preference = 'data.frame',
                         maxconsumption = 'numeric',
                         halffeedingvalue = 'numeric',
@@ -54,27 +55,31 @@ setClass('gadget-stock',
                         )
          )
 
-setMethod('initialize','gadget-stock',
-          function(.Ob, file='stock'){
-              stock <- strip.comments(sf)
+setMethod('initialize',
+          'gadget-stock',
+          function(.Object, file='stock'){
+              stock <- strip.comments(file)
               st.names <- sapply(stock[1:9],function(x) x[1])
               st <- sapply(stock[1:9],function(x) x[-1]) 
               names(st) <- st.names
 
-              ## put stuff into the 
-              .Ob@stockname <- st[['stockname']]
-              .Ob@livesonares <- as.numeric(st['livesonares'])
-              .Ob@minage <- as.numeric(st['minage'])
-              .Ob@maxage <- as.numeric(st['maxage'])
-              .Ob@minlength <- as.numeric(st['minlength'])
-              .Ob@maxlength <- as.numeric(st['maxlength'])
-              .Ob@dl <- as.numeric(st['dl'])
+              ## put stuff into the class 
+              .Object@stockname <- st[['stockname']]
+              .Object@livesonareas <- as.numeric(st['livesonareas'])
+              .Object@minage <- as.numeric(st['minage'])
+              .Object@maxage <- as.numeric(st['maxage'])
+              .Object@minlength <- as.numeric(st['minlength'])
+              .Object@maxlength <- as.numeric(st['maxlength'])
+              .Object@dl <- as.numeric(st['dl'])
 
-              .Ob@refweight <- read.table(st[['refweightfile']])
-              names(.Ob@refweight) <- c('length','weight')
+              .Object@refweight <- read.table(st[['refweightfile']],
+                                              comment.char=';')
+              names(.Object@refweight) <- c('length','weight')
 
-              .Ob@growthandeatlengths <- read.table(st[['growthandeatlengths']])
-              names(.Ob@growthandeatlengths) <-
+              .Object@growthandeatlengths <-
+                read.table(st[['growthandeatlengths']],
+                           comment.char=';')
+              names(.Object@growthandeatlengths) <-
                 c('lengthgroup','min','max')
               
               ## pop from list
@@ -82,87 +87,87 @@ setMethod('initialize','gadget-stock',
               
               ## check 'doesgrow switch
               if(stock[[1]][2]==0){
-                .Ob@doesgrow <- 0
-                .Ob@growthfunction <- NULL
+                .Object@doesgrow <- 0
+                .Object@growthfunction <- NULL
                 stock[1] <- NULL
               } else{
-                .Ob@doesgrow <- 1
-                .Ob@growthfunction <- stock[[2]][2]               
+                .Object@doesgrow <- 1
+                .Object@growthfunction <- stock[[2]][2]               
                 if(stock[[2]][2] == 'weightjones'){
-                  .Ob@growthparameters <- 
-                    list(wgrowthparameters = stock[[3]][-1],
-                         lgrowthparameters = stock[[4]][-1])
+                  .Object@growthparameters <- 
+                    list(wgrowthparameters = merge.formula(stock[[3]][-1]),
+                         lgrowthparameters = merge.formula(stock[[4]][-1]))
                   stock[1:4] <- NULL
                 } else if(stock[[2]][2] == 'weightvbexpanded'){
-                  .Ob@growthparameters <- 
-                    list(wgrowthparameters = stock[[3]][-1],
-                         lgrowthparameters = stock[[4]][-1],
-                         yeareffect = stock[[5]][-1],
-                         stepeffect = stock[[6]][-1],
-                         areaeffect = stock[[7]][-1])
+                  .Object@growthparameters <- 
+                    list(wgrowthparameters = merge.formula(stock[[3]][-1]),
+                         lgrowthparameters = merge.formula(stock[[4]][-1]),
+                         yeareffect = merge.formula(stock[[5]][-1]),
+                         stepeffect = merge.formula(stock[[6]][-1]),
+                         areaeffect = merge.formula(stock[[7]][-1]))
                   stock[1:7] <- NULL
                 } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
-                  .Ob@growthparameters <-                     
-                    list(growthparameters = stock[[3]][-1],
-                         weightparameters = stock[[4]][-1])
+                  .Object@growthparameters <-                     
+                    list(growthparameters = merge.formula(stock[[3]][-1]),
+                         weightparameters = merge.formula(stock[[4]][-1]))
                   stock[1:4] <- NULL
                 } else {
-                  .Ob@growthparameters <-
-                    list(growthparameters = stock[[3]][-1])
+                  .Object@growthparameters <-
+                    list(growthparameters = merge.formula(stock[[3]][-1]))
                   stock[1:3] <- NULL
                 }
               }
-              implementation <- lapply(stock[1:2],function(x) x[-1])
+              implementation <- lapply(stock[1:2],
+                                       function(x) merge.formula(x[-1]))
               names(implementation) <- lapply(stock[1:2],function(x) x[1])
               stock[1:2] <- NULL
               
-              .Ob@growthimplementation <- implementation
-              .Ob@naturalmortality <- stock[[1]][-1]
+              .Object@growthimplementation <- implementation
+              .Object@naturalmortality <- as.numeric(stock[[1]][-1])
 
               stock[1] <- NULL
               
               ## iseaten
               if(stock[[1]][2]==0){
-                .Ob@iseaten <- 0
+                .Object@iseaten <- 0
                 stock[1] <- NULL
               } else {
-                .Ob@iseaten <- 1
-                .Ob@preylengths <- read.table(stock[[2]][2])
-                names(.Ob@preylengths) <- 
+                .Object@iseaten <- 1
+                .Object@preylengths <- read.table(stock[[2]][2],
+                                                  comment.char=';')
+                names(.Object@preylengths) <- 
                   c('lengthgroup','min','max')
-                .Ob@energycontent <- as.numeric(stock[[3]][2])
-                stock[1:3] <- NULL
+                .Object@energycontent <- as.numeric(stock[[3]][2])
+                stock[1:2] <- NULL
               }
 
-    ## doeseat
+              ## doeseat
               if(stock[[1]][2]==0){
-                .Ob@doeseat <- 0
+                .Object@doeseat <- 0
                 stock[1] <- NULL
               } else {
                 stock[1] <- NULL
                 pref <- grep('preference',stock)
                 suit <- grep('suitability',stock)
                 maxcon <- grep('maxconsumption',stock)
-                
-                suitability <- lapply(stock[2:(pref-1)],function(x) x[-1])
-      names(suitability) <- sapply(stock[2:(pref-1)],function(x) x[1])
+                ## read suitability parameters
+                .Object@suitability <-
+                  lapply(stock[2:(pref-1)],function(x) merge.formula(x[-1]))
+                names(.Object@suitability) <-
+                  sapply(stock[2:(pref-1)],function(x) x[1])
+                ## -- prey preference
+                .Object@preference <-
+                  t(sapply(stock[pref:(maxcon-1)],function(x) x))
+                names(.Object@preference) <- c('preyname','preference')
+                .Object@maxconsumption <- merge.formula(stock[[maxcon]][-1])
+                .Object@halffeedingvalue <- merge.formula(stock[[maxcon+1]][-1])
+                stock[1:(maxcon+1)] <- NULL
+              }
+              ## initial conditions
+              
+              
+              return(.Object)
+            }
+)    
+    
 
-      preference <- t(sapply(stock[pref:(maxcon-1)],function(x) x))
-      names(preference) <- c('preyname','preference')
-      pred.info <-
-        list(suitability=suitability,
-             preference=preference,
-             maxconsumption=stock[[maxcon]][-1])
-      stock[1:maxcon] <- NULL
-    }
-
-    
-    
-    
-  }
-  stocks <- within(list(),
-                   for(sf in stock.files){
-                     tmp.func(sf)
-                   })
-  stocks$sf <- NULL
-          }
