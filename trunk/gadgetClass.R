@@ -12,14 +12,11 @@ setClass('gadget-stock',
                         growthandeatlengths = 'data.frame',
                         ## growth
                         doesgrow = 'numeric',
-                        growthfunction = 'character',
-                        growthparameters = 'list',
-                        growthimplementation = 'list',
+                        growth = 'gadget-growth'
                         naturalmortality = 'numeric',
                         ## consumption
                         iseaten = 'numeric',
-                        preylengths = 'data.frame',
-                        energycontent = 'numeric',
+                        preyinfo = 'gadget-prey',
                         doeseat = 'numeric',
                         suitability = 'list',
                         preference = 'data.frame',
@@ -55,6 +52,27 @@ setClass('gadget-stock',
                         )
          )
 
+setClass('gadget-growth',
+         representation(growthfunction = 'character',
+                        growthimplementation = 'character',
+                        ## growthfunction parameters
+                        growthparameters = 'vector',
+                        wgrowthparameters = 'vector',
+                        lgrowthparameters = 'vector',
+                        weigthgrowthdata = 'dataframe',
+                        yeareffect = 'vector',
+                        stepeffect = 'vector',
+                        areaeffect = 'vector',
+                        ## growth implementation
+                        beta = 'vector',
+                        maxlengthgroupgrowth = 'vector'                        
+                        ))
+
+setClass('gadget-prey',
+         representation(preylengths = 'dataframe',
+                        engergycontent = 'numeric'))
+
+
 setMethod('initialize',
           'gadget-stock',
           function(.Object, file='stock'){
@@ -63,7 +81,7 @@ setMethod('initialize',
               st <- sapply(stock[1:9],function(x) x[-1]) 
               names(st) <- st.names
 
-              ## put stuff into the class 
+              ## Basic properties
               .Object@stockname <- st[['stockname']]
               .Object@livesonareas <- as.numeric(st['livesonareas'])
               .Object@minage <- as.numeric(st['minage'])
@@ -91,38 +109,50 @@ setMethod('initialize',
                 .Object@growthfunction <- NULL
                 stock[1] <- NULL
               } else{
+                ## create a gadget-growth object
+                growthparameters <- NULL
+                wgrowthparameters <- NULL
+                lgrowthparameters <- NULL
+                yeareffect <- NULL
+                stepeffect <- NULL
+                areaeffect <- NULL
+                weightgrowthdata <- NULL
+                
                 .Object@doesgrow <- 1
-                .Object@growthfunction <- stock[[2]][2]               
+                growthfunction <- stock[[2]][2]               
                 if(stock[[2]][2] == 'weightjones'){
-                  .Object@growthparameters <- 
-                    list(wgrowthparameters = merge.formula(stock[[3]][-1]),
-                         lgrowthparameters = merge.formula(stock[[4]][-1]))
+                  wgrowthparameters <- merge.formula(stock[[3]][-1])
+                  lgrowthparameters <- merge.formula(stock[[4]][-1])
                   stock[1:4] <- NULL
-                } else if(stock[[2]][2] == 'weightvbexpanded'){
-                  .Object@growthparameters <- 
-                    list(wgrowthparameters = merge.formula(stock[[3]][-1]),
-                         lgrowthparameters = merge.formula(stock[[4]][-1]),
-                         yeareffect = merge.formula(stock[[5]][-1]),
-                         stepeffect = merge.formula(stock[[6]][-1]),
-                         areaeffect = merge.formula(stock[[7]][-1]))
+                } else if(stock[[2]][2] == 'weightvbexpanded'){                
+                  wgrowthparameters <- merge.formula(stock[[3]][-1])
+                  lgrowthparameters <- merge.formula(stock[[4]][-1])
+                  yeareffect <- merge.formula(stock[[5]][-1])
+                  stepeffect <- merge.formula(stock[[6]][-1])
+                  areaeffect <- merge.formula(stock[[7]][-1])
                   stock[1:7] <- NULL
                 } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
-                  .Object@growthparameters <-                     
-                    list(growthparameters = merge.formula(stock[[3]][-1]),
-                         weightparameters = merge.formula(stock[[4]][-1]))
+                  growthparameters <- merge.formula(stock[[3]][-1])
+                  weightgrowthdata <- read.table(stock[[4]][-1],
+                                                 comment.char = ';')
                   stock[1:4] <- NULL
                 } else {
-                  .Object@growthparameters <-
-                    list(growthparameters = merge.formula(stock[[3]][-1]))
+                  growthparameters <- merge.formula(stock[[3]][-1])
                   stock[1:3] <- NULL
                 }
               }
-              implementation <- lapply(stock[1:2],
-                                       function(x) merge.formula(x[-1]))
-              names(implementation) <- lapply(stock[1:2],function(x) x[1])
+              .Object@growth <- new('gadget-growth',
+                                    growthparameters = growthparameters,
+                                    lgrowthparameters = lgrowthparameters,
+                                    wgrowthparameters = wgrowthparameters,
+                                    yeareffect = yeareffect,
+                                    stepeffect = stepeffect,
+                                    areaeffect = areaeffect,
+                                    beta = merge.formula(stock[[1]][-1]),
+                                    maxlengthgroupgrowth =
+                                    merge.formula(stock[[2]][-1]))
               stock[1:2] <- NULL
               
-              .Object@growthimplementation <- implementation
               .Object@naturalmortality <- as.numeric(stock[[1]][-1])
 
               stock[1] <- NULL
@@ -133,11 +163,12 @@ setMethod('initialize',
                 stock[1] <- NULL
               } else {
                 .Object@iseaten <- 1
-                .Object@preylengths <- read.table(stock[[2]][2],
-                                                  comment.char=';')
-                names(.Object@preylengths) <- 
-                  c('lengthgroup','min','max')
-                .Object@energycontent <- as.numeric(stock[[3]][2])
+                preylengths <- read.table(stock[[2]][2], comment.char=';')                      
+                names(.Object@preylengths) <- c('lengthgroup','min','max')
+                .Object@preyinfo <-
+                  new('gadget-prey',
+                      preylength = preylengths,
+                      energycontent = as.numeric(stock[[3]][2]))
                 stock[1:2] <- NULL
               }
 
