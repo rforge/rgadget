@@ -1,8 +1,8 @@
 library(reshape2)
 library(plyr)
 library(multicore)
-library(doMC)
-library(foreach)
+#library(doMC)
+#library(foreach)
 #registerDoMC()
 #source('gadgetFileIO.R')
 

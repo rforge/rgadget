@@ -1,4 +1,3 @@
-
 setClass('gadget-stock',
          representation(stockname = 'character',
                         ## setup
@@ -18,10 +17,7 @@ setClass('gadget-stock',
                         iseaten = 'numeric',
                         preyinfo = 'gadget-prey',
                         doeseat = 'numeric',
-                        suitability = 'list',
-                        preference = 'data.frame',
-                        maxconsumption = 'numeric',
-                        halffeedingvalue = 'numeric',
+                        predator = 'gadget-predator'
                         ## init stuff
                         initialconditions = 'list',
                         initialdata = 'data.frame',
@@ -72,6 +68,11 @@ setClass('gadget-prey',
          representation(preylengths = 'dataframe',
                         engergycontent = 'numeric'))
 
+setClass('gadget-predator',
+         representation(suitability = 'list',
+                        preference = 'data.frame',
+                        maxconsumption = 'numeric',
+                        halffeedingvalue = 'numeric'))
 
 setMethod('initialize',
           'gadget-stock',
@@ -163,7 +164,8 @@ setMethod('initialize',
                 stock[1] <- NULL
               } else {
                 .Object@iseaten <- 1
-                preylengths <- read.table(stock[[2]][2], comment.char=';')                      
+                preylengths <- read.table(stock[[2]][2],
+                                          comment.char=';')                     
                 names(.Object@preylengths) <- c('lengthgroup','min','max')
                 .Object@preyinfo <-
                   new('gadget-prey',
@@ -182,16 +184,20 @@ setMethod('initialize',
                 suit <- grep('suitability',stock)
                 maxcon <- grep('maxconsumption',stock)
                 ## read suitability parameters
-                .Object@suitability <-
+                suitability <-
                   lapply(stock[2:(pref-1)],function(x) merge.formula(x[-1]))
-                names(.Object@suitability) <-
+                names(suitability) <-
                   sapply(stock[2:(pref-1)],function(x) x[1])
+
                 ## -- prey preference
-                .Object@preference <-
+                preference <-
                   t(sapply(stock[pref:(maxcon-1)],function(x) x))
-                names(.Object@preference) <- c('preyname','preference')
-                .Object@maxconsumption <- merge.formula(stock[[maxcon]][-1])
-                .Object@halffeedingvalue <- merge.formula(stock[[maxcon+1]][-1])
+                names(preference) <- c('preyname','preference')
+                new('gadget-predator',
+                    suitability = suitability,
+                    preference = preference,
+                    maxconsumption = merge.formula(stock[[maxcon]][-1]),
+                    halffeedingvalue = merge.formula(stock[[maxcon+1]][-1]))
                 stock[1:(maxcon+1)] <- NULL
               }
               ## initial conditions

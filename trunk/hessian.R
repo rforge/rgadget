@@ -55,7 +55,10 @@ run.hessegadget <- function(file.in = "params.out",
                             location='.',
                             h=1e-4){
   options(digits=19)
-  tmp <- read.gadget.parameters(file.in)
+  #source("hessegadget.r")
+  #source("gadgetfunctions.R")
+  ##  gogn <- read.gadget(file.in)
+  tmp <- read.table(file.in,header=TRUE,comment.char=';',stringsAsFactors=FALSE)
   gogn <- matrix(tmp$value,ncol=length(tmp$value),nrow=1,
                  dimnames=list(value='value',swithes=tmp$switch))
   hgrid <- hesse.grid(as.vector(gogn),h=h)
