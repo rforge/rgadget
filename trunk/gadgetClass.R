@@ -27,9 +27,9 @@ setClass('gadget-growth',
                         beta = vector(),
                         maxlengthgroupgrowth = vector()                        
          ),
-         package = 'rgadget'
+         #package = 'rgadget',
          validity = function(x){
-           if(x@type == 'lengthvbsimple')
+           if(x@growthfunction == 'lengthvbsimple')
              if(length(x@growthparameters)!=5)
                stop('Growth-parameters misspecified for lengthvbsimple
                     should be 5')
@@ -40,15 +40,15 @@ setClass('gadget-growth',
 
 setClass('gadget-prey',
          representation(preylengths = 'data.frame',
-                        engergycontent = 'numeric'),
-         package = 'rgadget')
+                        engergycontent = 'numeric'))
+         ##package = 'rgadget')
 
 setClass('gadget-predator',
          representation(suitability = 'list',
                         preference = 'data.frame',
                         maxconsumption = 'numeric',
-                        halffeedingvalue = 'numeric'),
-         package = 'rgadget')
+                        halffeedingvalue = 'numeric'))
+         ##package = 'rgadget')
 
 setClass('gadget-fleet',
          representation(name = 'character',
@@ -69,7 +69,7 @@ setClass('gadget-fleet',
                  quotafunction = '',
                  biomasslevel = 0,
                  amount = data.frame()),
-         package = 'rgadget'
+         ##package = 'rgadget'
          )
 
 setClass('gadget-time',
@@ -79,7 +79,7 @@ setClass('gadget-time',
                         lastyear = 'numeric', ## last year of simulation
                         laststep = 'numeric', ## last step of last year
                         notimesteps = 'numeric'), ## vector of lengths of timeintervals
-         package = 'rgadget',
+         ###package = 'rgadget',
          validity = function(x){
            if(x@firstyear > x@lastyear)
              stop('Firstyear after lastyear')
@@ -97,7 +97,7 @@ setClass('gadget-area',
          representation(area = 'numeric', ## vector of area identifiers
                         size = 'numeric', ## vector of area sizes
                         temperature = 'data.frame'),
-         package = 'rgadget',
+         ###package = 'rgadget',
          validity = function(x){
            if(x@area < 1)
              stop('illegal area')
@@ -119,8 +119,8 @@ setClass('gadget-otherfood',
                         livesonaareas = 'character',
                         lengths = 'numeric',
                         energycontent = 'numeric',
-                        amount = 'data.frame'),
-         package = 'rgadget')
+                        amount = 'data.frame'))
+         ##package = 'rgadget')
 
 
 setClass('gadget-stock',
@@ -166,8 +166,9 @@ setClass('gadget-stock',
                         doesrenew = 'numeric',
                         renewal = 'list',
                         renewal.data = 'data.frame',
-                        ## spawning -- to be implemented
+                        ## spawning 
                         doesspawn = 'numeric',
+                        spawning = new('gadget-spawning'),
                         ## straying -- to be implemented
                         doesstray = 'numeric'
                         ),
@@ -213,13 +214,39 @@ setClass('gadget-stock',
                         doesrenew = 0,
                         renewal = list(),
                         renewal.data = data.frame(),
-                        ## spawning -- to be implemented
+                        ## spawning
                         doesspawn = 0,
+                        spawning = new('gadget-spawning'),
                         ## straying -- to be implemented
                         doesstray = 0
-                   ),
-         package = 'rgadget'
+                   )
+         ##package = 'rgadget'
          )
+
+setClass('gadget-spawning',
+         representation(
+           spawnsteps = 'numeric',
+           spawnareas = 'numeric',
+           firstspawnyear = 'numeric',
+           lastspawnyear = 'numeric',
+           spawnstocksandratio = 'data.frame',
+           proportionfunction = 'list',
+           mortalityfunction = 'list',
+           weightlossfunction = 'list',
+           recruitment = 'list',
+           stockparameters = 'data.frame'),         
+        prototype(spawnsteps = 0,
+                  spawnareas = 0,
+                  firstspawnyear = 0,
+                  lastspawnyear = 0,
+                  spawnstocksandratio = data.frame(),
+                  proportionfunction = list(func = 'constant', alpha = 1),
+                  mortalityfunction = list(func = 'constant', alpha = 0),
+                  weightlossfunction = list(func = 'constant', alpha = 0),
+                  recruitment = list(func = 'simplessb', mu = 1),
+                  stockparameters = data.frame(mean = NULL, sttdev = NULL, 
+                                               alpha = NULL, beta = NULL))
+           )
 
 setClass('gadget-main',
          representation(model.name='character',
@@ -231,7 +258,7 @@ setClass('gadget-main',
                         otherfood = 'list',
                         fleets = 'list',
                         likelihood = 'list'),
-         package = 'rgadget'
+         ##package = 'rgadget'
          )
 
                         

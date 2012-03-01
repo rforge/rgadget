@@ -18,6 +18,13 @@ setMethod("write",
       write(time.file,file=file)
     }
 )
+setGeneric('getTimeSteps',def=function(object){standardGeneric("getTimeSteps")})
+setMethod('getTimeSteps','gadget-time',
+          function(x) {
+            year <- x@firstyear:x@lastyear
+            data.frame(year = rep(year,each = length(x@notimesteps)),
+                                 step = rep(seq(along = x@notimesteps), length(year)))
+          })
 
 setMethod("write",
     signature(x = "gadget-area"),
