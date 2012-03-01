@@ -83,7 +83,8 @@ setMethod("write",
       fleet.text <- 
         c(sprintf('%s\t%s',x@type,x@fleetname),
           sprintf('livesonareas\t%s',x@livesonareas),
-          sprintf('multiplicative\t%s',x@multiplicative))
+          sprintf('multiplicative\t%s',x@multiplicative),
+          sprintf())
       if(x@type %in% 'totalfleet')
         fleet.text <- 
           paste(sprintf())
