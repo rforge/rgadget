@@ -28,6 +28,14 @@ setClass('gadget-growth',
                         maxlengthgroupgrowth = vector()                        
          ),
          package = 'rgadget'
+         validity = function(x){
+           if(x@type == 'lengthvbsimple')
+             if(length(x@growthparameters)!=5)
+               stop('Growth-parameters misspecified for lengthvbsimple
+                    should be 5')
+           else 
+             return(TRUE)
+         }
          )
 
 setClass('gadget-prey',
@@ -70,17 +78,41 @@ setClass('gadget-time',
                                                ## year of simulation.
                         lastyear = 'numeric', ## last year of simulation
                         laststep = 'numeric', ## last step of last year
-                        notimesteps = 'numeric'),
-         package = 'rgadget') ## vector of lengths of timeintervals
+                        notimesteps = 'numeric'), ## vector of lengths of timeintervals
+         package = 'rgadget',
+         validity = function(x){
+           if(x@firstyear > x@lastyear)
+             stop('Firstyear after lastyear')
+           if(sum(x@notimesteps) != 12)
+             stop('notimesteps should sum up to 12')
+           if(!(x@firststep %in% seq(along = x@notimesteps)) )
+             stop('firststep not in the range of timesteps')
+           if(!(x@laststep %in% seq(along = x@notimesteps)) )
+             stop('laststep not in the range of timesteps')
+           return(TRUE)
+         }
+      ) 
 
 setClass('gadget-area',
          representation(area = 'numeric', ## vector of area identifiers
                         size = 'numeric', ## vector of area sizes
                         temperature = 'data.frame'),
-         package = 'rgadget'
-         
+         package = 'rgadget',
+         validity = function(x){
+           if(x@area < 1)
+             stop('illegal area')
+           if(x@size < 0)
+             stop('negative size')
+           return(TRUE)
+         }
          )
-
+setMethod('initialize','gadget-area',
+          function(.Object,area,size,temperature){
+            .Object@area <- area
+            .Object@size <- size
+            .Object@temperature <- temperature[c('year','step','area','temperature')]
+            return(.Object)
+          })
 
 setClass('gadget-otherfood',
          representation(foodname = 'character',

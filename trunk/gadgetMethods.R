@@ -3,7 +3,19 @@ setMethod("write",
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
         append = FALSE, sep = " ") 
     {
-        stop("Need a definition for the method here")
+      header <- sprintf('; time file created in Rgadget\n; %s - %s',file,Sys.Date())
+      time.file <-
+        paste(header,
+              paste('firstyear',x@firstyear,sep='\t'),
+              paste('firststep',x@firststep,sep='\t'),
+              paste('lastyear',x@lastyear,sep='\t'),
+              paste('laststep',x@laststep,sep='\t'),
+              paste('notimesteps',
+                    paste(length(x@notimesteps),
+                          paste(x@notimesteps,collapse=' ')),
+                    sep='\t'),
+              sep='\n')
+      write(time.file,file=file)
     }
 )
 
@@ -12,7 +24,17 @@ setMethod("write",
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
         append = FALSE, sep = " ") 
     {
-        stop("Need a definition for the method here")
+      header <- sprintf('; time file created in Rgadget\n; %s - %s',file,Sys.Date())
+      area.file <-
+        paste(header,
+              paste('areas',paste(x@areas,collapse=' '),sep='\t'),
+              paste('size',paste(x@size,collapse=' '),sep='\t'),
+              'temperature',
+              '; year - step - area - temperature',
+              sep='\n')
+      write(area.file,file=file)
+      write.table(x@temperature,file=file,col.names=FALSE,append=TRUE,
+                  quote=FALSE,sep='\t',row.names=FALSE)
     }
 )
 
@@ -57,7 +79,14 @@ setMethod("write",
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
         append = FALSE, sep = " ") 
     {
-        stop("Need a definition for the method here")
+      header <- sprintf('; fleet file created in Rgadget\n; %s - %s\n[fleetcomponent]',file,Sys.Date())
+      fleet.text <- 
+        c(sprintf('%s\t%s',x@type,x@fleetname),
+          sprintf('livesonareas\t%s',x@livesonareas),
+          sprintf('multiplicative\t%s',x@multiplicative))
+      if(x@type %in% 'totalfleet')
+        fleet.text <- 
+          paste(sprintf())
     }
 )
 
