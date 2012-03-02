@@ -1,3 +1,5 @@
+## Time file methods
+
 setMethod("write",
     signature(x = "gadget-time"),
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
@@ -26,6 +28,8 @@ setMethod('getTimeSteps','gadget-time',
                                  step = rep(seq(along = x@notimesteps), length(year)))
           })
 
+## area-file methods
+
 setMethod("write",
     signature(x = "gadget-area"),
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
@@ -45,21 +49,59 @@ setMethod("write",
     }
 )
 
-setMethod("write",
-    signature(x = "gadget-stock"),
-    function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
-        append = FALSE, sep = " ") 
-    {
-        stop("Need a definition for the method here")
-    }
-)
+## stockfile methods
 
 setMethod("write",
     signature(x = "gadget-prey"),
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
         append = FALSE, sep = " ") 
     {
-        stop("Need a definition for the method here")
+      dir.create(sprintf('%s/AggFiles',file), showWarnings = FALSE)
+      header <- paste(sprintf('; prey aggregation file for %s',x@name),
+                      sprintf('; created using rgadget at %s', Sys.Date()),
+                      sep = '\n')
+      write(header,file = sprintf('%s/AggFiles/%s.prey.agg',file,x@name))
+      write.table(x@preylengths,file = sprintf('%s/%s.prey.agg',file,x@name),
+            col.names=FALSE,append=TRUE,
+            quote=FALSE,sep='\t',row.names=FALSE)
+      paste(sprintf('preylengths\t%s/Aggfiles/%s.prey.agg',file,x@name),
+            sprintf('energycontent\t%s',x@energycontent),
+            sep = '\n')    
+    }
+)
+
+setMethod("write",
+    signature(x = "gadget-stock"),
+    function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
+        append = FALSE, sep = " ") 
+    {
+        ref.head <- paste(sprintf('; refweight file for %s created using rgadget at %s',
+                                  x@stockname,Sys.Date()),
+                          paste(c('; ',names(x@refweight),collapse = '\t')),
+                          sep = '\n')
+        write(ref.head,file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname))
+        write.table(x@refweight,
+                    file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname),
+                  col.names=FALSE,append=TRUE,
+                  quote=FALSE,sep='\t',row.names=FALSE)
+        lengths <- seq(300,900,by = 10)
+        lenAgg <- data.frame(length = paste('len',tail(lengths,-1), sep = ''),
+                             min = tail(lengths,-1),
+                             max = head(lengths,-1)
+                             )
+        stock.text <- 
+          paste(sprintf('; stock definition file for %s created using rgadget',x@stockname),
+                sprintf('; at %s',Sys.Date()),
+                ';',
+                sprintf('stockname\t%s'x@stockname),
+                sprintf('livesonareas\t%s',paste(x@livesonareas,collapse = '\n')),
+                sprintf('minage\t%s',x@minage),
+                sprintf('maxage\t%s',x@maxage),
+                sprintf('minlength\t%s',x@minlength),
+                sprintf('maxlength\t%s',x@maxlength),
+                sprintf('dl\t%s',x@dl),
+                sprintf('refweightfile\tData/%s.refweigthfile',x@stockname),
+                sprintf('growthandeatlengths\tAggFiles/len.agg',)
     }
 )
 
@@ -87,14 +129,40 @@ setMethod("write",
         append = FALSE, sep = " ") 
     {
       header <- sprintf('; fleet file created in Rgadget\n; %s - %s\n[fleetcomponent]',file,Sys.Date())
+      ## default text
       fleet.text <- 
-        c(sprintf('%s\t%s',x@type,x@fleetname),
-          sprintf('livesonareas\t%s',x@livesonareas),
-          sprintf('multiplicative\t%s',x@multiplicative),
-          sprintf())
-      if(x@type %in% 'totalfleet')
-        fleet.text <- 
-          paste(sprintf())
+        c(name = sprintf('%s\t%s',x@type,x@name),
+          area = sprintf('livesonareas\t%s',x@livesonareas),
+          mulit = sprintf('multiplicative\t%s',x@multiplicative),
+          suit = sprintf('suitability\n%s',
+                  paste(x@suitability$preyname,
+                        x@suitability$func,
+                        paste(x@suitability$parameters,collapse = '\t'))),
+          empty = '; empty space -- move along nothing to see here',
+          amount = sprintf('data/amount\t%s.amounts',x@name))
+
+      if(x@type == 'quotafleet')
+        fleet.text['empty'] <- 
+          paste(sprintf('quotafunction\t%s',x@quotafunction),
+                sprintf('biomasslevel\t%s',paste(x@biomasslevel,collapse = '\t')),
+                sprintf('quotalevel\t%s',paste(x@quotalevel,collapse = '\t')),
+                sep = '\n')
+      else if(x@type == 'effortfleet')
+        fleet.text['empty'] <- 
+          sprintf('catchability\n%s',
+                  paste(paste(x@catchability$stock,
+                              x@catchability$catchabilty,sep='\t'),collapse = '\n'))
+      
+      write.table(x@amount,file=sprintf('%s/Data/%s.amount',file,x@name),
+                  col.names=FALSE,
+                  quote=FALSE,sep='\t',row.names=FALSE)
+      if(file.exists(sprintf('%s/fleets',file))){
+        write(paste(fleet.text,collapse=TRUE),file=sprintf('%s/fleets',file),
+              append = TRUE)
+      } else {
+        write(paste(fleet.text,collapse=TRUE),file=sprintf('%s/fleets',file))
+      }
+      invisible(fleet.text)
     }
 )
 
@@ -113,11 +181,12 @@ setMethod("write",
         write(x@print, file = sprintf('%s/printfile',loc))
       for(stock in x@stocks)
         write(stock,file = loc)
-      write(x@tags,file = sprintf('%s/tagfile',loc))
-      write(x@otherfood, file = sprintf('%s/otherfood',loc))
+#      write(x@tags,file = sprintf('%s/tagfile',loc))
+#      write(x@otherfood, file = sprintf('%s/otherfood',loc))
       for(fleet in x@fleets)
         write(fleet,file=loc)
-      write(x@likelhood, file = sprintf('%s/likelihood'))
+      ## Likelihood files
+      ##write(x@likelhood, file = sprintf('%s/likelihood'))
       
       main.text <-
         paste(sprintf('; main file for the %s model',x@model.name),

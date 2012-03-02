@@ -39,8 +39,10 @@ setClass('gadget-growth',
          )
 
 setClass('gadget-prey',
-         representation(preylengths = 'data.frame',
-                        engergycontent = 'numeric'))
+         representation(
+           name = 'character',
+           preylengths = 'data.frame',
+                        energycontent = 'numeric'))
          ##package = 'rgadget')
 
 setClass('gadget-predator',
@@ -94,7 +96,7 @@ setClass('gadget-time',
       ) 
 
 setClass('gadget-area',
-         representation(area = 'numeric', ## vector of area identifiers
+         representation(areas = 'numeric', ## vector of area identifiers
                         size = 'numeric', ## vector of area sizes
                         temperature = 'data.frame'),
          ###package = 'rgadget',
@@ -107,8 +109,8 @@ setClass('gadget-area',
          }
          )
 setMethod('initialize','gadget-area',
-          function(.Object,area,size,temperature){
-            .Object@area <- area
+          function(.Object,areas,size,temperature){
+            .Object@areas <- areas
             .Object@size <- size
             .Object@temperature <- temperature[c('year','step','area','temperature')]
             return(.Object)
@@ -168,7 +170,7 @@ setClass('gadget-stock',
                         renewal.data = 'data.frame',
                         ## spawning 
                         doesspawn = 'numeric',
-                        spawning = new('gadget-spawning'),
+                        spawning = 'gadget-spawning',
                         ## straying -- to be implemented
                         doesstray = 'numeric'
                         ),
