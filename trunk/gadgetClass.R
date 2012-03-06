@@ -30,9 +30,9 @@ setClass('gadget-growth',
          #package = 'rgadget',
          validity = function(x){
            if(x@growthfunction == 'lengthvbsimple')
-             if(length(x@growthparameters)!=5)
+             if(length(x@growthparameters)!=4)
                stop('Growth-parameters misspecified for lengthvbsimple
-                    should be 5')
+                    should be 4')
            else 
              return(TRUE)
          }
@@ -123,6 +123,32 @@ setClass('gadget-otherfood',
                         energycontent = 'numeric',
                         amount = 'data.frame'))
          ##package = 'rgadget')
+
+
+setClass('gadget-spawning',
+         representation(
+           spawnsteps = 'numeric',
+           spawnareas = 'numeric',
+           firstspawnyear = 'numeric',
+           lastspawnyear = 'numeric',
+           spawnstocksandratio = 'data.frame',
+           proportionfunction = 'vector',
+           mortalityfunction = 'vector',
+           weightlossfunction = 'vector',
+           recruitment = 'vector',
+           stockparameters = 'data.frame'),         
+         prototype(spawnsteps = 0,
+                   spawnareas = 0,
+                   firstspawnyear = 0,
+                   lastspawnyear = 0,
+                   spawnstocksandratio = data.frame(stock = '',ratio = 1),
+                   proportionfunction = c(func = 'constant', alpha = 1),
+                   mortalityfunction = c(func = 'constant', alpha = 0),
+                   weightlossfunction = c(func = 'constant', alpha = 0),
+                   recruitment = c(func = 'simplessb', mu = 1),
+                   stockparameters = data.frame(mean = NULL, sttdev = NULL, 
+                                                alpha = NULL, beta = NULL))
+         )
 
 
 setClass('gadget-stock',
@@ -225,30 +251,6 @@ setClass('gadget-stock',
          ##package = 'rgadget'
          )
 
-setClass('gadget-spawning',
-         representation(
-           spawnsteps = 'numeric',
-           spawnareas = 'numeric',
-           firstspawnyear = 'numeric',
-           lastspawnyear = 'numeric',
-           spawnstocksandratio = 'data.frame',
-           proportionfunction = 'list',
-           mortalityfunction = 'list',
-           weightlossfunction = 'list',
-           recruitment = 'list',
-           stockparameters = 'data.frame'),         
-        prototype(spawnsteps = 0,
-                  spawnareas = 0,
-                  firstspawnyear = 0,
-                  lastspawnyear = 0,
-                  spawnstocksandratio = data.frame(),
-                  proportionfunction = list(func = 'constant', alpha = 1),
-                  mortalityfunction = list(func = 'constant', alpha = 0),
-                  weightlossfunction = list(func = 'constant', alpha = 0),
-                  recruitment = list(func = 'simplessb', mu = 1),
-                  stockparameters = data.frame(mean = NULL, sttdev = NULL, 
-                                               alpha = NULL, beta = NULL))
-           )
 
 setClass('gadget-main',
          representation(model.name='character',
@@ -265,137 +267,4 @@ setClass('gadget-main',
 
                         
 
-
-read.gadget.stock <- function(file='stock'){
-  .Object <- new('gadget-stock')
-  stock <- strip.comments(file)
-  st.names <- sapply(stock[1:9],function(x) x[1])
-  st <- sapply(stock[1:9],function(x) x[-1]) 
-  names(st) <- st.names
-  
-  ## Basic properties
-  .Object@stockname <- st[['stockname']]
-  .Object@livesonareas <- as.numeric(st['livesonareas'])
-  .Object@minage <- as.numeric(st['minage'])
-  .Object@maxage <- as.numeric(st['maxage'])
-  .Object@minlength <- as.numeric(st['minlength'])
-  .Object@maxlength <- as.numeric(st['maxlength'])
-  .Object@dl <- as.numeric(st['dl'])
-  
-  .Object@refweight <- read.table(st[['refweightfile']],
-                                  comment.char=';',
-                                  col.names = c('length','weight'))
-
-  
-  .Object@growthandeatlengths <-
-    read.table(st[['growthandeatlengths']],
-               comment.char = ';',
-               col.names = c('lengthgroup','min','max'))
-  
-  ## pop from list
-  stock[1:9] <- NULL
-  
-  ## check 'doesgrow switch
-  if(stock[[1]][2]==0){
-    .Object@doesgrow <- 0
-    .Object@growthfunction <- NULL
-    stock[1] <- NULL
-  } else{
-    ## create a gadget-growth object
-    growthparameters <- NULL
-    wgrowthparameters <- NULL
-    lgrowthparameters <- NULL
-    yeareffect <- NULL
-    stepeffect <- NULL
-    areaeffect <- NULL
-    weightgrowthdata <- NULL
-    
-    .Object@doesgrow <- 1
-    growthfunction <- stock[[2]][2]               
-    if(stock[[2]][2] == 'weightjones'){
-      wgrowthparameters <- merge.formula(stock[[3]][-1])
-      lgrowthparameters <- merge.formula(stock[[4]][-1])
-      stock[1:4] <- NULL
-    } else if(stock[[2]][2] == 'weightvbexpanded'){                
-      wgrowthparameters <- merge.formula(stock[[3]][-1])
-      lgrowthparameters <- merge.formula(stock[[4]][-1])
-      yeareffect <- merge.formula(stock[[5]][-1])
-      stepeffect <- merge.formula(stock[[6]][-1])
-      areaeffect <- merge.formula(stock[[7]][-1])
-      stock[1:7] <- NULL
-    } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
-      growthparameters <- merge.formula(stock[[3]][-1])
-      weightgrowthdata <- read.table(stock[[4]][-1],
-                                     comment.char = ';')
-      stock[1:4] <- NULL
-    } else {
-      growthparameters <- merge.formula(stock[[3]][-1])
-      stock[1:3] <- NULL
-    }
-  }
-  .Object@growth <- new('gadget-growth',
-                        growthparameters = growthparameters,
-                        lgrowthparameters = lgrowthparameters,
-                        wgrowthparameters = wgrowthparameters,
-                        yeareffect = yeareffect,
-                        stepeffect = stepeffect,
-                        areaeffect = areaeffect,
-                        beta = merge.formula(stock[[1]][-1]),
-                        maxlengthgroupgrowth =
-                        merge.formula(stock[[2]][-1]))
-  stock[1:2] <- NULL
-              
-  .Object@naturalmortality <- as.numeric(stock[[1]][-1])
-  
-  stock[1] <- NULL
-  
-  ## iseaten
-  if(stock[[1]][2]==0){
-    .Object@iseaten <- 0
-    stock[1] <- NULL
-  } else {
-    .Object@iseaten <- 1
-    preylengths <- read.table(stock[[2]][2],
-                              comment.char=';')                     
-    names(.Object@preylengths) <- c('lengthgroup','min','max')
-    .Object@preyinfo <-
-      new('gadget-prey',
-          preylength = preylengths,
-          energycontent = as.numeric(stock[[3]][2]))
-    stock[1:2] <- NULL
-  }
-  
-  ## doeseat
-  if(stock[[1]][2]==0){
-    .Object@doeseat <- 0
-    stock[1] <- NULL
-  } else {
-    stock[1] <- NULL
-    pref <- grep('preference',stock)
-    suit <- grep('suitability',stock)
-    maxcon <- grep('maxconsumption',stock)
-    ## read suitability parameters
-    suitability <-
-      lapply(stock[2:(pref-1)],function(x) merge.formula(x[-1]))
-    names(suitability) <-
-      sapply(stock[2:(pref-1)],function(x) x[1])
-    
-    ## -- prey preference
-    preference <-
-      t(sapply(stock[pref:(maxcon-1)],function(x) x))
-    names(preference) <- c('preyname','preference')
-    new('gadget-predator',
-        suitability = suitability,
-        preference = preference,
-        maxconsumption = merge.formula(stock[[maxcon]][-1]),
-        halffeedingvalue = merge.formula(stock[[maxcon+1]][-1]))
-    stock[1:(maxcon+1)] <- NULL
-  }
-  ## initial conditions
-  
-  
-  return(.Object)
-}
-
-    
 
