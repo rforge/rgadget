@@ -90,7 +90,7 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
 ##' @title Read likelihood
 ##' @param files a vector of character strings containing the names of the likelihood files 
 ##' @return object of class gadget.likelihood, i.e. a list containing the various likelihood components
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 read.gadget.likelihood <- function(files='likelihood'){
   lik <- NULL
   for(file in files)
@@ -201,10 +201,10 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @param data.folder 
 ##' @param bs.sample 
 ##' @return character string corresponding to the likelihood file (if desired)
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',
                                     data.folder=NULL, bs.sample=NULL){
-  lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s',file)
+  lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s - %s',file, Sys.Date())
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
@@ -307,7 +307,7 @@ new.gadget.main <- function(){
 ##' @title Read main
 ##' @param file main file location
 ##' @return object of class gadget.main
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 read.gadget.main <- function(file='main'){
   main <- sub(' +$','',readLines(file))
   main <- main[main!='']
@@ -325,7 +325,7 @@ read.gadget.main <- function(file='main'){
 ##' @param main gadget.main object
 ##' @param file name of main file 
 ##' @return text of the main file (if desired)
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 write.gadget.main <- function(main,file='main'){
   main.text <- sprintf('; main file for gadget - created in Rgadget\n; %s - %s',
                        file,date())
@@ -363,7 +363,7 @@ write.gadget.main <- function(main,file='main'){
 ##' @title Clear spaces
 ##' @param text string 
 ##' @return list or matrix containing the (non-empty) values from the string
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 clear.spaces <- function(text){
   sapply(strsplit(sapply(strsplit(text,'[ \t]'),
                          function(x) {
@@ -376,7 +376,7 @@ clear.spaces <- function(text){
 ##' @title Read param
 ##' @param file parameter file
 ##' @return dataframe
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 read.gadget.parameters <- function(file='params.in'){
   
   if(!file.exists(file)){
@@ -461,7 +461,7 @@ read.gadget.parameters <- function(file='params.in'){
 ##' @param params params dataframe
 ##' @param file a string naming the file to write to
 ##' @return a string containing the text of the params file (if desired)
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 write.gadget.parameters <- function(params,file='params.out'){
   input.text <-
     paste("; input file for the gadget model",
@@ -570,7 +570,7 @@ read.gadget.results <- function(comp,
 ##' @title Read likelihood data
 ##' @param likelihood object of class gadget.likelihood
 ##' @return list of dataframes and degress of freedom
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 read.gadget.data <- function(likelihood){
   read.agg <- function(x){
     if(!is.null(x))
@@ -670,7 +670,7 @@ read.gadget.data <- function(likelihood){
 ##' @title Read gadget  
 ##' @param file location of the optinfofile
 ##' @return optinfo object
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 read.gadget.optinfo <- function(file='optinfofile'){
   optinfo <- readLines(file)
   optinfo <- na.omit(sapply(strsplit(optinfo,';'),function(x) x[1]))
@@ -701,7 +701,7 @@ read.gadget.optinfo <- function(file='optinfofile'){
 ##' @param file file
 ##' @param location location
 ##' @return text of the optinfofile (if desired)
-##' @author Bjarki Þór Elvarsson
+##' @author Bjarki ??r Elvarsson
 write.gadget.optinfo<-function(optinfo,file='optinfofile'){
   opt.text <- 
     paste("; optimisation file for gadget",
@@ -727,7 +727,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' @title Read gadget lik.out 
 ##' @param file string containing the name of the file
 ##' @return a list containing the swicthes (names of variable), weigths
-##' (líkelihood components) and data (dataframe with the parameter values,
+##' (l?kelihood components) and data (dataframe with the parameter values,
 ##' likelihood component values and the final score.
 ##' @author Bjarki Thor Elvarsson
 read.gadget.lik.out <- function(file='lik.out'){

@@ -46,6 +46,7 @@ setMethod("write",
       write(area.file,file=file)
       write.table(x@temperature,file=file,col.names=FALSE,append=TRUE,
                   quote=FALSE,sep='\t',row.names=FALSE)
+      
     }
 )
 
@@ -91,18 +92,44 @@ setMethod("write",
                     quote=FALSE,sep='\t',row.names=FALSE)
         
         ## length aggregation
-        lengths <- seq(300,900,by = 10)
+        lengths <- seq(x@minlength,x@maxlength,by = x@dl)
         lenAgg <- data.frame(length = paste('len',tail(lengths,-1), sep = ''),
                              min = head(lengths,-1),
                              max = tail(lengths,-1)
                              )
+        alllenAgg <- data.frame(length = 'alllen',
+                                min = min(lengths),
+                                max = max(lengths))
         agg.head <- paste(sprintf('; length aggregation file for %s created using rgadget at %s',
                                   x@stockname,Sys.Date()),
                           paste(c('; ',names(lenAgg)),collapse = '\t'),
                           sep = '\n')
         write(agg.head,file = sprintf('%s/Aggfiles/%s.len.agg',file,x@stockname))
+        
         write.table(lenAgg,
                     file = sprintf('%s/Aggfiles/%s.len.agg',file,x@stockname),
+                    col.names=FALSE,append=TRUE,
+                    quote=FALSE,sep='\t',row.names=FALSE)
+        
+        write(agg.head,file = sprintf('%s/Aggfiles/%s.alllen.agg',file,x@stockname))
+        write.table(alllenAgg,
+                    file = sprintf('%s/Aggfiles/%s.alllen.agg',file,x@stockname),
+                    col.names=FALSE,append=TRUE,
+                    quote=FALSE,sep='\t',row.names=FALSE)
+ 
+        ## age agg file
+        ageAgg <- data.frame(label = x@minage:x@maxage,
+                             age = x@minage:x@maxage)
+        write(agg.head,file = sprintf('%s/Aggfiles/%s.age.agg',file,x@stockname))
+        write.table(ageAgg,
+                    file = sprintf('%s/Aggfiles/%s.age.agg',file,x@stockname),
+                    col.names=FALSE,append=TRUE,
+                    quote=FALSE,sep='\t',row.names=FALSE)
+        allagesAgg <- data.frame(label = 'allages',
+                                 age = paste(x@minage:x@maxage,collapse = '\t'))
+        write(agg.head,file = sprintf('%s/Aggfiles/%s.allages.agg',file,x@stockname))
+        write.table(allagesAgg,
+                    file = sprintf('%s/Aggfiles/%s.allages.agg',file,x@stockname),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
         
@@ -275,6 +302,12 @@ setMethod("write",
       dir.create(loc, showWarnings = FALSE, recursive = TRUE)
       ## writing ecosystem files
       write(x@area, file = sprintf('%s/area',loc))
+      ## area aggregation files
+      allareasAgg <- data.frame(label = 'allareas',areas = paste(x@area@areas,collapse = '\t'))
+      write.table(allareasAgg,
+                  file = sprintf('%s/Aggfiles/allareas.agg',loc),
+                  col.names=FALSE,append=FALSE,
+                  quote=FALSE,sep='\t',row.names=FALSE)
       write(x@time, file = sprintf('%s/time',loc))
       if(length(x@print) > 0)
         write(x@print, file = sprintf('%s/printfile',loc))
