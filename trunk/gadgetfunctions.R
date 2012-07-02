@@ -306,7 +306,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @return vector of likelihood values
   ##' @author Bjarki Þór Elvarsson
   read.gadget.SS <- function(file='lik.out'){
+    
     lik.out <- readLines(file)
+    if(length(lik.out) == 0)
+      stop(sprintf('Error in read.gadget.SS, file %s could not be read',file))
     SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
                                            '\t\t')[[1]][2]))
     return(SS)

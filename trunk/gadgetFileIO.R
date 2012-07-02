@@ -310,6 +310,8 @@ new.gadget.main <- function(){
 ##' @author Bjarki ??r Elvarsson
 read.gadget.main <- function(file='main'){
   main <- sub(' +$','',readLines(file))
+  if(length(main) == 0)
+    stop(sprintf('Error in read.gadget.main, file %s is empty',file))
   main <- main[main!='']
   main <- main[!grepl(';',substring(main,1,1))]
   main <- sapply(strsplit(main,';'),function(x) x[1])
@@ -572,19 +574,21 @@ read.gadget.results <- function(comp,
 ##' @return list of dataframes and degress of freedom
 ##' @author Bjarki ??r Elvarsson
 read.gadget.data <- function(likelihood){
-  read.agg <- function(x){
+  read.agg <- function(x, first = FALSE){
     if(!is.null(x))
-      return(read.table(x,stringsAsFactors=FALSE,comment.char=';'))
-#      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1]))
-    else
+      if(first){
+        return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1])) 
+      }  else {
+        return(read.table(x,stringsAsFactors=FALSE,comment.char=';'))      
+    } else {
       return(NULL)
+    }
   }
   read.func <- function(x){
     x <- as.data.frame(t(x),stringsAsFactors=FALSE,comment.char=';')
-
     dat <- read.table(x$datafile,comment.char=';')
-    area.agg <- read.agg(x$areaaggfile)
-    age.agg <- read.agg(x$ageaggfile)
+    area.agg <- read.agg(x$areaaggfile, first = TRUE)
+    age.agg <- read.agg(x$ageaggfile, first = TRUE)
     len.agg <- read.agg(x$lenaggfile)
       
     if(x$type=='catchdistribution'){
@@ -632,10 +636,10 @@ read.gadget.data <- function(likelihood){
         names(dat) <- c('year','step','area','fleet','biomass')
     }
     
-    restr.area <- (dat$area %in% area.agg[,1])
+    restr.area <- (dat$area %in% area.agg)
     if(length(restr.area)==0)
       restr.area <- TRUE
-    restr.age <- (dat$age %in% age.agg[,1])
+    restr.age <- (dat$age %in% age.agg)
     if(length(restr.age)==0)
       restr.age <- TRUE
     restr.len <- (dat$length %in% len.agg[,1])

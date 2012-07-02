@@ -111,7 +111,10 @@ setClass('gadget-area',
 setMethod('initialize','gadget-area',
           function(.Object,areas,size,temperature){
             .Object@areas <- areas
-            .Object@size <- size
+            if(length(size)==1)
+              .Object@size <- rep(size,length(areas))
+            else
+              .Object@size <- size
             .Object@temperature <- temperature[c('year','step','area','temperature')]
             return(.Object)
           })
@@ -178,7 +181,7 @@ setClass('gadget-stock',
                         doesmigrate = 'numeric',
                         yearstep = 'data.frame',
                         migrationmatrix = 'array',
-                        migrationratio = 'data.frame',
+                        migrationratio = 'list',
                         ## Maturation
                         doesmature = 'numeric',
                         maturityfunction = 'character',

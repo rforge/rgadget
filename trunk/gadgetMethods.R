@@ -195,6 +195,29 @@ setMethod("write",
           stock.text['spawning'] <- sprintf('spawnfile\tData/%s.spawnfile',x@stockname)
           write(x@spawning,file = sprintf('%s/Data/%s.spawnfile',file,x@stockname))
         }
+        if(x@doesmigrate){
+          stock.text['migration'] <- 
+            paste(sprintf('yearstepfile\tData/%s.yearstep',x@stockname),
+                  sprintf('defineratios\tData/%s.migratio',x@stockname),
+                  sep = '\n')
+          write.table(x@yearstep,
+                      file = sprintf('%s/Data/%s.yearstep',file,x@stockname),
+                      row.names = FALSE,
+                      col.names = FALSE,
+                      quote=FALSE)
+          file.remove(sprintf('%s/Data/%s.migratio',file,x@stockname))
+          l_ply(names(x@migrationratio),
+                function(y){ 
+                  migratio <- sprintf('%s/Data/%s.migratio',file,x@stockname)
+                  write(sprintf('[migrationmatrix]\nname\t%s',y),
+                        file = migratio, append = TRUE)
+                  write.table(x@migrationratio[[y]],file= migratio,
+                              append = TRUE,
+                              row.names = FALSE,
+                              col.names = FALSE,
+                              quote=FALSE)
+                  })
+        }
         write(paste(stock.text,collapse = '\n'),
               file = sprintf('%s/%s',file,x@stockname))
     }
