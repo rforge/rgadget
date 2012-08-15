@@ -104,7 +104,7 @@ read.gadget.likelihood <- function(files='likelihood'){
   common <- c('name','weight','type','datafile','areaaggfile','lenaggfile',
               'ageaggfile')
   tmp.func <- function(comp){
-    loc <- grep(tolower(comp),tolower(lik[name.loc]))  
+    loc <- grep(paste('[ \t]',tolower(comp),sep=''),tolower(lik[name.loc]))  
     if(sum(loc)==0){
       return(NULL)
     }else {
@@ -144,7 +144,7 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp$lenaggfile <- ''
         if(is.null(tmp$ageaggfile))
           tmp$ageaggfile <- ''
-
+        
         weights <<-  rbind(weights,
                            tmp[common])
 #                           as.data.frame(t(unlist(tmp[common])),
@@ -666,7 +666,13 @@ read.gadget.data <- function(likelihood){
                     )
   lik.dat$comp.type <- NULL
   df <- lapply(lik.dat,function(x)
-               sapply(x,function(x) dim(x[x[,dim(x)[2]]>0,])[1]))
+               sapply(x,function(x){
+                      tmp <- 0
+                      if(length(intersect(c('lower','upper'),names(x)))>0){
+                        tmp <- 2
+                      }
+                      dim(x[x[,dim(x)[2]-tmp]>0,])[1]
+                    }))
   return(list(dat=lik.dat,df=df))
 }
 
