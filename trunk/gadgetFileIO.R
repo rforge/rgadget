@@ -38,6 +38,16 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
       data <- mutate(data,
                      predict = exp(intercept)*number^slope) ## 1000 hmm
     }
+    pos <- grep('; Standard output file for the stock',tmp)
+    if(length(pos) != 0){
+      step1 <- data[c('year','step','age','area','number')]
+      next1 <- mutate(step1,year=year-1,age=age-1)
+      names(next1)[5] <- 'num.after.harv'
+      tmp <- merge(step1,next1)
+      tmp$Z <- log(tmp$number) - log(tmp$num.after.harv)
+      data <- merge(data,tmp[c('year','step','age','area','Z')],all.x=TRUE)
+    }
+  
     return(data)
   }
   out.files <- list.files(path=path)
