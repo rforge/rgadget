@@ -282,6 +282,7 @@ callParamin <- function(i='params.in',
 ##' @param run.base should the base (inverse initial SS) parameters be estimated
 ##' @param run.serial should the weighting run be run in parallel (used in
 ##' bootstrap). 
+##' @param method linear model or loess smoother used to calculate SI weights outside the gadget model.
 ##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
@@ -295,7 +296,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              PBS = FALSE,
                              qsub.script = NULL,
                              run.base=FALSE,
-                             run.serial = FALSE 
+                             run.serial = FALSE,
+                             method = 'lm'
                              ) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
@@ -346,18 +348,27 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @param lik.dat Likelihood dataset
   ##' @return internal weights for the survey index components
   ##' @author Bjarki Thor Elvarsson
-  sI.weights <- function(lik.dat){
-    dat <- NULL
-    for(comp in lik.dat$dat$surveyindices){
-      dat <- rbind(dat,comp)
+  sI.weights <- function(lik.dat,method='lm'){
+    if(method=='lm'){
+      dat <- NULL
+      for(comp in lik.dat$dat$surveyindices){
+        dat <- rbind(dat,comp)
+      }
+      dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
+      dat$y <- log(dat$number)
+      dat$year <- as.factor(dat$year)
+      fit <- lm(y~year+length+step,dat)
+      weights <- (lik.dat$df$surveyindices -
+                  tapply(dat$length,dat$comp,function(x) length(unique(x))))/
+                    tapply(resid(fit),dat$comp,function(x) sum(x^2))
+    } else {
+      weights <- ldply(lik.dat$dat$surveyindices,
+                       function(x){
+                         time <- x$year + (x$step-1)/4
+                         fit <- predict(loess(log(x$number)~time))
+                         length(fit)/sum((fit - log(x$number))^2)
+                       })$V1
     }
-    dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
-    dat$y <- log(dat$number)
-    dat$year <- as.factor(dat$year)
-    fit <- lm(y~year+length+step,dat)
-    weights <- (lik.dat$df$surveyindices -
-                tapply(dat$length,dat$comp,function(x) length(unique(x))))/
-                  tapply(resid(fit),dat$comp,function(x) sum(x^2))
     return(weights)
   }
   
@@ -368,7 +379,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                               unlist(grouping))])
     run.string <- as.list(run.string)
     restr <- restr&(!restr.SI)
-    sIw <- sI.weights(lik.dat)
+    sIw <- sI.weights(lik.dat,method=method)
     run.string$SI <- likelihood$weights$name[restr.SI]
   } else {
     run.string <- c(likelihood$weights$name[restr&
@@ -536,8 +547,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       comp <- as.list(c('final','sIw','sIgroup'))
     }
     
-
-    lapply(comp,run.final)
+    if(run.serial)
+      lapply(comp,run.final)
+    else
+      mclapply(comp,run.final)
 
   } else {
     comp <- NULL
@@ -808,6 +821,7 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   bs.lik <- read.gadget.likelihood(bs.likfile)
     
   foreach(i=bs.samples) %dopar% {
+    print(i)
     dir.create(sprintf('%s/BS.%s',bs.wgts,i),showWarnings=FALSE)
     bs.lik.file <- sprintf('%s/BS.%s/likelihood',bs.wgts,i)
     bs.main.file <- sprintf('%s/BS.%s/main',bs.wgts,i)
@@ -843,7 +857,8 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                               qsub.script = qsub.script,
                               wgts = sprintf('%s/BS.%s',bs.wgts,i),
                               resume.final = TRUE,
-                              run.final = TRUE)
+                              run.final = TRUE,
+                              run.serial = TRUE)
       if(PBS)
         write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
       if(i > 100 & PBS)
