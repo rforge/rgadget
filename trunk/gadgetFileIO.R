@@ -21,7 +21,7 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
   read.printfile <- function(file){
     file <- paste(path,file,sep='/')
     tmp <- readLines(file)
-    skip <- max(grep(';',tmp[1:10]))
+    skip <- max(grep(';',tmp[1:7]))
     header <- gsub('; ','',tmp[skip])
     header <- gsub(' ','.',unlist(strsplit(header,'-')))
     data <- read.table(file,comment.char=';',header=FALSE)

@@ -870,3 +870,45 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   }
   return(NULL)
 }
+
+
+gadget.ypr <- function(params.file = 'params.in',
+                       main.file = 'main',
+                       effort = seq(0, 1, by=0.01),
+                       begin=1990,end=2020,rec.year=0,
+                       fleets = data.frame(fleet='comm',ratio=1),
+                       ypr='YPR'){
+  create.dir(ypr)
+  main <- read.gadget.main(main.file)
+  params <- read.gadget.parameters(params.file)
+  time <- read.gadget.time(main$timefile)
+  area <- read.gadget.area(main$areafile)
+  time$lastyear <-  end
+  time$firstyear <- begin
+
+  write.gadget.time(time,file=sprintf('%s/time.predict',ypr))
+  main$timefile <- sprintf('%s/time.predict',ypr)
+
+  write.gadget.main(main,file=sprintf('%s/main.predict',ypr))
+
+  fleet.predict <- data.frame(year = rep(begin:end,
+                                each=length(time$notimesteps),length(area$areas)),
+                              step = rep(1:length(time$notimesteps),
+                                (end - begin)*length(area$areas)),
+                              area = rep(area$areas,
+                                each=(end - begin)*length(time$notimesteps))
+                              )
+  fleet.predict <- ddply(fleets,'fleet',function(x){
+    tmp <- mutate(fleet.predict,
+                  effort = x$ratio)
+    return(tmp)
+  })
+
+  write.table(fleet.predict[c('year','step','area','fleet','ratio')],
+              file=sprintf('%s/fleet.predict',ypr),
+              col.names=FALSE,row.names=FALSE)
+  
+  
+  
+  
+}
