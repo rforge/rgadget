@@ -472,9 +472,11 @@ read.gadget.parameters <- function(file='params.in'){
 ##' @title Write params
 ##' @param params params dataframe
 ##' @param file a string naming the file to write to
+##' @param columns should a conventional column based parameter file be written out or
+##' should a line based parameter (used when evaluating gadget on a matrix) be used.
 ##' @return a string containing the text of the params file (if desired)
 ##' @author Bjarki ??r Elvarsson
-write.gadget.parameters <- function(params,file='params.out'){
+write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
   input.text <-
     paste("; input file for the gadget model",
           "; created automatically from Rgadget",
@@ -482,9 +484,13 @@ write.gadget.parameters <- function(params,file='params.out'){
           paste(names(params),collapse='\t'),
           sep='\n')
   write(input.text,file)
+  if(!columns)
+    write(paste(c('switches',names(params)),collapse='\t'),file=file,append=TRUE)
+
   write.table(params,file=file,
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
+
 }
 ##' Read gadget printfile
 ##' @title Read gadget printfile
@@ -1132,12 +1138,20 @@ merge.formula <- function(txt){
   return(txt)
 }
 
+
+##' <description>
+##'
+##' function only tested for linear and totalfleets>
+##' @title 
+##' @param fleet.file 
+##' @return 
+##' @author Bjarki Þór Elvarsson
 read.gadget.fleet <- function(fleet.file='fleet'){
   fleet <- strip.comments(fleet.file)
   comp.loc <- grep('fleetcomponent',fleet)
   suit.loc <- grep('suitability',fleet)
   fleet.dat <-
-    data.frame(name = laply(fleet[comp.loc+1],function(x) x[2]),
+    data.frame(fleet = laply(fleet[comp.loc+1],function(x) x[2]),
                type = laply(fleet[comp.loc+1],function(x) x[1]),
                livesonares = laply(fleet[comp.loc+2],
                  function(x) paste(x[-1],collapse=' ')),
@@ -1145,11 +1159,52 @@ read.gadget.fleet <- function(fleet.file='fleet'){
                  function(x) as.numeric(x[2])),
                amount =  laply(fleet[c(comp.loc[-1]-1,
                  length(fleet))],
-                 function(x) x[2])
+                 function(x) x[2]),
+               stringsAsFactors=FALSE
                )
-  diff.suit <- cbind(suit.loc+1, c(comp.loc[-1]-2,length(fleet)-1))
-  prey <- ldply(fleet[suit.loc+1],
-                function(x) c(stock=x[1],suitability=x[3],
-                              params=paste(tail(x,-3),collapse=' ')))
+  diff.suit <- data.frame(fleet=laply(fleet[comp.loc+1],function(x) x[2]),
+                          begin=suit.loc+1,
+                          end=c(comp.loc[-1]-2,length(fleet)-1))
+  prey <- ddply(diff.suit,'fleet',
+                function(x){
+                  ldply(fleet[x$begin:x$end],
+                        function(x)
+                        c(stock=x[1],suitability=x[3],
+                          params=paste(tail(x,-3),collapse=' ')))
+                  
+                })
+  return(list(fleet=fleet.dat,prey=prey))
+}
+##' <description>
+##'
+##' <details>
+##' @title 
+##' @param fleet 
+##' @param file 
+##' @return 
+##' @author Bjarki Þór Elvarsson
+write.gadget.fleet <- function(fleet,file='fleet'){
+  base.text <-
+    paste('[fleetcomponent]',
+          '%s\t%s',
+          'livesonareas\t%s',
+          'multiplicative\t%s',
+          'suitability',
+          '%s',
+          'amount\t%s',
+          sep='\n')
+
+  suit.text <- ddply(fleet$prey,'fleet',
+                     function(x){
+                       c(suitability=paste(x$stock,'function',
+                           x$suitability,x$params,
+                           sep='\t', collapse='\n'))
+                     })
+  tmp <- merge(fleet$fleet,suit.text,by='fleet')
+
+  
+  write(sprintf(base.text,tmp$type,tmp$fleet,tmp$livesonares,
+                tmp$multiplicative,tmp$suitability, tmp$amount),
+        file=file)
   
 }
