@@ -1131,3 +1131,25 @@ merge.formula <- function(txt){
   }
   return(txt)
 }
+
+read.gadget.fleet <- function(fleet.file='fleet'){
+  fleet <- strip.comments(fleet.file)
+  comp.loc <- grep('fleetcomponent',fleet)
+  suit.loc <- grep('suitability',fleet)
+  fleet.dat <-
+    data.frame(name = laply(fleet[comp.loc+1],function(x) x[2]),
+               type = laply(fleet[comp.loc+1],function(x) x[1]),
+               livesonares = laply(fleet[comp.loc+2],
+                 function(x) paste(x[-1],collapse=' ')),
+               multiplicative = laply(fleet[comp.loc+3],
+                 function(x) as.numeric(x[2])),
+               amount =  laply(fleet[c(comp.loc[-1]-1,
+                 length(fleet))],
+                 function(x) x[2])
+               )
+  diff.suit <- cbind(suit.loc+1, c(comp.loc[-1]-2,length(fleet)-1))
+  prey <- ldply(fleet[suit.loc+1],
+                function(x) c(stock=x[1],suitability=x[3],
+                              params=paste(tail(x,-3),collapse=' ')))
+  
+}
