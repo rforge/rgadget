@@ -85,7 +85,7 @@ setMethod("write",
                           sep = '\n')
         write(ref.head,file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname))
         tmp <- x@refweight
-        tmp$weight <- round(tmp$weight)
+        tmp[,2] <- round(tmp[,2])
         write.table(tmp,
                     file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname),
                     col.names=FALSE,append=TRUE,
@@ -191,11 +191,11 @@ setMethod("write",
         if(x@doeseat == 1){
           stock.text['eat'] <- toString(x@predator)
         }
-        if(x@doesspawn){
+        if(x@doesspawn == 1){
           stock.text['spawning'] <- sprintf('spawnfile\tData/%s.spawnfile',x@stockname)
           write(x@spawning,file = sprintf('%s/Data/%s.spawnfile',file,x@stockname))
         }
-        if(x@doesmigrate){
+        if(x@doesmigrate == 1){
           stock.text['migration'] <- 
             paste(sprintf('yearstepfile\tData/%s.yearstep',x@stockname),
                   sprintf('defineratios\tData/%s.migratio',x@stockname),
@@ -218,6 +218,18 @@ setMethod("write",
                               quote=FALSE)
                   })
         }
+
+        if(x@doesrenew == 1){
+          stock.text['renewal'] <-
+            paste(paste(names(x@renewal),
+                        laply(x@renewal,
+                              function(x)
+                              paste(x,collapse=' ')),
+                        sep='\t',collapse = '\n'),
+                  sprintf('normalparamfile\t%s/Data/%s.rec',file,x@stockname),
+                  sep='\n')
+        }
+        
         write(paste(stock.text,collapse = '\n'),
               file = sprintf('%s/%s',file,x@stockname))
     }

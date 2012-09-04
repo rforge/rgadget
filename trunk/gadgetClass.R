@@ -28,14 +28,14 @@ setClass('gadget-growth',
                         maxlengthgroupgrowth = vector()                        
          ),
          #package = 'rgadget',
-         validity = function(x){
-           if(x@growthfunction == 'lengthvbsimple')
-             if(length(x@growthparameters)!=4)
-               stop('Growth-parameters misspecified for lengthvbsimple
-                    should be 4')
-           else 
-             return(TRUE)
-         }
+#         validity = function(x){
+#           if(x@growthfunction == 'lengthvbsimple')
+#             if(length(x@growthparameters)!=4)
+#               stop('Growth-parameters misspecified for lengthvbsimple
+#                    should be 4')
+#           else 
+#             return(TRUE)
+#         }
          )
 
 setClass('gadget-prey',

@@ -790,10 +790,14 @@ read.gadget.lik.out <- function(file='lik.out'){
 ##' @author Bjarki Thor Elvarsson
 strip.comments <- function(file='main'){
   main <- sub(' +$','',readLines(file))
+  main <- gsub('(','( ',main,fixed=TRUE)
+  main <- gsub(')',' )',main,fixed=TRUE)
   main <- main[main!='']
+  comments <- main[grepl(';',substring(main,1,1))]
   main <- main[!grepl(';',substring(main,1,1))]
-  main <- sapply(strsplit(main,';'),function(x) x[1])
+  main <- sapply(strsplit(main,';'),function(x) x[1])  
   main <- clear.spaces(main)
+#  attr(main,'comments') <- comments
   return(main)
 }
 
@@ -829,90 +833,142 @@ read.gadget.model <- function(main.file='main'){
 read.gadget.stockfiles <- function(stock.files){
   tmp.func <- function(sf){
     stock <- strip.comments(sf)
-    st.names <- sapply(stock[1:9],function(x) x[1])
-    st <- sapply(stock[1:9],function(x) x[2])
-    names(st) <- st.names
 
-    ## pop from list
-    stock[1:9] <- NULL
-    
-    ## check 'doesgrow switch
-    if(stock[[1]][2]==0){ 
-      growthfunction <- NULL
-      stock[1] <- NULL
-    } else if(stock[[2]][2] == 'weightjones'){
-      growthfunction <-
-        list(wgrowthparameters = stock[[3]][-1],
-             lgrowthparameters = stock[[4]][-1])
-      stock[1:4] <- NULL
-    } else if(stock[[2]][2] == 'weightvbexpanded'){
-      growthfunction <-
-        list(wgrowthparameters = stock[[3]][-1],
-             lgrowthparameters = stock[[4]][-1],
-             yeareffect = stock[[5]][-1],
-             stepeffect = stock[[6]][-1],
-             areaeffect = stock[[7]][-1])
-      stock[1:7] <- NULL
-    } else if(stock[[2]][2] %in% c('lengthvb','lengthpower')){
-      growthfunction <-
-        list(growthparameters = stock[[3]][-1],
-             weightparameters = stock[[4]][-1])
-      stock[1:4] <- NULL
-    } else {
-      growthfunction <-
-        list(growthparameters = stock[[3]][-1])
-      stock[1:3] <- NULL
-    }
-    implementation <- lapply(stock[1:2],function(x) x[-1])
-    names(implementation) <- lapply(stock[1:2],function(x) x[1])
-    stock[1:2] <- NULL
-    growth <- list(growthfunction=growthfunction,
-                   implementation=implementation)
-    
-    st$naturalmortality <- stock[[1]][-1]
-    stock[1] <- NULL
+    growth.loc <- grep('doesgrow', stock, ignore.case = TRUE)
+    mort.loc <- grep('naturalmortality', stock, ignore.case = TRUE)
+    init.loc <- grep('initialconditions', stock, ignore.case = TRUE)
+    initfile.loc <- grep('normalcondfile',stock, ignore.case =TRUE)
+#      c(grep('normalcondfile',stock, ignore.case =TRUE),
+#        grep('normalparamfile',stock, ignore.case =TRUE),
+#        grep('numberfile',stock, ignore.case =TRUE))
+    eat.loc <- grep('doeseat', stock, ignore.case = TRUE)
+    migrate.loc <- grep('doesmigrate', stock, ignore.case = TRUE)
+    mature.loc <- grep('doesmature', stock, ignore.case = TRUE)
+    move.loc <- grep('doesmove', stock, ignore.case = TRUE)
+    renew.loc <- grep('doesrenew', stock, ignore.case = TRUE)
+    spawn.loc <- grep('doesspawn', stock, ignore.case = TRUE)
+    stray.loc <- grep('doesstray', stock, ignore.case = TRUE)
 
-    ## iseaten
-    if(stock[[1]][2]==0){
-      prey.info <- NULL
-      stock[1] <- NULL
-    } else {
-      prey.info <- lapply(stock[2:3],function(x) x[-1])
-      names(prey.info) <- lapply(stock[2:3],function(x) x[1])
-      stock[1:2] <- NULL
-    }
+    growth.info <- function(tmp){
+      if(length(tmp)==1)
+        tmp <- new('gadget-growth')
+      else {
+        names.tmp <- sapply(tmp,function(x) x[1])
+        tmp <- llply(tmp,function(x) paste(x[-1],collapse=' '))
+        names(tmp) <- names.tmp
 
-    ## doeseat
-    if(stock[[1]][2]==0){
-      pred.info <- NULL
-      stock[1] <- NULL
-    } else {
-      stock[1] <- NULL
-      pref <- grep('preference',stock)
-      suit <- grep('suitability',stock)
-      maxcon <- grep('maxconsumption',stock)
-      
-      suitability <- lapply(stock[2:(pref-1)],function(x) x[-1])
-      names(suitability) <- sapply(stock[2:(pref-1)],function(x) x[1])
-
-      preference <- t(sapply(stock[pref:(maxcon-1)],function(x) x))
-      names(preference) <- c('preyname','preference')
-      pred.info <-
-        list(suitability=suitability,
-             preference=preference,
-             maxconsumption=stock[[maxcon]][-1])
-      stock[1:maxcon] <- NULL
+        if(is.null(tmp$growthfunction))
+          tmp$growthfunction <- vector()
+        if(is.null(tmp$wgrowthfunction))
+          tmp$wgrowthfunction <- vector()
+        if(is.null(tmp$lgrowthfunction))
+          tmp$lgrowthfunction <- vector()
+        if(is.null(tmp$yeareffect))
+          tmp$yeareffect <- vector()
+        if(is.null(tmp$stepeffect))
+          tmp$stepeffect <- vector()
+        if(is.null(tmp$areaeffect))
+          tmp$areaeffect <- vector()
+        
+        tmp <- new('gadget-growth',
+                   growthfunction = tmp$growthfunction,
+                   ## growthfunction parameters
+                   growthparameters = tmp$growthparameters,
+#                   wgrowthparameters = tmp$wgrowthparameters,
+#                   lgrowthparameters = tmp$lgrowthparameters,
+#                   yeareffect = tmp$yeareffect,
+#                   stepeffect = tmp$stepeffect,
+#                   areaeffect = tmp$areaeffect,
+                   ## growth implementation
+                   beta = tmp$beta,
+                   maxlengthgroupgrowth = tmp$maxlengthgroupgrowth)
+      }
+      return(tmp)
     }
 
+    prey.info <- function(tmp){
+      if(length(tmp)==1){
+        tmp <- new('gadget-prey')
+      } else {
+        tmp <- new('gadget-prey',
+                   name = stock[[1]][2],
+                   preylengths = read.table(tmp[[2]][2],comment.char=';'),
+                   energycontent = ifelse(length(tmp)==3,as.numeric(tmp[[3]][2]),
+                     0))
+      }
+      return(tmp)
+    }
+
+    pred.info <- function(tmp){
+      if(length(tmp)==1){
+        tmp <- new('gadget-predator')
+      } else {
+        pref.loc <- grep('preference',tmp)
+        maxcon.loc <- grep('maxconsumption',tmp)
+        half.loc <- grep('halffeedingvalue',tmp)
+        suit <- ldply(2:(pref.loc-1),
+                      function(x){
+                        c(stock = tmp[[x]][1],
+                          suitability = paste(tmp[[x]][-1],collapse=' '))
+                      })
+        pref <- ldply(pref.loc,
+                      function(x){
+                        c(stock = tmp[[x]][1],
+                          preference = paste(tmp[[x]][-1],collapse=' '))
+                      })
+        tmp <- new('gadget-predator',
+                   suitability = suit,
+                   preferene = pref,
+                   maxconsumption = as.numeric(tmp[[maxcon.loc]][2]),
+                   halffeedingvalue = as.numeric(tmp[[half.loc]][2]))
+      }
+      return(tmp)
+    }
+
     
     
-    
+    st <-
+      new('gadget-stock',
+          stockname = stock[[1]][2],
+          livesonareas = as.numeric(stock[[2]][-1]),
+          minage = as.numeric(stock[[3]][2]),
+          maxage = as.numeric(stock[[4]][2]),
+          minlength = as.numeric(stock[[5]][2]),
+          maxlength = as.numeric(stock[[6]][2]),
+          dl = as.numeric(stock[[7]][2]),
+          refweight = read.table(stock[[8]][2],comment.char=';'),
+          growthandeatlengths = read.table(stock[[9]][2],comment.char=';'),
+          doesgrow = as.numeric(stock[[growth.loc]][2]),
+          growth = growth.info(stock[growth.loc:(mort.loc-1)]),
+          naturalmortality = as.numeric(stock[[mort.loc]][-1]),
+          iseaten = as.numeric(stock[[mort.loc+1]][2]),
+          preyinfo = prey.info(stock[(mort.loc+1):(eat.loc-1)]),
+          doeseat = as.numeric(stock[[eat.loc]][2]),
+          predator = pred.info(stock[eat.loc:(init.loc-1)]),
+          initialconditions = list(minage = stock[[init.loc + 1]][2],
+            maxage = stock[[init.loc + 2]][2],
+            minlength = stock[[init.loc + 3]][2],
+            maxlength = stock[[init.loc + 4]][2],
+            dl = stock[[init.loc + 5]][2],
+            sdev = ifelse(stock[[init.loc + 6]][1]=='sdev',
+              stock[[init.loc + 6]][2], 1)),
+          initialdata = read.gadget.table(stock[[initfile.loc]][2]),
+          doesmigrate = as.numeric(stock[[migrate.loc]][2]),
+          doesmature =  as.numeric(stock[[mature.loc]][2]),
+          doesmove = as.numeric(stock[[move.loc]][2]),
+          doesrenew =  as.numeric(stock[[renew.loc]][2]),
+          renewal = list(minlength = as.numeric(stock[[renew.loc + 1]][2]),
+            maxlength = as.numeric(stock[[renew.loc+2]][2])),
+          renewal.data = read.gadget.table(stock[[renew.loc+3]][2]),
+          doesspawn = as.numeric(stock[[spawn.loc]][2]),
+          doesstray = ifelse(length(stray.loc)==0,
+            0,as.numeric(stock[[stray.loc]][2]))
+          )
+        
+    return(st)
   }
-  stocks <- within(list(),
-                   for(sf in stock.files){
-                     tmp.func(sf)
-                   })
-  stocks$sf <- NULL
+  stocks <- llply(stock.files,tmp.func)
+  return(stocks)
 }
 
 ##' <description>
@@ -1128,16 +1184,42 @@ merge.formula <- function(txt){
   closeP <- grep(')',txt,fixed=TRUE)
   if(length(openP) != length(closeP))
     stop('numbers of paranthesis dont match in gadget formula')
-  i <- 1
-  while(i < length(openP)){
-    n <- length(which(openP < closeP[i]))
-    txt[openP[i]] <- paste(txt[openP[i]:closeP[i+n-1]],collapse='')
-    txt <- txt[-c((openP[i]+1):closeP[i+n-1])]
-    i <- i + n - 1
+
+  braces <- data.frame(begin=openP,end=closeP,group=openP)
+  for(i in 1:length(openP)){
+    braces$end[i] <- closeP[i]
+    braces$begin[i] <- openP[max(which(openP < closeP[i]))]
+    openP[max(which(openP < closeP[i]))] <- length(txt)
+  }
+  braces <- arrange(braces, begin)
+  for(i in 1:length(openP)){
+    braces$group[braces$end<braces$end[i] & braces$end>braces$begin[i]] <-
+      braces$group[i]
+  }
+
+  braces <- ddply(braces,'group',function(x) head(x,1))
+  for(i in 1:length(braces$group)){
+    txt[braces$begin[i]] <- paste(txt[braces$begin[i]:braces$end[i]],collapse=' ')
+    txt <- txt[-c((braces$begin[i]+1):braces$end[i])]
   }
   return(txt)
 }
 
+
+read.gadget.table <- function(file,header=FALSE){
+  dat <- strip.comments(file)
+  if(class(dat) == 'list')
+    gad.tab <- ldply(dat,merge.formula)
+  else
+    gad.tab <- adply(dat,2,merge.formula)
+  if(header){
+    comments <- attr(dat,'comments')
+    header <- tail(comments,1)
+    ## unfinised business
+  }
+
+  return(gad.tab)
+}
 
 ##' <description>
 ##'
