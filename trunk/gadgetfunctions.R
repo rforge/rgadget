@@ -875,17 +875,19 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
 gadget.ypr <- function(params.file = 'params.in',
                        main.file = 'main',
                        effort = seq(0, 1, by=0.01),
-                       begin=1990,end=2020,rec.year=0,
+                       begin=1990,end=2020,
                        fleets = data.frame(fleet='comm',ratio=1),
                        ypr='YPR'){
   ## model setup
 
-  create.dir(ypr)
+  dir.create(ypr,showWarnings = FALSE, recursive = TRUE)
   main <- read.gadget.main(main.file)
+  stocks <- read.gadget.stockfiles(main$stockfiles)
   fleet <- read.gadget.fleet(main$fleetfiles)
   params <- read.gadget.parameters(params.file)
   time <- read.gadget.time(main$timefile)
   area <- read.gadget.area(main$areafile)
+
   time$lastyear <-  end
   time$firstyear <- begin
 
@@ -893,16 +895,33 @@ gadget.ypr <- function(params.file = 'params.in',
                            step = 1:length(time$notimesteps),
                            area = area$areas)
   
-  area$temperature <- modify(time.grid,
-                             temperature = mean(area$temperature$temperature))
+  area$temperature <- mutate(time.grid,
+                             temperature = 5)
 
-  main$area <- sprintf('%s/area',ypr)
+  main$areafile <- sprintf('%s/area',ypr)
   write.gadget.area(area,file=sprintf('%s/area',ypr))
   
-  fleet <- llply(fleet, function(x) subset(x,fleet %in% fleets$fleet))
-  fleet$fleet$multiplicative <- '1#effort'
-  fleet$fleet$amount <- sprintf('%s/fleet.ypr', ypr)
+  fleet <- llply(fleet,
+                 function(x){
+                   tmp <- subset(x,fleet %in% fleets$fleet)
+                 })
+  fleet$fleet <- mutate(fleet$fleet,
+                        multiplicative = '1#effort',
+                        amount = sprintf('%s/fleet.ypr', ypr),
+                        type = 'linearfleet')
 
+  fleet.predict <- ddply(fleets,'fleet',function(x){
+    tmp <- mutate(time.grid,
+                  ratio = x$ratio)
+    return(tmp)
+  })
+
+
+  write.table(fleet.predict[c('year','step','area','fleet','ratio')],
+              file=sprintf('%s/fleet.ypr',ypr),
+              col.names=FALSE,row.names=FALSE,
+              quote = FALSE)
+    
   main$fleetfiles <- sprintf('%s/fleet', ypr)
   write.gadget.fleet(fleet,file=sprintf('%s/fleet', ypr)) 
   
@@ -921,26 +940,41 @@ gadget.ypr <- function(params.file = 'params.in',
   printfile <- sprintf(print.txt,unique(fleet$prey$stock),
                        ypr)
 
+  dir.create(sprintf('%s/out',ypr),showWarnings = FALSE, recursive = TRUE)
   main$printfiles <- sprintf('%s/printfile.ypr',ypr)
   write(printfile,file=sprintf('%s/printfile.ypr',ypr))
 
 
+  ## remove recruitment and initialdata from the stockfiles
+
+  l_ply(stocks,function(x){
+    x@initialdata[,3] <- 0 ## nothing in the beginning
+    tmp <- subset(time.grid,step == 1)
+    tmp <- mutate(tmp,
+                  age = x@renewal.data[1,4],
+                  number = 0,
+                  mean = x@renewal.data[1,6],
+                  stddev = x@renewal.data[1,7],
+                  alpha = x@renewal.data[1,8],
+                  beta = x@renewal.data[1,9])
+    tmp$number[1] <- 100
+    x@renewal.data <- tmp
+    write(x,file=ypr)
+  })
+
+  main$stockfiles <- sprintf('%s/%s',ypr,laply(stocks,function(x) x@stockname))
+
+  main$likelihoodfiles <- ';'
+  
   write.gadget.main(main,file=sprintf('%s/main.ypr',ypr))
 
   
-  fleet.predict <- ddply(fleets,'fleet',function(x){
-    tmp <- mutate(time.grid,
-                  ratio = x$ratio)
-    return(tmp)
-  })
 
-  write.table(fleet.predict[c('year','step','area','fleet','ratio')],
-              file=sprintf('%s/fleet.predict',ypr),
-              col.names=FALSE,row.names=FALSE)
+
   
 
   ## model parameters
-  if(sum(params %in% c('switch','value','lower','upper','optimise'))){
+  if(sum(names(params) %in% c('switch','value','lower','upper','optimise'))==5){
     tmp <- as.data.frame(t(params$value))
     names(tmp) <- params$switch
     params <- tmp
@@ -952,16 +986,41 @@ gadget.ypr <- function(params.file = 'params.in',
                       function(x){
                         tmp <- params
                         tmp$effort <- x
-                        return(x)
+                        return(tmp)
                       })
 
-  write.gadget.parameters(params.aug,file=sprintf('%s/params.ypr',ypr))
+  write.gadget.parameters(params.aug,file=sprintf('%s/params.ypr',ypr),
+                          columns = FALSE)
 
   callGadget(s=1,i=sprintf('%s/params.ypr',ypr),main=sprintf('%s/main.ypr',ypr))
 
   ## read output
+  effort.grid <- ldply(effort,
+                       function(x){
+                         mutate(time.grid,
+                                effort = x)})
 
-  out <- read.printfiles(sprintf('%s/out',ypr))
   
-  return(list(params=params,out=out))
+  out <- ddply(data.frame(stock = unique(fleet$prey$stock),tmp=1),
+               'stock',
+               function(x){
+                 system(sprintf("sed '/            0          0          0          0            0            0/d' %1$s/out/%2$s.std > %1$s/out/%2$s.std0",ypr,x$stock))
+                 stock.std <- read.table(file = sprintf("%1$s/out/%2$s.std0",
+                                           ypr,x$stock),
+                                         comment.char = ';')
+                 names(stock.std) <-
+                   c('year', 'step','area','age','number',
+                     'mean.length', 'mean.weight', 'stddev.length',
+                     'number.consumed', 'biomass.consumed')
+                 stock.std$effort <- arrange(effort.grid,effort)$effort
+                 return(stock.std)
+               })
+
+  
+  ypr <- ddply(out,'effort',
+               function(x) c(num=sum(x$number.consumed)/1e6,
+                             bio=sum(x$biomass.consumed)/1e6))
+  secant <- diff(ypr$bio)/diff(ypr$effort)
+  f0.1 <- ypr$effort[min(which(secant<0.1*secant[1]))]
+  return(list(params=params,out=out,ypr=ypr, f0.1=f0.1))
 }

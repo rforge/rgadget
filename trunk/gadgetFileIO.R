@@ -483,10 +483,11 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
           sprintf('; %s - %s',file,date()),
           paste(names(params),collapse='\t'),
           sep='\n')
-  write(input.text,file)
+  
   if(!columns)
-    write(paste(c('switches',names(params)),collapse='\t'),file=file,append=TRUE)
-
+    write(paste(c('switches',names(params)),collapse='\t'),file=file)
+  else
+    write(input.text,file)
   write.table(params,file=file,
               quote=FALSE, row.names=FALSE, col.names=FALSE,
               append=TRUE, sep="\t")
@@ -837,12 +838,13 @@ read.gadget.stockfiles <- function(stock.files){
     growth.loc <- grep('doesgrow', stock, ignore.case = TRUE)
     mort.loc <- grep('naturalmortality', stock, ignore.case = TRUE)
     init.loc <- grep('initialconditions', stock, ignore.case = TRUE)
-    initfile.loc <- grep('normalcondfile',stock, ignore.case =TRUE)
+#    initfile.loc <- #grep('normalcondfile',stock, ignore.case =TRUE)
 #      c(grep('normalcondfile',stock, ignore.case =TRUE),
 #        grep('normalparamfile',stock, ignore.case =TRUE),
 #        grep('numberfile',stock, ignore.case =TRUE))
     eat.loc <- grep('doeseat', stock, ignore.case = TRUE)
     migrate.loc <- grep('doesmigrate', stock, ignore.case = TRUE)
+    initfile.loc <- migrate.loc -1 
     mature.loc <- grep('doesmature', stock, ignore.case = TRUE)
     move.loc <- grep('doesmove', stock, ignore.case = TRUE)
     renew.loc <- grep('doesrenew', stock, ignore.case = TRUE)
@@ -894,7 +896,7 @@ read.gadget.stockfiles <- function(stock.files){
                    name = stock[[1]][2],
                    preylengths = read.table(tmp[[2]][2],comment.char=';'),
                    energycontent = ifelse(length(tmp)==3,as.numeric(tmp[[3]][2]),
-                     0))
+                     1))
       }
       return(tmp)
     }
@@ -949,7 +951,8 @@ read.gadget.stockfiles <- function(stock.files){
             maxage = stock[[init.loc + 2]][2],
             minlength = stock[[init.loc + 3]][2],
             maxlength = stock[[init.loc + 4]][2],
-            dl = stock[[init.loc + 5]][2],
+            dl = ifelse(stock[[init.loc + 5]][1]=='dl',
+              stock[[init.loc + 5]][2],1),
             sdev = ifelse(stock[[init.loc + 6]][1]=='sdev',
               stock[[init.loc + 6]][2], 1)),
           initialdata = read.gadget.table(stock[[initfile.loc]][2]),
@@ -1210,8 +1213,10 @@ read.gadget.table <- function(file,header=FALSE){
   dat <- strip.comments(file)
   if(class(dat) == 'list')
     gad.tab <- ldply(dat,merge.formula)
-  else
+  else {
     gad.tab <- adply(dat,2,merge.formula)
+    gad.tab$X1 <- NULL
+  }
   if(header){
     comments <- attr(dat,'comments')
     header <- tail(comments,1)

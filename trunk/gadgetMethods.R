@@ -65,7 +65,7 @@ setMethod("write",
       write.table(x@preylengths,file = sprintf('%s/Aggfiles/%s.prey.agg',file,x@name),
             col.names=FALSE,append=TRUE,
             quote=FALSE,sep='\t',row.names=FALSE)
-      paste(sprintf('preylengths\tAggfiles/%s.prey.agg',x@name),
+      paste(sprintf('preylengths\t%s/Aggfiles/%s.prey.agg',file,x@name),
             sprintf('energycontent\t%s',x@energycontent),
             sep = '\n')    
     }
@@ -85,7 +85,7 @@ setMethod("write",
                           sep = '\n')
         write(ref.head,file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname))
         tmp <- x@refweight
-        tmp[,2] <- round(tmp[,2])
+#        tmp[,2] <- round(tmp[,2])
         write.table(tmp,
                     file = sprintf('%s/Data/%s.refweigthfile',file,x@stockname),
                     col.names=FALSE,append=TRUE,
@@ -156,8 +156,8 @@ setMethod("write",
             sprintf('minlength\t%s',x@minlength),
             sprintf('maxlength\t%s',x@maxlength),
             sprintf('dl\t%s',x@dl),
-            sprintf('refweightfile\tData/%s.refweigthfile',x@stockname),
-            sprintf('growthandeatlengths\tAggfiles/%s.len.agg',x@stockname),
+            sprintf('refweightfile\t%s/Data/%s.refweigthfile',file,x@stockname),
+            sprintf('growthandeatlengths\t%s/Aggfiles/%s.len.agg',file,x@stockname),
             sprintf('doesgrow\t%s',x@doesgrow),
             growth = ';',
             sprintf('naturalmortality\t%s',paste(x@naturalmortality,collapse = '\t')),
@@ -169,7 +169,7 @@ setMethod("write",
             paste(c('minage', 'maxage', 'minlength',
                     'maxlength', 'dl', 'sdev'),
                   x@initialconditions,sep ='\t',collapse = '\n'),
-            sprintf('normalcondfile\tData/%s.normalcond',x@stockname),
+            sprintf('normalcondfile\t%s/Data/%s.normalcond',file,x@stockname),
             sprintf('doesmigrate\t%s',x@doesmigrate),
             migration = ';',
             sprintf('doesmature\t%s',x@doesmature),
@@ -197,8 +197,8 @@ setMethod("write",
         }
         if(x@doesmigrate == 1){
           stock.text['migration'] <- 
-            paste(sprintf('yearstepfile\tData/%s.yearstep',x@stockname),
-                  sprintf('defineratios\tData/%s.migratio',x@stockname),
+            paste(sprintf('yearstepfile\t%s/Data/%s.yearstep',file,x@stockname),
+                  sprintf('defineratios\t%s/Data/%s.migratio',file,x@stockname),
                   sep = '\n')
           write.table(x@yearstep,
                       file = sprintf('%s/Data/%s.yearstep',file,x@stockname),
@@ -228,6 +228,13 @@ setMethod("write",
                         sep='\t',collapse = '\n'),
                   sprintf('normalparamfile\t%s/Data/%s.rec',file,x@stockname),
                   sep='\n')
+          write.table(x@renewal.data,
+                      file = sprintf('%s/Data/%s.rec',
+                        file,x@stockname),
+                      append = TRUE,
+                      row.names = FALSE,
+                      col.names = FALSE,
+                      quote=FALSE)
         }
         
         write(paste(stock.text,collapse = '\n'),
