@@ -231,7 +231,6 @@ setMethod("write",
           write.table(x@renewal.data,
                       file = sprintf('%s/Data/%s.rec',
                         file,x@stockname),
-                      append = TRUE,
                       row.names = FALSE,
                       col.names = FALSE,
                       quote=FALSE)
