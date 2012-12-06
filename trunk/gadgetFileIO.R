@@ -1207,7 +1207,33 @@ merge.formula <- function(txt){
   }
   return(txt)
 }
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param gad.for 
+##' @param par 
+##' @return 
+##' @author Bjarki Thor Elvarsson
+eval.gadget.formula <- function(gad.for,par){
+  
+  tmp <- strsplit(gsub('(','( ',gad.for,fixed=TRUE),' ')
+  
+  operators <- c('*','/','+','-')
+  ldply(tmp,
+        function(x){
+          par.ind <- grep('#',x,fixed=TRUE)
+          x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']
+          ind <- c(grep('*',x,fixed=TRUE),
+                   grep('/',x,fixed=TRUE),
+                   grep('+',x,fixed=TRUE),
+                   grep('-',x,fixed=TRUE))
+          x.tmp <- x
+          x[ind] <- x.tmp[ind+1]
+          x[ind + 1] <- x.tmp[ind]
+          return(eval(parse(text=paste(x,collapse=' '))))
+        })
+}
 
 read.gadget.table <- function(file,header=FALSE){
   dat <- strip.comments(file)
