@@ -1171,18 +1171,16 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   
   out <- llply(unique(fleet$prey$stock),
                function(x){
-                 tmp <- read.table(sprintf('%s/out/%s.std',pre,x),
+                 tmp <- read.table(sprintf('%s/out/%s.lw',pre,x),
                                    comment.char = ';')
                  names(tmp) <-  c('year', 'step', 'area', 'age',
-                                  'number', 'mean.length', 'mean.weight',
-                                  'stddev.length', 'number.consumed',
-                                  'biomass.consumed')
+                                  'length', 'number', 'weight')
                  return(tmp)
                })
   names(out) <- unique(fleet$prey$stock)
   
   out <- llply(out,function(x){
-    tmp <- length(unique(x$age))*length(unique(x$area))
+    tmp <- length(unique(x$age))*length(unique(x$area))*length(unique(x$length))
     dat <- cbind(trial=rep(rec.out$trial,each = tmp),
                  x,
                  recruitment = rep(rec.out$value,each = tmp))
@@ -1190,4 +1188,29 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   })
   
   return(out)
+}
+
+
+gadget.bootforward <- function(years = 20,
+                               params.file='params.final',
+                               main.file = 'main.final',
+                               pre = 'PRE',
+                               effort = 0.2,
+                               fleets = data.frame(fleet='comm',ratio=1),
+                               num.trials = 10,
+                               bs.wgts = 'BS.WGTS',
+                               bs.samples = 1:1000,
+                               .parallel = TRUE){
+  tmp <-
+    llply(bs.samples,function(x){
+        gadget.forward(years = years,
+                       params.file = sprintf('%s/BS.%s/%s',bs.wgts,x,params.file),
+                       main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
+                       effort = effort, fleets = fleets,
+                       pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre))
+      
+    },.parallel = .parallel)
+  names(tmp) <- sprintf('BS.%s',bs.samples)
+
+  ldply(tmp,function(y) y[[1]])
 }

@@ -824,6 +824,7 @@ read.gadget.model <- function(main.file='main'){
            )
   class(gadget.model) <- c('gadget.model',class(gadget.model))
 }
+
 ##' <description>
 ##'
 ##' <details>
@@ -992,6 +993,7 @@ read.gadget.area <- function(area.file='area'){
   class(area) <- c('gadget.area',class(area))
   return(area)
 }
+
 ##' <description>
 ##'
 ##' <details>
@@ -1071,7 +1073,19 @@ write.gadget.penalty <- function(file='penaltyfile'){
 
 
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param params.file 
+##' @param bs.wgts 
+##' @param bs.samples 
+##' @param bs.lik 
+##' @param lik.pre 
+##' @param params.pre 
+##' @param parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.bootstrap <- function(params.file='params.in',
                                  bs.wgts='BS.WGTS',
                                  bs.samples=1:100,
@@ -1086,7 +1100,18 @@ read.gadget.bootstrap <- function(params.file='params.in',
   return(dboot)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param params.file 
+##' @param wgts 
+##' @param likelihood 
+##' @param lik.pre 
+##' @param params.pre 
+##' @param parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.wgts <- function(params.file = 'params.in',
                              wgts = 'WGTS',
                              likelihood = 'likelihood',
@@ -1182,6 +1207,14 @@ read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
   return(tmp)
 }
 
+
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param txt 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 merge.formula <- function(txt){
   openP <- grep('(',txt,fixed=TRUE)
   closeP <- grep(')',txt,fixed=TRUE)
@@ -1202,11 +1235,15 @@ merge.formula <- function(txt){
 
   braces <- ddply(braces,'group',function(x) head(x,1))
   for(i in 1:length(braces$group)){
-    txt[braces$begin[i]] <- paste(txt[braces$begin[i]:braces$end[i]],collapse=' ')
+    txt[braces$begin[i]] <- paste(txt[braces$begin[i]:braces$end[i]],
+                                  collapse=' ')
     txt <- txt[-c((braces$begin[i]+1):braces$end[i])]
   }
   return(txt)
 }
+
+
+
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -1216,25 +1253,29 @@ merge.formula <- function(txt){
 ##' @return 
 ##' @author Bjarki Thor Elvarsson
 eval.gadget.formula <- function(gad.for,par){
-  
-  tmp <- strsplit(gsub('(','( ',gad.for,fixed=TRUE),' ')
-  
-  operators <- c('*','/','+','-')
+  tmp <- strsplit(gsub(')',' )',gsub('(','',gad.for,fixed=TRUE)),' ')  
   ldply(tmp,
         function(x){
           par.ind <- grep('#',x,fixed=TRUE)
           x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']
-          ind <- c(grep('*',x,fixed=TRUE),
-                   grep('/',x,fixed=TRUE),
-                   grep('+',x,fixed=TRUE),
-                   grep('-',x,fixed=TRUE))
-          x.tmp <- x
-          x[ind] <- x.tmp[ind+1]
-          x[ind + 1] <- x.tmp[ind]
-          return(eval(parse(text=paste(x,collapse=' '))))
+          x <- x[!x=='']
+          x <- gsub("*","'*'(",x,fixed=TRUE)
+          x <- gsub("/","'/'(",x,fixed=TRUE)
+          x <- gsub("+","'+'(",x,fixed=TRUE)
+          x <- gsub("-","'-'(",x,fixed=TRUE)
+          x <- gsub(',)',')',gsub('(,','(',paste(x,collapse=','),fixed=TRUE),
+                    fixed=TRUE)
+          return(eval(parse(text=x)))
         })
 }
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param file 
+##' @param header 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.table <- function(file,header=FALSE){
   dat <- strip.comments(file)
   if(class(dat) == 'list')
