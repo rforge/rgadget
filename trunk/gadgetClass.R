@@ -40,8 +40,8 @@ setClass('gadget-growth',
 
 setClass('gadget-prey',
          representation(
-           name = 'character',
-           preylengths = 'data.frame',
+                        name = 'character',
+                        preylengths = 'data.frame',
                         energycontent = 'numeric'))
          ##package = 'rgadget')
 
@@ -129,17 +129,16 @@ setClass('gadget-otherfood',
 
 
 setClass('gadget-spawning',
-         representation(
-           spawnsteps = 'numeric',
-           spawnareas = 'numeric',
-           firstspawnyear = 'numeric',
-           lastspawnyear = 'numeric',
-           spawnstocksandratio = 'data.frame',
-           proportionfunction = 'vector',
-           mortalityfunction = 'vector',
-           weightlossfunction = 'vector',
-           recruitment = 'vector',
-           stockparameters = 'data.frame'),         
+         representation(spawnsteps = 'numeric',
+                        spawnareas = 'numeric',
+                        firstspawnyear = 'numeric',
+                        lastspawnyear = 'numeric',
+                        spawnstocksandratio = 'data.frame',
+                        proportionfunction = 'vector',
+                        mortalityfunction = 'vector',
+                        weightlossfunction = 'vector',
+                        recruitment = 'vector',
+                        stockparameters = 'data.frame'),         
          prototype(spawnsteps = 0,
                    spawnareas = 0,
                    firstspawnyear = 0,
