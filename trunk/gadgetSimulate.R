@@ -13,6 +13,7 @@ Rgadget <- function(gadget.model, parameters){
   dimnames(stocks) <- list(stock = names.of.stocks(gadget.model),
                            area = areas(gadget.model),
                            age = minage(gadget.model):maxage(gadget.model),
+                           length = lengthgroups(gadget.model),
                            step = timesteps(gadget.model),
                            year = years(gadget.model))
 
@@ -100,7 +101,7 @@ Rgadget <- function(gadget.model, parameters){
   M <- getMortality(gadget.model, parameters)
   
   ### Fleet selection by age, length and
-  selection <- getSelection(gadget.model, parameters)
+  selection <- getFleetSelection(gadget.model, parameters)
 
   ### Predator selection by prey length and time
   eat.selection <- getPredatorSelection(gadget.model, parameters)
@@ -155,7 +156,7 @@ Rgadget <- function(gadget.model, parameters){
       catches[,,,,year,step] <- G%*%catches[,,,,year,step]%*%M
 
       ## spawning
-      if(step %in% spawntime(gadget.model)){
+      if(step %in% spawnSteps(gadget.model)){
         for(stock %in% spawnstocks(gadget.model,step)){
           stocks[stock,,,1,year,step] <-
             spawn(gadget.model,stock,step)

@@ -284,7 +284,6 @@ setMethod("toString",
           )
 
 
-
 setMethod("write",
     signature(x = "gadget-fleet"),
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
@@ -420,6 +419,78 @@ setMethod("write",
               write(spawn.text,file = file)
           }
           )
+
+
+setGeneric('maxage',def=function(object){standardGeneric("maxage")})
+setGeneric('minage',def=function(object){standardGeneric("minage")})
+setGeneric('num.of.stocks',def=function(object){standardGeneric("num.of.stocks")})
+setGeneric('stocks',def=function(object){standardGeneric("stocks")})
+setGeneric('num.of.areas',def=function(object){standardGeneric("num.of.areas")})
+setGeneric('areas',def=function(object){standardGeneric("areas")})
+setGeneric('num.lengthgroups',def=function(object){standardGeneric("num.lengthgroups")})
+setGeneric('lengthgroups',def=function(object){standardGeneric("lengthgroups")})
+setGeneric('num.timesteps',def=function(object){standardGeneric("num.timesteps")})
+setGeneric('timesteps',def=function(object){standardGeneric("timesteps")})
+setGeneric('num.years',def=function(object){standardGeneric("num.years")})
+setGeneric('years',def=function(object){standardGeneric("years")})
+
+setGeneric('num.fleets',def=function(object){standardGeneric("num.fleets")})
+setGeneric('fleets',def=function(object){standardGeneric("fleets")})
+
+setGeneric('num.tagging',def=function(object){standardGeneric("num.tagging")})
+setGeneric('tagging',def=function(object){standardGeneric("tagging")})
+
+setGeneric('num.predators',def=function(object){standardGeneric("num.predators")})
+setGeneric('predators',def=function(object){standardGeneric("predators")})
+
+setGeneric('getGrowth',def=function(object){standardGeneric("getGrowth")})
+setGeneric('getMortality',def=function(object){standardGeneric("getMortality")})
+
+setGeneric('getFleetSelection',def=function(object){standardGeneric("getFleetSelection")})
+setGeneric('getPredatorSelection',def=function(object){standardGeneric("getPredatorSelection")})
+
+setGeneric('initialize',def=function(object){standardGeneric("initialize")})
+setGeneric('recStocks',def=function(object){standardGeneric("recStocks")})
+setGeneric('recruitment',def=function(object){standardGeneric("recruitment")})
+
+setGeneric('migratingStocks',def=function(object){standardGeneric("migratingStocks")})
+setGeneric('migration.matrix',def=function(object){standardGeneric("migration.matrix")})
+
+setGeneric('adjustconsumption',def=function(object){standardGeneric("adjustconsumption")})
+
+setGeneric('spawn',def=function(object){standardGeneric("spawn")})
+setGeneric('spawnSteps',def=function(object){standardGeneric("spawnSteps")})
+
+setGeneric('straying',def=function(object){standardGeneric("straying")})
+
+setGeneric('laststep',def=function(object){standardGeneric("laststep")})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 if(FALSE){
 read.gadget.stock <- function(file='stock'){
