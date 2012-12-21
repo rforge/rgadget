@@ -254,13 +254,27 @@ setClass('gadget-stock',
          )
 
 
+setClass('gadget-tagging',
+         representation(tag.experiments = 'data.frame',
+                        tag.numbers = 'data.frame'),
+         prototype(tag.experiments = data.frame(tagid = NULL,stock = NULL,
+                                                tagarea = NULL, endyear = NULL,
+                                                tagloss = NULL, numbers = NULL),
+                   tag.numbers = data.frame(tagid = NULL,
+                                            year = NULL,
+                                            step = NULL,
+                                            length = NULL,
+                                            number = NULL)
+         )
+)
+
 setClass('gadget-main',
          representation(model.name='character',
                         time = 'gadget-time',
                         area = 'gadget-area',
                         print = 'list',
                         stocks = 'list',
-                        tags = 'list',
+                        tags = 'gadget-tagging',
                         otherfood = 'list',
                         fleets = 'list',
                         likelihood = 'list'),

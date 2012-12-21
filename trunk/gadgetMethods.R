@@ -421,49 +421,121 @@ setMethod("write",
           )
 
 
-setGeneric('maxage',def=function(object){standardGeneric("maxage")})
-setGeneric('minage',def=function(object){standardGeneric("minage")})
-setGeneric('num.of.stocks',def=function(object){standardGeneric("num.of.stocks")})
-setGeneric('stocks',def=function(object){standardGeneric("stocks")})
-setGeneric('num.of.areas',def=function(object){standardGeneric("num.of.areas")})
-setGeneric('areas',def=function(object){standardGeneric("areas")})
-setGeneric('num.lengthgroups',def=function(object){standardGeneric("num.lengthgroups")})
-setGeneric('lengthgroups',def=function(object){standardGeneric("lengthgroups")})
-setGeneric('num.timesteps',def=function(object){standardGeneric("num.timesteps")})
-setGeneric('timesteps',def=function(object){standardGeneric("timesteps")})
-setGeneric('num.years',def=function(object){standardGeneric("num.years")})
-setGeneric('years',def=function(object){standardGeneric("years")})
+setGeneric('getMaxage',def=function(object){standardGeneric("getMaxage")})
+setMethod('getMaxage','gadget-stock', function(object) return(object@maxage))
+setMethod('getMaxage','gadget-main', 
+          function(object){
+            maxage <- max(laply(object@stocks,getMaxage))
+            return(maxage)
+})
 
-setGeneric('num.fleets',def=function(object){standardGeneric("num.fleets")})
-setGeneric('fleets',def=function(object){standardGeneric("fleets")})
+setGeneric('getMinage',def=function(object){standardGeneric("getMinage")})
+setMethod('getMinage','gadget-stock', function(object) return(object@minage))
+setMethod('getMinage','gadget-main', 
+          function(object){
+            minage <- min(laply(object@stocks,getMinage))
+            return(minage)
+          })
 
-setGeneric('num.tagging',def=function(object){standardGeneric("num.tagging")})
-setGeneric('tagging',def=function(object){standardGeneric("tagging")})
+setGeneric('getNumOfStocks',def=function(object){standardGeneric("getNumOfStocks")})
+setMethod('getNumOfStocks','gadget-main',function(object) length(object@stocks))
 
-setGeneric('num.predators',def=function(object){standardGeneric("num.predators")})
-setGeneric('predators',def=function(object){standardGeneric("predators")})
+setGeneric('getStockNames',def=function(object){standardGeneric("getStocksNames")})
+setMethod('getStockNames','gadget-stock', function(object) return(object@name))
+setMethod('getMinage','gadget-main', 
+          function(object){
+            stockNames <- laply(object@stocks,getStockNames)
+            return(stockNames)
+          })
 
-setGeneric('getGrowth',def=function(object){standardGeneric("getGrowth")})
-setGeneric('getMortality',def=function(object){standardGeneric("getMortality")})
 
-setGeneric('getFleetSelection',def=function(object){standardGeneric("getFleetSelection")})
-setGeneric('getPredatorSelection',def=function(object){standardGeneric("getPredatorSelection")})
+setGeneric('getNumOfAreas',def=function(object){standardGeneric("getNumOfAreas")})
+setMethod('getNumOfAreas','gadget-area', function(object) length(object@areas))
+setMethod('getNumOfAreas','gadget-main', function(object) getNumOfAreas(object@area))
 
-setGeneric('initialize',def=function(object){standardGeneric("initialize")})
-setGeneric('recStocks',def=function(object){standardGeneric("recStocks")})
-setGeneric('recruitment',def=function(object){standardGeneric("recruitment")})
+setGeneric('getAreas',def=function(object){standardGeneric("getAreas")})
+setMethod('getAreas','gadget-area', function(object) object@areas)
+setMethod('getAreas','gadget-main', function(object) getAreas(object@area))
 
-setGeneric('migratingStocks',def=function(object){standardGeneric("migratingStocks")})
-setGeneric('migration.matrix',def=function(object){standardGeneric("migration.matrix")})
+setGeneric('getNumLengthGroups',def=function(object){standardGeneric("getNumLengthGroups")})
+setMethod('getNumLengthGroups', 'gadget-stock', function(object) ceiling((object@maxlength - object@minlength )/object@dl))
+setMethod('getNumLengthGroups', 'gadget-main', function(object) max(ladply(object@stocks,getNumLengthGroups)))
 
-setGeneric('adjustconsumption',def=function(object){standardGeneric("adjustconsumption")})
+setGeneric('getLengthGroups',def=function(object){standardGeneric("getLengthGroups")})
+setMethod('getLengthGroups', 'gadget-stock', function(object) seq(object@minlength, object@maxlength,by=object@dl))
+setMethod('getLengthGroups', 'gadget-main', function(object) llply(object@stocks,getLengthGroups))
 
-setGeneric('spawn',def=function(object){standardGeneric("spawn")})
-setGeneric('spawnSteps',def=function(object){standardGeneric("spawnSteps")})
 
-setGeneric('straying',def=function(object){standardGeneric("straying")})
+setGeneric('getNumTimeSteps',def=function(object){standardGeneric("getNumTimesteps")})
+setMethod('getNumTimeSteps', 'gadget-time', function(object) length(object@notimesteps))
+setMethod('getNumTimeSteps', 'gadget-main', function(object) getNumTimeSteps(object@time))
 
-setGeneric('laststep',def=function(object){standardGeneric("laststep")})
+#setGeneric('getTimesteps',def=function(object){standardGeneric("getTimesteps")})
+setGeneric('getNumYears',def=function(object){standardGeneric("getNumYears")})
+setMethod('getNumYears', 'gadget-time', function(object) object@lastyear - object@firstyear + 1)
+setMethod('getNumYears', 'gadget-main', function(object) getNumYears(object@time))
+
+setGeneric('getYears',def=function(object){standardGeneric("getYears")})
+setMethod('getYears', 'gadget-time', function(object) object@firstyear:object@lastyear)
+setMethod('getYears', 'gadget-main', function(object) getYears(object@time))
+
+
+setGeneric('getNumFleets',def=function(object){standardGeneric("getNumFleets")})
+setMethod('getNumFleets','gadget-main', function(object) length(object@fleets))
+
+setGeneric('getFleetNames',def=function(object){standardGeneric("getFleetNames")})
+setMethod('getFleetNames','gadget-fleet', function(object) object@name)
+setMethod('getFleetNames','gadget-main', function(object) laply(object@fleets,getFleetNames))
+
+setGeneric('getNumTagging',def=function(object){standardGeneric("getNumTagging")})
+setMethod('getNumTagging', 'gadget-tagging', function(object) nrow(object@tag.experiments)))
+setMethod('getNumTagging', 'gadget-main', function(object) getNumTagging(object@tagging))
+
+setGeneric('getTagID',def=function(object){standardGeneric("getTagID")})
+setMethod('getTagID','gadget-tagging',function(object) object@tag.experiments)
+setMethod('getTagID','gadget-main',function(object) getTagID(object@tagging))
+
+setGeneric('isPredator',def=function(object){standardGeneric("getNumPredators")})
+setMethod('isPredator', 'gadget-stock',function(object) object@doeseat )
+setGeneric('getNumPredators',def=function(object){standardGeneric("getNumPredators")})
+setMethod('getNumPredators', 'gadget-main', function(object) sum(laply(object@stocks,isPredator)))
+
+setGeneric('getPredatorNames',def=function(object){standardGeneric("getPredators")})
+setMethod('getPredatorNames','gadget-main',
+          function(object){
+            tmp <- laply(object@stocks,
+                         function(x){
+                           if(isPredator(x)==1)
+                             getStockNames(x)
+                           else
+                             ''                    
+                         })                  
+            tmp[tmp!='']  
+          })
+
+setGeneric('getGrowth',def=function(object, par){standardGeneric("getGrowth")})
+
+
+setGeneric('getMortality',def=function(object, par){standardGeneric("getMortality")})
+
+setGeneric('getFleetSelection',def=function(object, par){standardGeneric("getFleetSelection")})
+setGeneric('getPredatorSelection',def=function(object, par){standardGeneric("getPredatorSelection")})
+
+setGeneric('getInitData',def=function(object, par){standardGeneric("getInitData")})
+setGeneric('getRecStocks',def=function(object, par){standardGeneric("getRecStocks")})
+setGeneric('getRecruitment',def=function(object, par){standardGeneric("getRecruitment")})
+
+setGeneric('getMigratingStocks',def=function(object){standardGeneric("migratingStocks")})
+setGeneric('getMigrationMatrix',def=function(object, par){standardGeneric("getMigrationMatrix")})
+
+setGeneric('checkOverconsumption',def=function(object){standardGeneric("checkOverconsumption")})
+
+setGeneric('spawn',def=function(object, par){standardGeneric("spawn")})
+setGeneric('getSpawnSteps',def=function(object){standardGeneric("getSpawnSteps")})
+
+setGeneric('straying',def=function(object,par){standardGeneric("straying")})
+
+setGeneric('getLaststep',def=function(object){standardGeneric("laststep")})
 
 
 

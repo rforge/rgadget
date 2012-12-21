@@ -13,7 +13,7 @@ Rgadget <- function(gadget.model, parameters){
   dimnames(stocks) <- list(stock = names.of.stocks(gadget.model),
                            area = areas(gadget.model),
                            age = minage(gadget.model):maxage(gadget.model),
-                           length = lengthgroups(gadget.model),
+                           length = 1:lengthgroups(gadget.model),
                            step = timesteps(gadget.model),
                            year = years(gadget.model))
 

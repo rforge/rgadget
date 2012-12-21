@@ -961,9 +961,11 @@ read.gadget.stockfiles <- function(stock.files){
           doesmature =  as.numeric(stock[[mature.loc]][2]),
           doesmove = as.numeric(stock[[move.loc]][2]),
           doesrenew =  as.numeric(stock[[renew.loc]][2]),
-          renewal = list(minlength = as.numeric(stock[[renew.loc + 1]][2]),
-            maxlength = as.numeric(stock[[renew.loc+2]][2])),
-          renewal.data = read.gadget.table(stock[[renew.loc+3]][2]),
+          renewal = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
+            list(),list(minlength = as.numeric(stock[[renew.loc + 1]][2]),
+                        maxlength = as.numeric(stock[[renew.loc+2]][2]))),
+          renewal.data = tryCatch(read.gadget.table(stock[[renew.loc+3]][2]),
+            error=function(x) data.frame(text='No renewal data')),
           doesspawn = as.numeric(stock[[spawn.loc]][2]),
           doesstray = ifelse(length(stray.loc)==0,
             0,as.numeric(stock[[stray.loc]][2]))
@@ -1218,6 +1220,9 @@ read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
 merge.formula <- function(txt){
   openP <- grep('(',txt,fixed=TRUE)
   closeP <- grep(')',txt,fixed=TRUE)
+  if(length(openP) + length(closeP) == 0)
+    return(txt)
+  
   if(length(openP) != length(closeP))
     stop('numbers of paranthesis dont match in gadget formula')
 
