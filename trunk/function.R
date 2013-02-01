@@ -442,17 +442,59 @@ recruits <- function(n,mu,sigma,
 ##' @param l prey length group(s)
 ##' @param L predator length group(s)
 ##' @return matrix of suitabilities, columns prey length, lines predator length
-suitability <- function(salpha,
-                        sbeta,
-                        sgamma,
-                        sdelta,
+suitability <- function(params
+#                        salpha,
+#                        sbeta,
+#                        sgamma,
+#                        sdelta,
                         l,
-                        L=c(0))
+                        L=c(0),
+                        type = 'exponential')
 {
+
+  if(tolower(type) == 'constant'){
+    S <- array(params[1],c(length(L),length(l)))
+
+  } else if(tolower(type) == 'straightline') {
+    S <- array(rep(l*params[1] + params[2],each = length(L)),
+               c(length(L),length(l)))
+
+  } else if(tolower(type) == 'exponential'){
+    S <- array(params[4]/(1+exp(-(params[1]+params[2]*rep(l,each=length(L))+
+                               params[3]*rep(L,length(l))))),
+               c(length(L),length(l)))
+    
+  } else if(tolower(type) == 'exponentiall50'){
+    S <- array(rep(1/(1+exp(-params[1]*(l - params[2]))),each = length(L)),
+               c(length(L),length(l)))
+
+  } else if(tolower(type) == 'richards') {
+    S <- array(params[4]/(1+exp(-(params[1]+params[2]*rep(l,each=length(L))+
+                                  params[3]*rep(L,length(l))))),
+               c(length(L),length(l)))^(1/params[5])
+
+  } else if(tolower(type) == 'andersen') {
+    l.tmp <- rep(l,each=length(L))
+    L.tmp <- rep(L,length(l))
+    if(L==0)
+      L.tmp <- max(l)
+    
+    S <- array(params[1] + params[3]*
+               ifelse(log(L.tmp/l.tmp) < params[2],
+                      exp(-(log(L.tmp/l.tmp)-params[2])/params[5]),
+                      exp(-(log(L.tmp/l.tmp)-params[2])/params[4])),
+               c(length(L),length(l)))
+    
+  } else if(tolower(type) == 'gamma'){
+
+    S <- array(rep((l/((params[1] - 1)*params[2]*params[3]))^(params[1] -1) *
+                   exp(params[1] - 1 - 1/(params[2]*params[3])),
+                   each = length(L)),
+               c(length(L),length(l)))
+  } else {
+    stop(sprintf('Error in suitability -- %s not defined',type))
+  }
   
-  S <- array(sdelta/(1+exp(-(salpha+sbeta*rep(l,each=length(L))+
-                             sgamma*rep(L,length(l))))),
-             c(length(L),length(l)))
   dimnames(S) <- list(sprintf('Pred_length_%s',L),
                       sprintf('Prey_length_%s',l))
   return(S)

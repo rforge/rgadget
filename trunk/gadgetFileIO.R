@@ -19,7 +19,7 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
 ##' @return 
 ##' @author Bjarki Thor Elvarsson
   read.printfile <- function(file){
-    file <- paste(path,file,sep='/')
+#    file <- paste(path,file,sep='/')
     tmp <- readLines(file)
     skip <- max(grep(';',tmp[1:7]))
     header <- gsub('; ','',tmp[skip])
@@ -50,9 +50,12 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
   
     return(data)
   }
-  out.files <- list.files(path=path)
+  out.files <- list.files(path=path,
+                          full.names=TRUE,recursive=TRUE)
+  
   printfiles <- llply(out.files,read.printfile)
-  names(printfiles) <- out.files
+  names(printfiles) <- gsub('/','',gsub(path,'', out.files), fixed=TRUE)
+
   if(!is.null(printfile)){
     tmp <- ldply(printfile,
                  function(x){
@@ -112,12 +115,12 @@ read.gadget.likelihood <- function(files='likelihood'){
   name.loc <- comp.loc+3
   weights <- NULL
   common <- c('name','weight','type','datafile','areaaggfile','lenaggfile',
-              'ageaggfile')
+              'ageaggfile','sitype')
   tmp.func <- function(comp){
     loc <- grep(paste('[ \t]',tolower(comp),sep=''),tolower(lik[name.loc]))  
     if(sum(loc)==0){
       return(NULL)
-    }else {
+    } else {
       dat <- list()
       for(dd in loc){
         if(dd < length(comp.loc)) {
@@ -154,7 +157,9 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp$lenaggfile <- ''
         if(is.null(tmp$ageaggfile))
           tmp$ageaggfile <- ''
-        
+        if(is.null(tmp$sitype))
+          tmp$sitype <- ''
+                
         weights <<-  rbind(weights,
                            tmp[common])
 #                           as.data.frame(t(unlist(tmp[common])),
@@ -169,6 +174,9 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp$lenaggfile <- NULL
         if(tmp$ageaggfile=='')
           tmp$ageaggfile <- NULL
+        if(tmp$sitype=='')
+          tmp$sitype <- NULL
+        
         
         tmp$weight <- NULL
         dat <- within(dat,assign(tmp$name,tmp))
@@ -222,6 +230,7 @@ write.gadget.likelihood <- function(lik,file='likelihood',
   weights$lenaggfile <- NULL
   weights$areaaggfile <- NULL
   weights$ageaggfile <- NULL
+  weights$sitype <- NULL
   for(comp in lik){
     if(class(comp) == 'data.frame'){
       if(!is.null(data.folder)){
@@ -592,22 +601,28 @@ read.gadget.results <- function(comp,
 ##' @author Bjarki ??r Elvarsson
 read.gadget.data <- function(likelihood){
   read.agg <- function(x, first = FALSE){
-    if(!is.null(x))
-      if(first){
-        return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1])) 
-      }  else {
-        return(read.table(x,stringsAsFactors=FALSE,comment.char=';'))      
-    } else {
-      return(NULL)
+
+    if(first){
+      return(sapply(strsplit(readLines(x),'[\t ]'),function(x) x[1])) 
+    }  else {
+      return(read.table(x,stringsAsFactors=FALSE,comment.char=';'))      
     }
   }
   read.func <- function(x){
-    x <- as.data.frame(t(x),stringsAsFactors=FALSE,comment.char=';')
-    dat <- read.table(x$datafile,comment.char=';')
-    area.agg <- read.agg(x$areaaggfile, first = TRUE)
-    age.agg <- read.agg(x$ageaggfile, first = TRUE)
-    len.agg <- read.agg(x$lenaggfile)
-      
+    
+    dat <- tryCatch(read.table(x$datafile,comment.char=';'),
+                    error = function(x) NULL)
+    
+    area.agg <- tryCatch(read.agg(x$areaaggfile, first = TRUE),
+                         warning = function(x) NULL,
+                         error = function(x) NULL)
+    age.agg <- tryCatch(read.agg(x$ageaggfile, first = TRUE),
+                        warning = function(x) NULL,
+                        error = function(x) NULL)
+    len.agg <- tryCatch(read.agg(x$lenaggfile),
+                        warning = function(x) NULL,
+                        error = function(x) NULL)
+    
     if(x$type=='catchdistribution'){
       names(dat) <- c('year','step','area','age','length','number')
     }
@@ -615,7 +630,8 @@ read.gadget.data <- function(likelihood){
       if(x[['function']] %in%
          c('lengthcalcstddev','weightnostddev','lengthnostddev'))
         names(dat) <- c('year','step','area','age','number','mean')
-      if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev','lengthgivenvar'))
+      if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev',
+                                'lengthgivenvar'))
         names(dat) <- c('year','step','area','age','number','mean','stddev') 
     }
     if(x$type=='stockdistribution'){
@@ -669,19 +685,13 @@ read.gadget.data <- function(likelihood){
     }
     return(dat)
   }
-  lik.dat <- within(list(),
-                    for(comp.type in
-                        names(likelihood[!(names(likelihood) %in%
-                                           c('weights','penalty',
-                                             'understocking',
-                                             'migrationpenalty'))])) {
 
-                      assign(comp.type,
-                             apply(likelihood[[comp.type]],1,read.func))
-                    }
-                    
-                    )
-  lik.dat$comp.type <- NULL
+  lik.dat <- dlply(subset(likelihood$weights,
+                          !(type %in% c('penalty', 'understocking',
+                                        'migrationpenalty'))),
+                   'type',
+                   function(x) dlply(x,'name',read.func))
+
   df <- lapply(lik.dat,function(x)
                sapply(x,function(x){
                       tmp <- 0
@@ -1249,25 +1259,29 @@ merge.formula <- function(txt){
 
 
 
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
-##' @title 
-##' @param gad.for 
-##' @param par 
-##' @return 
+##' Evaluate gadget formulas, which are in reverse polish notation, ie
+##' '(* x y)' which is equivalent to 'x*y'. The evaluation supports the following
+##' symbols '*','/','+','-','exp','log','sqrt'. The evaluation uses a gadget
+##' parameter object for its evaluation.
+##' @title eval.gadget.formula
+##' @param gad.for gadget formula
+##' @param par gadget parameters object
+##' @return a vector of evaluated gadget formulas
 ##' @author Bjarki Thor Elvarsson
 eval.gadget.formula <- function(gad.for,par){
   tmp <- strsplit(gsub(')',' )',gsub('(','',gad.for,fixed=TRUE)),' ')  
   ldply(tmp,
         function(x){
-          par.ind <- grep('#',x,fixed=TRUE)
-          x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']
           x <- x[!x=='']
+          par.ind <- grep('#',x,fixed=TRUE)
           x <- gsub("*","'*'(",x,fixed=TRUE)
           x <- gsub("/","'/'(",x,fixed=TRUE)
           x <- gsub("+","'+'(",x,fixed=TRUE)
           x <- gsub("-","'-'(",x,fixed=TRUE)
+          x <- gsub('exp','exp(',x,fixed = TRUE)
+          x <- gsub('log','log(',x,fixed = TRUE)
+          x <- gsub('sqrt','sqrt(',x,fixed = TRUE)
+          x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']          
           x <- gsub(',)',')',gsub('(,','(',paste(x,collapse=','),fixed=TRUE),
                     fixed=TRUE)
           return(eval(parse(text=x)))
@@ -1276,10 +1290,10 @@ eval.gadget.formula <- function(gad.for,par){
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
-##' @title 
-##' @param file 
-##' @param header 
-##' @return 
+##' @title read.gadget.table
+##' @param file path to file
+##' @param header logical, should the header be read from the file
+##' @return data.frame with 
 ##' @author Bjarki Thor Elvarsson
 read.gadget.table <- function(file,header=FALSE){
   dat <- strip.comments(file)

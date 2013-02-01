@@ -427,7 +427,7 @@ setMethod('getMaxage','gadget-main',
           function(object){
             maxage <- max(laply(object@stocks,getMaxage))
             return(maxage)
-})
+          })
 
 setGeneric('getMinage',def=function(object){standardGeneric("getMinage")})
 setMethod('getMinage','gadget-stock', function(object) return(object@minage))
@@ -438,10 +438,12 @@ setMethod('getMinage','gadget-main',
           })
 
 setGeneric('getNumOfStocks',def=function(object){standardGeneric("getNumOfStocks")})
-setMethod('getNumOfStocks','gadget-main',function(object) length(object@stocks))
+setMethod('getNumOfStocks','gadget-main',
+          function(object) length(object@stocks))
 
 setGeneric('getStockNames',def=function(object){standardGeneric("getStocksNames")})
-setMethod('getStockNames','gadget-stock', function(object) return(object@name))
+setMethod('getStockNames','gadget-stock',
+          function(object) return(object@name))
 setMethod('getMinage','gadget-main', 
           function(object){
             stockNames <- laply(object@stocks,getStockNames)
@@ -450,55 +452,80 @@ setMethod('getMinage','gadget-main',
 
 
 setGeneric('getNumOfAreas',def=function(object){standardGeneric("getNumOfAreas")})
-setMethod('getNumOfAreas','gadget-area', function(object) length(object@areas))
-setMethod('getNumOfAreas','gadget-main', function(object) getNumOfAreas(object@area))
+setMethod('getNumOfAreas','gadget-area',
+          function(object) length(object@areas))
+setMethod('getNumOfAreas','gadget-main',
+          function(object) getNumOfAreas(object@area))
 
 setGeneric('getAreas',def=function(object){standardGeneric("getAreas")})
-setMethod('getAreas','gadget-area', function(object) object@areas)
-setMethod('getAreas','gadget-main', function(object) getAreas(object@area))
+setMethod('getAreas','gadget-area',
+          function(object) object@areas)
+setMethod('getAreas','gadget-main',
+          function(object) getAreas(object@area))
 
 setGeneric('getNumLengthGroups',def=function(object){standardGeneric("getNumLengthGroups")})
-setMethod('getNumLengthGroups', 'gadget-stock', function(object) ceiling((object@maxlength - object@minlength )/object@dl))
-setMethod('getNumLengthGroups', 'gadget-main', function(object) max(ladply(object@stocks,getNumLengthGroups)))
+setMethod('getNumLengthGroups', 'gadget-stock',
+          function(object){
+            ceiling((object@maxlength - object@minlength )/object@dl)
+          })
+setMethod('getNumLengthGroups', 'gadget-main',
+          function(object) max(ladply(object@stocks,getNumLengthGroups)))
 
 setGeneric('getLengthGroups',def=function(object){standardGeneric("getLengthGroups")})
-setMethod('getLengthGroups', 'gadget-stock', function(object) seq(object@minlength, object@maxlength,by=object@dl))
-setMethod('getLengthGroups', 'gadget-main', function(object) llply(object@stocks,getLengthGroups))
+setMethod('getLengthGroups', 'gadget-stock',
+          function(object) seq(object@minlength, object@maxlength,by=object@dl))
+setMethod('getLengthGroups', 'gadget-main',
+          function(object) llply(object@stocks,getLengthGroups))
 
 
 setGeneric('getNumTimeSteps',def=function(object){standardGeneric("getNumTimesteps")})
-setMethod('getNumTimeSteps', 'gadget-time', function(object) length(object@notimesteps))
-setMethod('getNumTimeSteps', 'gadget-main', function(object) getNumTimeSteps(object@time))
+setMethod('getNumTimeSteps', 'gadget-time',
+          function(object) length(object@notimesteps))
+setMethod('getNumTimeSteps', 'gadget-main',
+          function(object) getNumTimeSteps(object@time))
 
 #setGeneric('getTimesteps',def=function(object){standardGeneric("getTimesteps")})
 setGeneric('getNumYears',def=function(object){standardGeneric("getNumYears")})
-setMethod('getNumYears', 'gadget-time', function(object) object@lastyear - object@firstyear + 1)
-setMethod('getNumYears', 'gadget-main', function(object) getNumYears(object@time))
+setMethod('getNumYears', 'gadget-time',
+          function(object) object@lastyear - object@firstyear + 1)
+setMethod('getNumYears', 'gadget-main',
+          function(object) getNumYears(object@time))
 
 setGeneric('getYears',def=function(object){standardGeneric("getYears")})
-setMethod('getYears', 'gadget-time', function(object) object@firstyear:object@lastyear)
-setMethod('getYears', 'gadget-main', function(object) getYears(object@time))
+setMethod('getYears', 'gadget-time',
+          function(object) object@firstyear:object@lastyear)
+setMethod('getYears', 'gadget-main',
+          function(object) getYears(object@time))
 
 
 setGeneric('getNumFleets',def=function(object){standardGeneric("getNumFleets")})
-setMethod('getNumFleets','gadget-main', function(object) length(object@fleets))
+setMethod('getNumFleets','gadget-main',
+          function(object) length(object@fleets))
 
 setGeneric('getFleetNames',def=function(object){standardGeneric("getFleetNames")})
-setMethod('getFleetNames','gadget-fleet', function(object) object@name)
-setMethod('getFleetNames','gadget-main', function(object) laply(object@fleets,getFleetNames))
+setMethod('getFleetNames','gadget-fleet',
+          function(object) object@name)
+setMethod('getFleetNames','gadget-main',
+          function(object) laply(object@fleets,getFleetNames))
 
 setGeneric('getNumTagging',def=function(object){standardGeneric("getNumTagging")})
-setMethod('getNumTagging', 'gadget-tagging', function(object) nrow(object@tag.experiments)))
-setMethod('getNumTagging', 'gadget-main', function(object) getNumTagging(object@tagging))
+setMethod('getNumTagging', 'gadget-tagging',
+          function(object) nrow(object@tag.experiments))
+setMethod('getNumTagging', 'gadget-main',
+          function(object) getNumTagging(object@tagging))
 
 setGeneric('getTagID',def=function(object){standardGeneric("getTagID")})
-setMethod('getTagID','gadget-tagging',function(object) object@tag.experiments)
-setMethod('getTagID','gadget-main',function(object) getTagID(object@tagging))
+setMethod('getTagID','gadget-tagging',
+          function(object) object@tag.experiments)
+setMethod('getTagID','gadget-main',
+          function(object) getTagID(object@tagging))
 
 setGeneric('isPredator',def=function(object){standardGeneric("getNumPredators")})
-setMethod('isPredator', 'gadget-stock',function(object) object@doeseat )
+setMethod('isPredator', 'gadget-stock',
+          function(object) object@doeseat )
 setGeneric('getNumPredators',def=function(object){standardGeneric("getNumPredators")})
-setMethod('getNumPredators', 'gadget-main', function(object) sum(laply(object@stocks,isPredator)))
+setMethod('getNumPredators', 'gadget-main',
+          function(object) sum(laply(object@stocks,isPredator)))
 
 setGeneric('getPredatorNames',def=function(object){standardGeneric("getPredators")})
 setMethod('getPredatorNames','gadget-main',
@@ -514,11 +541,63 @@ setMethod('getPredatorNames','gadget-main',
           })
 
 setGeneric('getGrowth',def=function(object, par){standardGeneric("getGrowth")})
+setMethod('getGrowth', 'gadget-growth',
+          function(object,par){
+            if(tolower(object@growthfunction) == 'lengthbvsimple'){
+              params <- eval.gadget.formula(object@growthparameters,par)
+
+              beta <- eval.gadget.formula(object@beta,par)
+              nbin <- eval.gadget.formula(object@maxlengthgroupgrowth,par)
+              function(lt,lengthgrouplen,dt){
+                growthprob(lt,beta,params[1],params[2],dt,lengthgrouplen,
+                           nbin)
+              }
+            } else {
+              stop(sprintf('Error in Growth -- Only lengthvbsimple is supported, %s was supplied',
+                           object@growthfunction))
+            }
+          })
+setMethod('getGrowth','gadget-stock',
+          function(object, par){
+            func <- getGrowth(object@growth,par)
+            function(dt){
+              func(getLengthGroups(object), object@dl, dt)
+            }
+          })
+
+setMethod('getGrowth', 'gadget-main',
+          function(object){
+            yearstep <- getTimeSteps(object@time)
+            yearstep$dt <- yearstep$step/12
+            llply(object@stocks,
+                  function(x){
+                    func <- getGrowth(x)
+                    daply(yearstep,c('year','step'),
+                          function(y){
+                            func(y[1])
+                          })
+                  }
+                  )
+          })
 
 
 setGeneric('getMortality',def=function(object, par){standardGeneric("getMortality")})
+setMethod('getMortality','gadget-stock',
+          function(object,par){
+            eval.gadget.formula(object@naturalmortality)
+          }
+          )
+setMethod('getMortality','gadget-main',
+          function(object,par){
+            llply(object@stocks,function(x) getMortality(x,par))
+          })
 
 setGeneric('getFleetSelection',def=function(object, par){standardGeneric("getFleetSelection")})
+setMethod('getFleetSelection','gadget-fleet',
+          
+
+          )
+
 setGeneric('getPredatorSelection',def=function(object, par){standardGeneric("getPredatorSelection")})
 
 setGeneric('getInitData',def=function(object, par){standardGeneric("getInitData")})

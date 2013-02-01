@@ -350,17 +350,16 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @author Bjarki Thor Elvarsson
   sI.weights <- function(lik.dat,method='lm'){
     if(method=='lm'){
-      dat <- NULL
-      for(comp in lik.dat$dat$surveyindices){
-        dat <- rbind(dat,comp)
-      }
-      dat$comp <- rep(names(lik.dat$dat$surveyindices),lik.dat$df$surveyindices)
+
+      dat <- ldply(lik.dat$dat$surveyindices,
+                   function(x) x)
+
       dat$y <- log(dat$number)
       dat$year <- as.factor(dat$year)
       fit <- lm(y~year+length+step,dat)
       weights <- (lik.dat$df$surveyindices -
-                  tapply(dat$length,dat$comp,function(x) length(unique(x))))/
-                    tapply(resid(fit),dat$comp,function(x) sum(x^2))
+                  tapply(dat$length,dat$name,function(x) length(unique(x))))/
+                    tapply(resid(fit),dat$name,function(x) sum(x^2))
     } else {
       weights <- ldply(lik.dat$dat$surveyindices,
                        function(x){
@@ -583,28 +582,35 @@ read.gadget.results <- function(comp,
     return(SS)
   }
   likelihood <- read.gadget.likelihood(likelihood.file)
-  res <- lapply(comp,
-                function(x)
-                read.gadget.SS(paste(wgts,
-                                     paste('lik',
-                                           paste(x,collapse='.'),
-                                           sep='.'),sep='/')))                
-  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
-  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
-  names(SS.table) <- likelihood$weights$name
+  names(comp) <- comp
+  res <- ldply(c(comp,final=final),
+#  res <- lapply(comp,
+               function(x){
+                 tmp <- read.gadget.SS(paste(wgts,
+                                             paste('lik',
+                                                   paste(x,collapse='.'),
+                                                   sep='.'),sep='/'))
+                 names(tmp) <- likelihood$weights$name
+                 return(tmp)
+                 
+               })
+#  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
+#  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
+#  names(SS.table) <- likelihood$weights$name
   
-  res <- lapply(final,
-                function(x)
-                read.gadget.SS(paste(wgts,
-                                     paste('lik',
-                                           paste(x,collapse='.'),
-                                           sep='.'),sep='/')))                
-  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
-  res <- as.data.frame(t(sapply(res,function(x) x)))
-  names(res) <- names(SS.table)
-  SS.table <- rbind(SS.table,res)
-  lik.dat <- read.gadget.data(likelihood)
-  return(list(SS=SS.table,lik.dat=lik.dat))
+#  res <- lapply(final,
+#                function(x)
+#                read.gadget.SS(paste(wgts,
+#                                     paste('lik',
+#                                           paste(x,collapse='.'),
+#                                           sep='.'),sep='/')))                
+#  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
+#  res <- as.data.frame(t(sapply(res,function(x) x)))
+#  names(res) <- names(SS.table)
+#  SS.table <- rbind(SS.table,res)
+#  lik.dat <- read.gadget.data(likelihood)
+                                        # return(list(SS=SS.table,lik.dat=lik.dat))
+  return(res)
 }
 
 
