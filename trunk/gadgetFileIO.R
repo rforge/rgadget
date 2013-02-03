@@ -1,4 +1,5 @@
 library(plyr)
+library(reshape2)
 
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
@@ -106,11 +107,13 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
 ##' @author Bjarki ??r Elvarsson
 read.gadget.likelihood <- function(files='likelihood'){
   lik <- NULL
-  for(file in files)
+  for(file in files){
     lik <- c(lik,sub(' +$','',gsub('\t',' ',readLines(file))))
+  }
   lik <- lik[lik!='']
   lik <- lik[!grepl(';',substring(lik,1,1))]
   lik <- sapply(strsplit(lik,';'),function(x) sub(' +$','',x[1]))
+  
   comp.loc <- grep('component',lik)
   name.loc <- comp.loc+3
   weights <- NULL
@@ -121,13 +124,14 @@ read.gadget.likelihood <- function(files='likelihood'){
     if(sum(loc)==0){
       return(NULL)
     } else {
-      dat <- list()
-      for(dd in loc){
+      
+      dat <- ldply(loc, function(dd){
         if(dd < length(comp.loc)) {
           restr <- (comp.loc[dd] + 1):(comp.loc[dd+1]-1)
         } else {
           restr <- 1:length(lik) > comp.loc[dd]
         }
+        
         tmp <- sapply(strsplit(sapply(strsplit(lik[restr],'[ \t]'),
                                       function(x) {
                                         paste(x[!(x==''|x=='\t')],
@@ -147,63 +151,28 @@ read.gadget.likelihood <- function(files='likelihood'){
           tmp <- as.data.frame(t(tmp),stringsAsFactors=FALSE)
           tmp$type <- tolower(tmp$type)
         }
-        
-        if(tolower(comp)=='understocking'|tolower(comp)=='migrationpenalty'){
-          tmp$datafile <- ''
-        }
-        if(is.null(tmp$areaaggfile))
-          tmp$areaaggfile <- ''
-        if(is.null(tmp$lenaggfile))
-          tmp$lenaggfile <- ''
-        if(is.null(tmp$ageaggfile))
-          tmp$ageaggfile <- ''
-        if(is.null(tmp$sitype))
-          tmp$sitype <- ''
-                
-        weights <<-  rbind(weights,
-                           tmp[common])
-#                           as.data.frame(t(unlist(tmp[common])),
-#                                         stringsAsFactors=FALSE))
-        if(tolower(comp)=='understocking'|tolower(comp)=='migrationpenalty'){
-          tmp$datafile <- NULL
-        }
-
-        if(tmp$areaaggfile=='')
-          tmp$areaaggfile <- NULL
-        if(tmp$lenaggfile=='')
-          tmp$lenaggfile <- NULL
-        if(tmp$ageaggfile=='')
-          tmp$ageaggfile <- NULL
-        if(tmp$sitype=='')
-          tmp$sitype <- NULL
-        
-        
-        tmp$weight <- NULL
-        dat <- within(dat,assign(tmp$name,tmp))
-        
-        comp.loc <- c(comp.loc,length(lik) + 1)
-      }
-      
-      if(length(unique(comp.loc[loc+1]-comp.loc[loc]))<2 )
-        dat <-
-          as.data.frame(t(sapply(dat,function(x) unlist(x))),stringsAsFactors=FALSE)
+        return(tmp)
+      })
+      weights <<-
+        rbind.fill(weights, dat)[intersect(common, unique(c(names(weights),
+                                                            names(dat))))]
+      dat$weight <- NULL                   
       return(dat)
     }
   }
-  ## understocking
 
   likelihood <- list(penalty = tmp.func('penalty'),
                      understocking = tmp.func('understocking'),
+                     migrationpenalty = tmp.func('migrationpenalty'),
                      surveyindices = tmp.func('surveyindices'),
                      catchdistribution = tmp.func('catchdistribution'),
                      catchstatistics = tmp.func('catchstatistics'),
                      surveydistribution = tmp.func('surveydistribution'),
+                     stockdistribution = tmp.func('stockdistribution'),
                      stomachcontent = tmp.func('stomachcontent'),
                      recaptures = tmp.func('recaptures'),
                      recstatistics = tmp.func('recstatistics'),
-                     migrationpenalty = tmp.func('migrationpenalty'),
-                     catchinkilos = tmp.func('catchinkilos'),
-                     stockdistribution = tmp.func('stockdistribution')
+                     catchinkilos = tmp.func('catchinkilos')
                      )
   likelihood$weights <- weights
   row.names(likelihood$weights) <- weights$name
@@ -222,7 +191,8 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @author Bjarki ??r Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',
                                     data.folder=NULL, bs.sample=NULL){
-  lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s - %s',file, Sys.Date())
+  lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s - %s',
+                      file, Sys.Date())
   weights <- lik$weights
   lik$weights <- NULL
   weights$type <- NULL
@@ -232,33 +202,23 @@ write.gadget.likelihood <- function(lik,file='likelihood',
   weights$ageaggfile <- NULL
   weights$sitype <- NULL
   for(comp in lik){
-    if(class(comp) == 'data.frame'){
-      if(!is.null(data.folder)){
-        comp$datafile <- paste(data.folder,comp$datafile,sep='/')
-      }
-      comp <- merge(weights,comp,by='name',sort=FALSE)
-      comp.text <- paste(names(comp),t(comp))
-      dim(comp.text) <- dim(t(comp))
-      comp.text <- rbind('[component]',comp.text,';')
-      lik.text <- paste(lik.text,
-                        paste(comp.text,
-                            collapse='\n'),
-                        sep='\n')
-    } else {
-      for(sub.comp in comp){
-        if(!is.null(data.folder)){
-          sub.comp$datafile <- paste(data.folder,sub.comp$datafile,sep='/')
-        }
-        sub.comp <- merge(weights,sub.comp,by='name',sort=FALSE)
-        comp.text <- paste(names(sub.comp),t(sub.comp))
-        dim(comp.text) <- dim(t(sub.comp))
-        comp.text <- rbind('[component]',comp.text,';')
-        lik.text <- paste(lik.text,
-                          paste(comp.text,
-                                collapse='\n'),
-                          sep='\n')
-      }
+    if(!is.null(data.folder)){
+      comp$datafile <- paste(data.folder,comp$datafile,sep='/')
     }
+    comp <- na.omit(melt(merge(weights,comp,by='name',sort=FALSE),
+                         id.vars = 'name'))
+    comp.text <- ddply(comp,'name',function(x){
+      paste('[component]',
+            sprintf('name\t\t%s',x$name),
+            paste(x$variable,x$value, sep = '\t\t',
+                  collapse = '\n'),
+            ';', sep = '\n')
+    })
+    
+    lik.text <- paste(lik.text,
+                      paste(comp.text$V1,
+                            collapse='\n'),
+                      sep='\n')
   }
   if(!is.null(bs.sample))
     write(sprintf(lik.text,bs.sample),file=file)
@@ -279,7 +239,7 @@ merge.gadget.likelihood <- function(lik1,lik2){
   tmp <- within(list(),
                 for(comp in unique(c(names(lik1),names(lik2)))){
                   assign(comp,
-                         unique(rbind(lik1[[comp]],lik2[[comp]])))
+                         unique(rbind.fill(lik1[[comp]],lik2[[comp]])))
                 })
   class(tmp) <- c('gadget.likelihood',class(tmp))
   return(tmp)
