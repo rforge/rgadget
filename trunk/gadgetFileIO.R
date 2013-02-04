@@ -154,7 +154,7 @@ read.gadget.likelihood <- function(files='likelihood'){
         return(tmp)
       })
       weights <<-
-        rbind.fill(weights, dat)[intersect(common, unique(c(names(weights),
+        rbind.fill(dat, weights)[intersect(common, unique(c(names(weights),
                                                             names(dat))))]
       dat$weight <- NULL                   
       return(dat)
@@ -205,11 +205,19 @@ write.gadget.likelihood <- function(lik,file='likelihood',
     if(!is.null(data.folder)){
       comp$datafile <- paste(data.folder,comp$datafile,sep='/')
     }
+    ## reorder columns
+    if('surveyindices' %in% comp$type){
+      comp <-
+        comp[intersect(c('name','type','datafile','sitype','biomass',
+                         'areaaggfile','lenaggfile','surveynames','fleetnames',
+                         'stocknames','fittype','slope'),
+                       names(comp))]
+    }
     comp <- na.omit(melt(merge(weights,comp,by='name',sort=FALSE),
                          id.vars = 'name'))
     comp.text <- ddply(comp,'name',function(x){
       paste('[component]',
-            sprintf('name\t\t%s',x$name),
+            sprintf('name\t\t%s',x$name[1]),
             paste(x$variable,x$value, sep = '\t\t',
                   collapse = '\n'),
             ';', sep = '\n')
