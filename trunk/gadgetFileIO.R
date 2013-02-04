@@ -118,7 +118,7 @@ read.gadget.likelihood <- function(files='likelihood'){
   name.loc <- comp.loc+3
   weights <- NULL
   common <- c('name','weight','type','datafile','areaaggfile','lenaggfile',
-              'ageaggfile','sitype')
+              'ageaggfile','sitype','function')
   tmp.func <- function(comp){
     loc <- grep(paste('[ \t]',tolower(comp),sep=''),tolower(lik[name.loc]))  
     if(sum(loc)==0){
@@ -193,19 +193,13 @@ write.gadget.likelihood <- function(lik,file='likelihood',
                                     data.folder=NULL, bs.sample=NULL){
   lik.text <- sprintf('; Likelihood file - created in Rgadget\n; %s - %s',
                       file, Sys.Date())
-  weights <- lik$weights
+  weights <- lik$weights[c('name','weight')]
   lik$weights <- NULL
-  weights$type <- NULL
-  weights$datafile <- NULL
-  weights$lenaggfile <- NULL
-  weights$areaaggfile <- NULL
-  weights$ageaggfile <- NULL
-  weights$sitype <- NULL
-  for(comp in lik){
+  for(comp in lik){ 
     if(!is.null(data.folder)){
       comp$datafile <- paste(data.folder,comp$datafile,sep='/')
     }
-    ## reorder columns
+    ## reorder surveyindices columns 
     if('surveyindices' %in% comp$type){
       comp <-
         comp[intersect(c('name','type','datafile','sitype','biomass',
@@ -470,6 +464,29 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
               append=TRUE, sep="\t")
 
 }
+
+make.gadget.printfile <- function(lik,output='out',file='printfile'){
+  header <-
+    paste(sprintf('; gadget printfile, created in %s',Sys.Date()),
+          '[component]',
+          'type\tlikelihoodsummaryprinter',
+          sprintf('printfile\t%s/likelihoodsummary', output),
+          ';',sep='\n')
+  template <-
+    paste('[component]',
+          'type\tlikelihoodprinter',
+          'likelihood\t%1$s',
+          sprintf('printfile\t%s/%%1$s',output),
+          ';', sep='\n')
+  txt <- sprintf(template,
+                 subset(lik$weights,
+                        !(type %in% c('understocking','penalty',
+                                      'migrationpenalty')))[['name']])
+  write(paste(header,paste(txt,collapse='\n'),sep='\n'),
+        file=file)
+
+}
+
 ##' Read gadget printfile
 ##' @title Read gadget printfile
 ##' @param file string containing the path to the printfile
@@ -599,7 +616,7 @@ read.gadget.data <- function(likelihood){
          c('lengthcalcstddev','weightnostddev','lengthnostddev'))
         names(dat) <- c('year','step','area','age','number','mean')
       if(x[['function']] %in% c('lengthgivenstddev','weightgivenstddev',
-                                'lengthgivenvar'))
+                           'lengthgivenvar'))
         names(dat) <- c('year','step','area','age','number','mean','stddev') 
     }
     if(x$type=='stockdistribution'){
