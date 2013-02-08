@@ -204,7 +204,7 @@ write.gadget.likelihood <- function(lik,file='likelihood',
       comp <-
         comp[intersect(c('name','type','datafile','sitype','biomass',
                          'areaaggfile','lenaggfile','surveynames','fleetnames',
-                         'stocknames','fittype','slope'),
+                         'stocknames','fittype','slope','intercept'),
                        names(comp))]
     }
     comp <- na.omit(melt(merge(weights,comp,by='name',sort=FALSE),
@@ -542,8 +542,8 @@ write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
 }
 
 
-read.gadget.results <- function(comp,
-                                final,
+read.gadget.results <- function(grouping=list(),
+                                final=list(final='final'),
                                 wgts='WGTS',
                                 likelihood.file='likelihood'
                                 ){
@@ -554,28 +554,31 @@ read.gadget.results <- function(comp,
     return(SS)
   }
   likelihood <- read.gadget.likelihood(likelihood.file)
-  res <- lapply(comp,
-                function(x)
-                read.gadget.SS(paste(wgts,
-                                     paste('lik',
-                                           paste(x,collapse='.'),
-                                           sep='.'),sep='/')))                
-  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
-  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
-  names(SS.table) <- likelihood$weights$name
-
-  res <- lapply(final,
-                function(x)
-                read.gadget.SS(paste(wgts,
-                                     paste('lik',
-                                           paste(x,collapse='.'),
-                                           sep='.'),sep='/')))                
-  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
-  SS.table <- rbind(SS.table,
-                    as.data.frame(t(sapply(res,function(x) x)))
-                    )
-  lik.dat <- read.gadget.data(likelihood)
-  return(list(SS=SS.table,lik.out=lik.out))
+  comp.tmp <- subset(likelihood$weights,
+                     !(type %in% c('penalty','understocking',
+                                   'migrationpenalty'))&
+                     !(name %in% unlist(grouping)))$name
+  comp <- within(grouping,
+                 for(item in comp.tmp){
+                   assign(item, item)
+                 })
+  comp$item <- NULL
+  res <-
+    rbind.fill(ldply(comp,
+                     function(x)
+                     read.gadget.SS(paste(wgts,
+                                          paste('lik',
+                                                paste(x,collapse='.'),
+                                                sep='.'),sep='/'))),
+               ldply(final,
+                     function(x)
+                     read.gadget.SS(paste(wgts,
+                                          paste('lik',
+                                                paste(x,collapse='.'),
+                                                sep='.'),sep='/'))))
+  names(res)[-1] <- likelihood$weights$name
+  
+  return(res)
 }
 
 
