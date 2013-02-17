@@ -55,7 +55,7 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
                           full.names=TRUE,recursive=TRUE)
   
   printfiles <- llply(out.files,read.printfile)
-  names(printfiles) <- gsub('/','',gsub(path,'', out.files), fixed=TRUE)
+  names(printfiles) <- gsub('/','',gsub(path.expand(path),'', out.files),fixed=TRUE)
 
   if(!is.null(printfile)){
     tmp <- ldply(printfile,
