@@ -500,8 +500,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                   likelihood$weights$name %in% group])
       }      
     }
-    final.SS <- c(diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],
-                                          tmp.restr])),tmpSS)
+    tmp <- diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],
+                                   tmp.restr]))
+    names(tmp) <- likelihood$weights$name[tmp.restr]
+    final.SS <- c(tmp,tmpSS)
     final.SS <- final.SS[likelihood$weights$name[restr]]
     df <- rep(0,num.comp)
     lik.tmp <- likelihood$weights[restr,]

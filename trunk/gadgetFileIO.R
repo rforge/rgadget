@@ -464,7 +464,15 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
               append=TRUE, sep="\t")
 
 }
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param lik 
+##' @param output 
+##' @param file 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 make.gadget.printfile <- function(lik,output='out',file='printfile'){
   header <-
     paste(sprintf('; gadget printfile, created in %s',Sys.Date()),
