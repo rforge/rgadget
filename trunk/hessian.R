@@ -152,7 +152,8 @@ hesse <- function(vec,y,h=TRUE){
   
   ##The hessian matrix
   ##Start with the diagonal
-  hmat<-diag(y[2*(1:q)] + y[2*(1:q) +1] - 2*y[1])
+  hmat <- diag(y[2*(1:q)] + y[2*(1:q) +1] - 2*y[1])
+  #grad <- (y[2*(1:q)] - y[2*(1:q) +1])/(2*h)
 
   ##Add the mixed partial derivatives
   p <- 2*q+2
@@ -168,7 +169,7 @@ hesse <- function(vec,y,h=TRUE){
   hmattrans<-t(hmat)
   diag(hmattrans) <- 0
   hmat<-(hmat+hmattrans)/denom
-  return(hmat)
+  return(hmat=hmat)
 }
 
 
@@ -188,7 +189,9 @@ read.gadget <- function(file,input=TRUE){
          ncol=length(tmp2)/length(tmp)
          nrow=length(tmp)
          data1 <- matrix(tmp2,ncol=ncol,nrow=nrow,byrow=TRUE)
-         data <- matrix(as.numeric(data1[-1,]),ncol=ncol,nrow=nrow-1,byrow=TRUE,dimnames=list(rep("NULL",nrow(data1)-1),data1[1,]))
+         data <- matrix(as.numeric(data1[-1,]),ncol=ncol,
+                        nrow=nrow-1,byrow=TRUE,
+                        dimnames=list(rep("NULL",nrow(data1)-1),data1[1,]))
        } else {
          lengths <- sapply(strsplit(tmp,' '),length)
          skip <- max(which(lengths==min(lengths)))

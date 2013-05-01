@@ -153,9 +153,13 @@ read.gadget.likelihood <- function(files='likelihood'){
         }
         return(tmp)
       })
-      weights <<-
-        rbind.fill(dat, weights)[intersect(common, unique(c(names(weights),
-                                                            names(dat))))]
+      if(is.null(weights)){
+        weights <<- dat[intersect(common, unique(c(names(weights),names(dat))))]
+      } else {
+        weights <<-
+          rbind.fill(dat, weights)[intersect(common, unique(c(names(weights),
+                                                              names(dat))))]
+      }
       dat$weight <- NULL                   
       return(dat)
     }
