@@ -594,8 +594,10 @@ setMethod('getMortality','gadget-main',
 
 setGeneric('getFleetSelection',def=function(object, par){standardGeneric("getFleetSelection")})
 setMethod('getFleetSelection','gadget-fleet',
-          
-
+          function(object,par){
+            ldply(object@suitability,
+                  function(x) eval.gadget.formula(x,par))
+          }
           )
 
 setGeneric('getPredatorSelection',def=function(object, par){standardGeneric("getPredatorSelection")})

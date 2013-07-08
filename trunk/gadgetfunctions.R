@@ -571,31 +571,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 ##' @param likelihood.file likelihood file for the model
 ##' @return a list containing the sums of squares table for the various likelihood components while heavily weighted and the likelihood data. 
 ##' @author Bjarki Þór Elvarsson
-read.gadget.results <- function(comp,
-                                final,
-                                wgts='WGTS',
-                                likelihood.file='likelihood'
-                                ){
-
-  read.gadget.SS <- function(file='lik.out'){
-    lik.out <- readLines(file)
-    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
-                                           '\t\t')[[1]][2]))
-    return(SS)
-  }
-  likelihood <- read.gadget.likelihood(likelihood.file)
-  names(comp) <- comp
-  res <- ldply(c(comp,final=final),
-#  res <- lapply(comp,
-               function(x){
-                 tmp <- read.gadget.SS(paste(wgts,
-                                             paste('lik',
-                                                   paste(x,collapse='.'),
-                                                   sep='.'),sep='/'))
-                 names(tmp) <- likelihood$weights$name
-                 return(tmp)
-                 
-               })
 #  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
 #  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
 #  names(SS.table) <- likelihood$weights$name
@@ -612,8 +587,7 @@ read.gadget.results <- function(comp,
 #  SS.table <- rbind(SS.table,res)
 #  lik.dat <- read.gadget.data(likelihood)
                                         # return(list(SS=SS.table,lik.dat=lik.dat))
-  return(res)
-}
+
 
 
 ##' This function implements a crude sensitivity analysis of a gadget simulation
@@ -898,7 +872,9 @@ gadget.ypr <- function(params.file = 'params.in',
 
   time$lastyear <-  end
   time$firstyear <- begin
-
+  time$laststep <- length(time$notimesteps)
+  time$firststep <- 1
+  
   time.grid <- expand.grid(year = time$firstyear:time$lastyear,
                            step = 1:length(time$notimesteps),
                            area = area$areas)
@@ -998,16 +974,18 @@ gadget.ypr <- function(params.file = 'params.in',
   callGadget(s=1,i=sprintf('%s/params.ypr',ypr),main=sprintf('%s/main.ypr',ypr))
 
   ## read output
-  effort.grid <- ldply(effort,
-                       function(x){
-                         mutate(time.grid,
-                                effort = x)})
+#  effort.grid <- ddply(,
+#                       'trial',
+#                       function(x){
+#                         mutate(time.grid,
+#                                effort = x$effort)})
 
   
   out <- ddply(data.frame(stock = unique(fleet$prey$stock),tmp=1),
                'stock',
                function(x){
-                 system(sprintf("sed '/            0          0          0          0            0            0/d' %1$s/out/%2$s.std > %1$s/out/%2$s.std0",ypr,x$stock))
+                 system(sprintf("sed '/            0          0          0          0            0            0/d' %1$s/out/%2$s.std > %1$s/out/%2$s.std0",
+                                ypr,x$stock))
                  stock.std <- read.table(file = sprintf("%1$s/out/%2$s.std0",
                                            ypr,x$stock),
                                          comment.char = ';')
@@ -1015,7 +993,16 @@ gadget.ypr <- function(params.file = 'params.in',
                    c('year', 'step','area','age','number',
                      'mean.length', 'mean.weight', 'stddev.length',
                      'number.consumed', 'biomass.consumed')
-                 stock.std$effort <- arrange(effort.grid,effort)$effort
+                 stock.std$trial <-
+                   rep(1:c(nrow(stock.std)/(length(unique(stock.std$step))*
+                                            length(unique(stock.std$year)))),
+                       each=length(unique(stock.std$year))*
+                       length(unique(stock.std$step)))
+                 stock.std <- merge(stock.std,
+                                    data.frame(trial=1:length(effort),
+                                               effort=effort),
+                                    all.x=TRUE)
+#                 stock.std$effort <- arrange(effort.grid,effort)$effort
                  return(stock.std)
                })
 
@@ -1048,6 +1035,7 @@ gadget.bootypr <- function(params.file='params.final',
                    ypr = sprintf('%s/BS.%s/%s',bs.wgts,x,ypr))
       
     },.parallel = .parallel)
+  print('ypr finished -- tidying up')
   names(tmp) <- sprintf('BS.%s',bs.samples)
   tmp.names <- c('params','out','ypr','f01')
   names(tmp.names) <- c('params','out','ypr','f01')

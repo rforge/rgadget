@@ -13,7 +13,7 @@ library(reshape2)
 ##' @param likelihood gadget likelihood object pointing to the dataset used in
 ##' the fit.
 ##' @return a list containing the data that has been read in named after the files found in path.
-read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
+read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL,suppress=FALSE){
 ##' worker function
 ##' @title 
 ##' @param file 
@@ -22,12 +22,25 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL){
   read.printfile <- function(file){
 #    file <- paste(path,file,sep='/')
     tmp <- readLines(file)
+    if(length(tmp) == 0){
+      if(!suppress)
+        warning(sprintf('Warning in read.printfile -- %s is of length 0',file))
+      return(NULL)
+    }
     skip <- max(grep(';',tmp[1:7]))
     header <- gsub('; ','',tmp[skip])
     header <- gsub(' ','.',unlist(strsplit(header,'-')))
-    data <- read.table(file,comment.char=';',header=FALSE)
+    data <- tryCatch(read.table(file,comment.char=';',header=FALSE),
+                     error = function(e){
+                       if(!suppress)
+                         print(sprintf('file corrupted -- %s', file))
+                       return(NULL)
+                     })
+    if(is.null(data))
+      return(NULL)
     if(length(names(data)) != length(header)){
-      warning(sprintf('Error in read.printfile -- Header could not be read from file %s',file))
+      if(!suppress)
+        warning(sprintf('Error in read.printfile -- Header could not be read from file %s',file))
     } else {
       names(data) <- header
     }
@@ -557,7 +570,7 @@ write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
 read.gadget.results <- function(grouping=list(),
                                 final=list(final='final'),
                                 wgts='WGTS',
-                                likelihood.file='likelihood'
+                                likelihood.file='WGTS/likelihood.final'
                                 ){
   read.gadget.SS <- function(file='lik.out'){
     lik.out <- readLines(file)
@@ -971,9 +984,13 @@ read.gadget.stockfiles <- function(stock.files){
           doesmature =  as.numeric(stock[[mature.loc]][2]),
           doesmove = as.numeric(stock[[move.loc]][2]),
           doesrenew =  as.numeric(stock[[renew.loc]][2]),
-          renewal = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
-            list(),list(minlength = as.numeric(stock[[renew.loc + 1]][2]),
-                        maxlength = as.numeric(stock[[renew.loc+2]][2]))),
+          renewal = list(
+            minlength = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
+              NULL,
+              as.numeric(stock[[renew.loc + 1]][2])),
+            maxlength = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
+              NULL,
+              as.numeric(stock[[renew.loc + 2]][2]))),
           renewal.data = tryCatch(read.gadget.table(stock[[renew.loc+3]][2]),
             error=function(x) data.frame(text='No renewal data')),
           doesspawn = as.numeric(stock[[spawn.loc]][2]),
@@ -1199,6 +1216,7 @@ read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
   printfile <- read.gadget.printfile(printfile)
   run.func <- function(bs.data){
     path <- sprintf('%s/BS.%s',bs.wgts,bs.data)
+    
     dir.create(paste(path,sprintf('out.%s',final),sep='/'))
     main.print <- read.gadget.main(sprintf('%s/main.%s',path,final))
     main.print$printfiles <- sprintf('%s/print.%s',path,final)
@@ -1209,7 +1227,8 @@ read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
     callGadget(s=1,main=sprintf('%s/main.print',path),
                i=sprintf('%s/params.%s',path,final),
                o=sprintf('%s/lik.print',path))
-    read.printfiles(sprintf('%s/out.%s',path,final))
+    out <- read.printfiles(sprintf('%s/out.%s',path,final))
+    return(out)
   }
   bs.print <- llply(bs.samples,
                     run.func,.parallel=TRUE)
