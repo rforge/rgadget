@@ -19,7 +19,7 @@ conf.gadget.hess <- function(params.out = 'params.out',
                                    rownames(res.total),
                                    res.total))
   names(res.total)[-c(1:2)] <- paste('q',quantiles,sep='')
-
+if(FALSE){
   lik.out <- read.gadget.lik.out('lik.hess')
   restr <- !(lik.out$weights$Component %in%
              c('alkeys.igfs', 'alkeys.comm','alkeys.aut'))
@@ -37,6 +37,7 @@ conf.gadget.hess <- function(params.out = 'params.out',
   res <- rbind(res.total,res.alk)
   names(res)[1] <- 'method'
   names(res)[2] <- 'parameter'
+}
   return(list(res=res,hess=hess))
 }
 
@@ -53,6 +54,7 @@ run.hessegadget <- function(file.in = "params.out",
                             file.out = 'hess.in',
                             result = "lik.hess",
                             location='.',
+                            main.file = 'main',
                             h=1e-4){
   options(digits=19)
   #source("hessegadget.r")
@@ -65,7 +67,8 @@ run.hessegadget <- function(file.in = "params.out",
   grid.gadget(gogn,hgrid,location=location,file=file.out)
   curr.dir <- getwd()
   setwd(location)
-  callGadget(s=1,i=file.out,p='params.hess',o=paste(curr.dir,result,sep='/'))
+  callGadget(s=1,i=file.out,p='params.hess',o=paste(curr.dir,result,sep='/'),
+             main=main.file)
   setwd(curr.dir)
   utkoma <- read.gadget(result,input=FALSE)
   hesmat <- hesse(gogn,utkoma,h=h)
@@ -83,12 +86,14 @@ run.hessegadget <- function(file.in = "params.out",
 
 hesse.grid<-function(vec,h=TRUE){
   options(digits = 19)
-
-  if (h==TRUE)
-    h <- sqrt(.Machine$double.eps)*vec
-  if (length(h) == 1)
-    h <- rep(h,length(vec))
-
+  
+  if (length(h) == 1){
+    if (h==TRUE){
+      h <- sqrt(.Machine$double.eps)*vec
+    } else {
+      h <- rep(h,length(vec))
+    }
+  }
   q <- length(vec)
   
   ## The first part of the matrix.
