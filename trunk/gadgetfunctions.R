@@ -302,47 +302,31 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
   
-  ##' Read the values of likelihood components from the likelihood output
-  ##' @title Read SS
-  ##' @param file a string containing location the likelihood output
-  ##' @return vector of likelihood values
-  ##' @author Bjarki Þór Elvarsson
-  read.gadget.SS <- function(file='lik.out'){
-    
-    lik.out <- readLines(file)
-    if(length(lik.out) == 0)
-      stop(sprintf('Error in read.gadget.SS, file %s could not be read',file))
-    SS <- as.numeric(clear.spaces(strsplit(lik.out[length(lik.out)],
-                                           '\t\t')[[1]][2]))
-    return(SS)
-  }
-
   ## read model
   main <- read.gadget.main(main.file)
-  if(!is.null(main$printfile)){
-    printfile <- read.gadget.printfile(main$printfile)
+  if(!is.null(main$printfiles)){
+    printfile <- read.gadget.printfile(main$printfiles)
   } else {
     printfile <- NULL
   }
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-#  params.in <-read.gadget.parameters(params.file)
   
   ## initial run (to determine the initial run)
   main.init <- main
-  main.init$printfile <- NULL
+  main.init$printfiles <- NULL
   main.init$likelihoodfiles <- paste(wgts,'likelihood.init',sep='/')
   write.gadget.likelihood(likelihood,file=paste(wgts,'likelihood.init',sep='/'))
   write.gadget.main(main.init,file=paste(wgts,'main.init',sep='/'))
   callGadget(s=1,main=paste(wgts,'main.init',sep='/'),
              o=paste(wgts,'lik.init',sep='/'),
              i=params.file,gadget.exe=gadget.exe)
-  SS <- read.gadget.SS(paste(wgts,'lik.init',sep='/'))
+
   
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
   restr <- !(likelihood$weights$type %in%
              c('penalty','understocking','migrationpenalty'))
-  
+  SS <- read.gadget.lik.out(paste(wgts,'lik.init',sep='/'))$data[likelihood$weights$name[restr]]
   ##' Survey indices get special treatment
   ##' @title survey index weight 
   ##' @param lik.dat Likelihood dataset
@@ -368,48 +352,38 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                          length(fit)/sum((fit - log(x$number))^2)
                        })$V1
     }
+    names(weigths) <- names(lik.dat$dat$surveyindices)
     return(weights)
   }
   
-  restr.SI <- (likelihood$weights$type == 'surveyindices')  
+  restr.SI <- subset(likelihood$weights,type == 'surveyindices')$name  
   if(!rew.sI){
-    run.string <- c(likelihood$weights$name[restr&(!restr.SI)&
-                                            !(likelihood$weights$name %in%
-                                              unlist(grouping))])
-    run.string <- as.list(run.string)
-    restr <- restr&(!restr.SI)
+    if(is.null(grouping)){
+      grouping <- list(SI=likelihood$weights$name[restr.SI])
+    } else {
+      grouping$SI <- likelihood$weights$name[restr.SI]
+    }
     sIw <- sI.weights(lik.dat,method=method)
-    run.string$SI <- likelihood$weights$name[restr.SI]
-  } else {
-    run.string <- c(likelihood$weights$name[restr&
-                                            !(likelihood$weights$name %in%
-                                              unlist(grouping))])
-    
-    run.string <- as.list(run.string)
-  }
+  } 
+  run.string <- c(likelihood$weights$name[restr&
+                                          !(likelihood$weights$name %in%
+                                            unlist(grouping))])
   
-  if(!is.null(grouping)){
-    
-    i <- 1
-    run.string <-
-      within(run.string,
-             for(group in grouping){
-               assign(sprintf('g%s',i),group)
-               i <- i+1
-             }
-             )
-    run.string$group <- NULL
-    run.string$i <- NULL
-  }
+  run.string <- as.list(run.string)
+  names(run.string) <-
+    c(likelihood$weights$name[restr&
+                              !(likelihood$weights$name %in%
+                                unlist(grouping))])   
+  
+  run.string <- append(run.string,grouping)
+
   
   ## Base run (with the inverse SS as weights)
   main.base <- main.init
   main.base$likelihoodfiles <- paste(wgts,'likelihood.base',sep='/')
   write.gadget.main(main.base,file=paste(wgts,'main.base',sep='/'))
   likelihood.base <- likelihood
-  likelihood.base$weights$weight[restr] <- 1/SS[restr]
-  if(!rew.sI)
-    likelihood.base$weights$weight[restr.SI] <- sIw/sum(SS[restr.SI]*sIw)
+  likelihood.base$weights[names(SS),'weight'] <- 1/as.numeric(SS)
 
   
   ##' Gadget set up stuff, needed for each component
@@ -445,8 +419,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                gadget.exe=gadget.exe,
                PBS=PBS,
                PBS.name=paste(wgts,comp,sep='/'))
-#    SS.comp <- read.gadget.SS(paste(wgts,paste('lik',comp,sep='.'),sep='/'))
-#    return(SS.comp)
   }
   ## 
   if(!resume.final){
@@ -461,16 +433,18 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## and the check should be removed in later revisions)
   
   if(run.final){
-    res <- lapply(run.string,
-                  function(x)
-                  read.gadget.SS(paste(wgts,
-                                       paste('lik',
-                                             paste(x,collapse='.'),
-                                             sep='.'),sep='/')))                
-    names(res) <- sapply(run.string,function(x) paste(x,collapse='.'))
-    SS.table <- as.data.frame(t(sapply(res,function(x) x)))
-    names(SS.table) <- likelihood.base$weights$name
-    
+    res <- ldply(run.string,
+                 function(x){
+                   tmp <- read.gadget.lik.out(paste(wgts,
+                                                    paste('lik',
+                                                          paste(x,collapse='.'),
+                                                          sep='.'),
+                                                    sep='/'))$data
+                   tmp[likelihood$weights$name[restr]]
+                 })
+    row.names(res) <- res$.id
+    res$.id <- NULL
+                                  
     
     run.final <- function(comp){
       callGadget(l=1,
@@ -490,62 +464,43 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
 
     ## read in the results from previous runs
-    num.comp <- sum(restr)
-    tmpSS <- NULL
-    tmp.restr <- restr
-    if(!is.null(grouping)){
-      tmp.restr <- restr&(!(likelihood$weights$name %in% unlist(grouping)))
-      for(group in grouping){
-        tmpSS <- c(tmpSS,SS.table[paste(group,collapse='.'),
-                                  likelihood$weights$name %in% group])
-      }      
-    }
-    tmp <- diag(as.matrix(SS.table[likelihood$weights$name[tmp.restr],
-                                   tmp.restr]))
-    names(tmp) <- likelihood$weights$name[tmp.restr]
-    final.SS <- c(tmp,tmpSS)
-    final.SS <- final.SS[likelihood$weights$name[restr]]
-    df <- rep(0,num.comp)
-    lik.tmp <- likelihood$weights[restr,]
-    for(i in 1:num.comp){
-      df[i] <- lik.dat$df[[lik.tmp$type[i]]][[lik.tmp$name[i]]]
-    }
-    final.weights <- df/unlist(final.SS)
-    if(!rew.sI){
-      ind <- run.string$SI
-      final.SI <- sIw/sum(sIw*SS.table[paste(ind,collapse='.'),ind])
-      final.sIw <- unlist(c(final.weights,sIw))
-      final.sIgroup <- unlist(c(final.weights,
-                                lik.dat$df$surveyindices[ind]/
-                                SS.table[paste(ind,collapse='.'),ind]))
-      final.weights <- unlist(c(final.weights,final.SI))
-    }
+    SS <- ldply(names(run.string),
+                function(x)
+                data.frame(group=x,comp=run.string[[x]],
+                           SS=as.numeric(res[x,run.string[[x]]])))
+    df <- ldply(lik.dat$df,function(x) data.frame(df=x,comp=names(x)))
+    SS <- mutate(join(SS,df),sigmahat = SS/df)
 
+    
     ## final run
     write.files <- function(comp,weights){
       main <- main.base
-      if(!is.null(printfile)){
+      if(!is.null(printfiles)){
         write.gadget.printfile(printfile,
                                sprintf('%s/%s.%s',wgts,'printfile',comp),
                                sprintf('%s/out.%s',wgts,comp))
-        main$printfile <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+        main$printfiles <- sprintf('%s/%s.%s',wgts,'printfile',comp)
       }
       main$likelihoodfiles <- sprintf('%s/likelihood.%s',wgts,comp)
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
       
       likelihood <- likelihood.base
-      likelihood$weights[names(weights),'weight'] <- weights
+      likelihood$weights[weights$comp,'weight'] <- 1/weights$sigmahat
       write.gadget.likelihood(likelihood,
                               file=sprintf('%s/likelihood.%s',wgts,comp))
       dir.create(sprintf('%s/out.%s',wgts,comp),showWarnings=FALSE)
     }
 
-      comp <- 'final'
-      write.files(comp,final.weights)
+
+    write.files('final',SS)
+
     if(!rew.sI){
-      write.files('sIw',final.sIw)
-      write.files('sIgroup',final.sIgroup)
-      comp <- as.list(c('final','sIw','sIgroup'))
+      SS[restr.SI,'sigmahat'] <- sIw[restr.SI]
+    }
+    if(!rew.sI){
+      write.files('sIw',SS)
+ #     write.files('sIgroup',final.sIgroup)
+      comp <- as.list(c('final','sIw')) #,'sIgroup'))
     }
     
     if(run.serial)
