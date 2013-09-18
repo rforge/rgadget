@@ -470,12 +470,12 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                            SS=as.numeric(res[x,run.string[[x]]])))
     df <- ldply(lik.dat$df,function(x) data.frame(df=x,comp=names(x)))
     SS <- mutate(join(SS,df),sigmahat = SS/df)
-
+    SS$comp <- as.character(SS$comp)
     
     ## final run
     write.files <- function(comp,weights){
       main <- main.base
-      if(!is.null(printfiles)){
+      if(!is.null(printfile)){
         write.gadget.printfile(printfile,
                                sprintf('%s/%s.%s',wgts,'printfile',comp),
                                sprintf('%s/out.%s',wgts,comp))
@@ -493,7 +493,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
 
     write.files('final',SS)
-
+    comp <- 'final'
     if(!rew.sI){
       SS[restr.SI,'sigmahat'] <- sIw[restr.SI]
     }
