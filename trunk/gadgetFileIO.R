@@ -1393,7 +1393,12 @@ write.gadget.fleet <- function(fleet,file='fleet'){
                            sep='\t', collapse='\n'))
                      })
   tmp <- merge(fleet$fleet,suit.text,by='fleet')
-
+  tmp$suitability <- ifelse(tmp$type=='quotafleet',
+                            paste(tmp$suitability,
+                                  sprintf('biomasslevel\t%s\nquotafunction\t%s',
+                                          tmp$biomasslevel,tmp$quotafunction),
+                                  sep='\n'),
+                            tmp$suitability)
   
   write(sprintf(base.text,tmp$type,tmp$fleet,tmp$livesonares,
                 tmp$multiplicative,tmp$suitability, tmp$amount),

@@ -499,8 +499,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     }
     if(!rew.sI){
       write.files('sIw',SS)
- #     write.files('sIgroup',final.sIgroup)
-      comp <- as.list(c('final','sIw')) #,'sIgroup'))
+      comp <- as.list(c('final','sIw'))
     }
     
     if(run.serial)
@@ -512,7 +511,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     comp <- NULL
   }
   return(list(comp=run.string,final=comp,wgts=wgts))
-#  return(list(res=res,SS=SS.table,lik.dat=lik.dat))
+
 }
 
 
@@ -1002,19 +1001,27 @@ gadget.bootypr <- function(params.file='params.final',
 gadget.forward <- function(years = 20,params.file = 'params.out',
                            main.file = 'main', pre = 'PRE', num.trials = 10,
                            fleets = data.frame(fleet='comm',ratio = 1),
-                           effort = 0.2){
+                           biomass = FALSE,
+                           effort = 0.2,
+                           selectedstocks=NULL,
+                           biomasslevel=NULL){
 
   dir.create(pre,showWarnings = FALSE, recursive = TRUE)
   params <-
     read.gadget.parameters(params.file)
-  rec <- subset(params,grepl('rec',switch)&!(switch %in% c('recl','recsdev')))
+  rec <- subset(params,grepl('rec',switch)&!(switch %in% c('recl','recsdev',
+                                                           'murec','sdrec')))
+  ## need a more flexible definition of year
   rec$year <- as.numeric(gsub('rec','',rec$switch))
   rec <- arrange(rec,year)
 
+  ## read in model files
   main <- read.gadget.main(file = main.file)
   time <- read.gadget.time(main$timefile)
   area <- read.gadget.area(main$areafile)
-
+  fleet <- read.gadget.fleet(main$fleetfiles)
+  
+  ## adapt model to include predictions
   sim.begin <- time$lastyear
   
   time$lastyear <- time$lastyear + years
@@ -1031,17 +1038,31 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   write.gadget.area(area,file=sprintf('%s/area',pre))
 
 
-  fleet <- read.gadget.fleet(main$fleetfiles)
-
   fleet <- llply(fleet,
                  function(x){
                    tmp <- subset(x,fleet %in% fleets$fleet)
                  })
-  fleet$fleet <- mutate(fleet$fleet,
-                        fleet = sprintf('%s.pre',fleet),
-                        multiplicative = effort,
-                        amount = sprintf('%s/fleet.pre', pre),
-                        type = 'linearfleet')
+
+  if(biomass){
+    fleets$fleet <- mutate(fleet$fleet,
+                           fleet = sprintf('%s.pre',fleet),
+                           multiplicative = 1,
+                           quotafunction = 'simpleselect',
+                           selectedstocks = selectedstocks,
+                           biomasslevel = biomasslevel,
+                           quotalevel = effort,
+                           amount = sprintf('%s/fleet.pre', pre),
+                           type = 'quotafleet')
+                           
+                           
+  } else {
+    fleet$fleet <- mutate(fleet$fleet,
+                          fleet = sprintf('%s.pre',fleet),
+                          multiplicative = effort,
+                          amount = sprintf('%s/fleet.pre', pre),
+                          type = 'linearfleet')
+  }
+  
   fleet$prey <- mutate(fleet$prey,
                        fleet = sprintf('%s.pre',fleet))
 
@@ -1104,11 +1125,37 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           'type\tlikelihoodsummaryprinter',
           'printfile\t.jnk',
           sep = '\n')
-  printfile <- paste(sprintf(print.txt,unique(fleet$prey$stock),
-                       pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years),
-                                  '1',sep='\t',
-                                  collapse = '\n')),
-                     collapse = '\n')
+
+  catch.print <-
+    paste('[component]',
+          'type\t\tpredatorprinter',
+          'predatornames\t\t%s',
+          'preynames\t\t%s',
+          'areaaggfile      Aggfiles/area.agg',
+          'ageaggfile       Aggfiles/allage.agg',
+          'lenaggfile       Aggfiles/len.agg',
+          'biomass          1',
+          'printfile        %s/out/%1$s.lw',
+          'yearsandsteps    %s',
+          sep = '\n')
+                    
+  
+  printfile <-
+    paste(
+      paste(sprintf(catch.print, fleet$fleet$fleet,
+                    paste(unique(fleet$prey$stock),collapse=' '),
+                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years),
+                               '1',sep='\t',
+                               collapse = '\n')),
+            collapse = '\n'),
+      paste(sprintf(print.txt,unique(fleet$prey$stock),
+                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years),
+                               '1',sep='\t',
+                               collapse = '\n')),
+            collapse = '\n'),
+      sep = '\n')
+  
+  
   dir.create(sprintf('%s/out/',pre),showWarnings = FALSE, recursive = TRUE)
   
   main$printfiles <- sprintf('%s/printfile',pre)
