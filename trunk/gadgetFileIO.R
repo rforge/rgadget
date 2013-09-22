@@ -813,7 +813,8 @@ read.gadget.lik.out <- function(file='lik.out'){
 ##' @return list containing the lines from the file stripped of unwanted text.
 ##' @author Bjarki Thor Elvarsson
 strip.comments <- function(file='main'){
-  main <- sub(' +$','',readLines(file))
+  tmp <- unlist(llply(file,readLines))
+  main <- sub(' +$','',tmp)
   main <- gsub('(','( ',main,fixed=TRUE)
   main <- gsub(')',' )',main,fixed=TRUE)
   main <- main[main!='']
@@ -1345,7 +1346,7 @@ read.gadget.fleet <- function(fleet.file='fleet'){
   fleet.dat <-
     data.frame(fleet = laply(fleet[comp.loc+1],function(x) x[2]),
                type = laply(fleet[comp.loc+1],function(x) x[1]),
-               livesonares = laply(fleet[comp.loc+2],
+               livesonareas = laply(fleet[comp.loc+2],
                  function(x) paste(x[-1],collapse=' ')),
                multiplicative = laply(fleet[comp.loc+3],
                  function(x) as.numeric(x[2])),
@@ -1395,12 +1396,14 @@ write.gadget.fleet <- function(fleet,file='fleet'){
   tmp <- merge(fleet$fleet,suit.text,by='fleet')
   tmp$suitability <- ifelse(tmp$type=='quotafleet',
                             paste(tmp$suitability,
-                                  sprintf('biomasslevel\t%s\nquotafunction\t%s',
-                                          tmp$biomasslevel,tmp$quotafunction),
+                                  sprintf('quotafunction\t%s\nbiomasslevel\t%s\nquotalevel\t%s\nselectstocks\t%s',
+                                          tmp$quotafunction,tmp$biomasslevel,
+                                          tmp$quotalevel,
+                                          tmp$selectstocks),
                                   sep='\n'),
                             tmp$suitability)
   
-  write(sprintf(base.text,tmp$type,tmp$fleet,tmp$livesonares,
+  write(sprintf(base.text,tmp$type,tmp$fleet,tmp$livesonareas,
                 tmp$multiplicative,tmp$suitability, tmp$amount),
         file=file)
   
