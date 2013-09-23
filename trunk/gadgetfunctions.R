@@ -1049,7 +1049,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     fleet$fleet <- mutate(fleet$fleet,
                            fleet = sprintf('%s.pre',fleet),
                            multiplicative = 1,
-                           quotafunction = 'simpleselect',
+                           quotafunction = 'annualselect',
                            selectstocks = selectedstocks,
                            biomasslevel = biomasslevel,
                            quotalevel = paste(effort,collapse='\t'),
@@ -1144,8 +1144,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     paste(
       paste(sprintf(catch.print, fleet$fleet$fleet,
                     paste(unique(fleet$prey$stock),collapse=' '),
-                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years),
-                               '1',sep='\t',
+                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years-1),
+                               'all',sep='\t',
                                collapse = '\n')),
             collapse = '\n'),
       paste(sprintf(print.txt,unique(fleet$prey$stock),
@@ -1193,7 +1193,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   names(out) <- c(unique(fleet$prey$stock),unique(fleet$fleet$fleet))
   
   out <- llply(out,function(x){
-    tmp <- length(unique(x$age))*length(unique(x$area))*length(unique(x$length))
+    tmp <- length(unique(x$age))*length(unique(x$area))*
+      length(unique(x$length))*length(unique(x$step))
+    rec.out <- subset(rec.out,year %in% x$year)
     dat <- cbind(trial=rep(rec.out$trial,each = tmp),
                  x,
                  recruitment = rep(rec.out$value,each = tmp))
