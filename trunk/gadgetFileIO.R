@@ -802,7 +802,12 @@ read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
     return(NULL)
   }
   
-  switches <- lapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique)
+  switches <- tryCatch(lapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique),
+                       error = function(e){
+                         if(!suppress)
+                           print(sprintf('file corrupted -- %s', file))
+                         return(NULL)
+                       })
   names(switches) <- sapply(switches,function(x) x[1])
   switches <- lapply(switches,function(x) x[-1])
 
