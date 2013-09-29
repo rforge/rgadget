@@ -1,5 +1,7 @@
 library(plyr)
 library(reshape2)
+library(lubridate)
+library(stringr)
 
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
@@ -780,11 +782,26 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' (l?kelihood components) and data (dataframe with the parameter values,
 ##' likelihood component values and the final score.
 ##' @author Bjarki Thor Elvarsson
-read.gadget.lik.out <- function(file='lik.out'){
-  lik <- readLines(file)
+read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
+  if(!file.exists(file)){
+    return(NULL)
+  }     
+  lik <-  tryCatch(readLines(file)
+                   error = function(e){
+                     if(!suppress)
+                       print(sprintf('file corrupted -- %s', file))
+                     return(NULL)
+                   })
+  
   i <- grep("Listing of the switches",lik)
   i1 <- grep("Listing of the likelihood components",lik)
   i2 <- grep("Listing of the output from the likelihood",lik)
+
+  if(is.null(i)|is.null(i1)|is.null(i2)){
+    warning(sprintf('file %s is corrupt',file))
+    return(NULL)
+  }
+  
   switches <- lapply(strsplit(lik[(i+1):(i1-2)],'\t'),unique)
   names(switches) <- sapply(switches,function(x) x[1])
   switches <- lapply(switches,function(x) x[-1])
@@ -1162,11 +1179,12 @@ read.gadget.wgts <- function(params.file = 'params.in',
 
   tmp.func <- function(path){
     read.gadget.SS <- function(file='lik.out'){
-      if(!file.exists(file)){
+      lik.out <- read.gadget.lik.out(file)
+
+      if(is.null(lik.out)){
         SS <- as.data.frame(t(rep(NA,length(bs.lik$weights$weight))))
         names(SS) <- bs.lik$weights$name
       } else {
-        lik.out <- read.gadget.lik.out(file)
         SS <- lik.out$data[intersect(bs.lik$weights$name,names(lik.out$data))]
       }
       return(SS)
