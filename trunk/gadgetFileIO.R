@@ -786,7 +786,7 @@ read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
   if(!file.exists(file)){
     return(NULL)
   }     
-  lik <-  tryCatch(readLines(file)
+  lik <-  tryCatch(readLines(file),
                    error = function(e){
                      if(!suppress)
                        print(sprintf('file corrupted -- %s', file))
