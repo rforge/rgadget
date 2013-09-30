@@ -808,6 +808,9 @@ read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
                            print(sprintf('file corrupted -- %s', file))
                          return(NULL)
                        })
+  if(is.null(switches)){
+    return(NULL)
+  }
   names(switches) <- sapply(switches,function(x) x[1])
   switches <- lapply(switches,function(x) x[-1])
 
