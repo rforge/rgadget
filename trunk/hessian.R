@@ -63,6 +63,8 @@ run.hessegadget <- function(file.in = "params.out",
   tmp <- read.table(file.in,header=TRUE,comment.char=';',stringsAsFactors=FALSE)
   gogn <- matrix(tmp$value,ncol=length(tmp$value),nrow=1,
                  dimnames=list(value='value',swithes=tmp$switch))
+  if(length(h) == 1)
+    h <- h*tmp$value
   hgrid <- hesse.grid(as.vector(gogn),h=h)
   grid.gadget(gogn,hgrid,location=location,file=file.out)
   curr.dir <- getwd()
@@ -84,7 +86,7 @@ run.hessegadget <- function(file.in = "params.out",
 ##' the h will be set to sqrt(eps)*vec where eps is the machine epsilon. Eps is about 2.2e-16 in R.
 ##' @return the grid
 
-hesse.grid<-function(vec,h=TRUE){
+hesse.grid <- function(vec,h=TRUE){
   options(digits = 19)
   
   if (length(h) == 1){
