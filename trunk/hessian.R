@@ -107,7 +107,7 @@ hesse.grid <- function(vec,h=TRUE){
   ## Add the second part of the matrix.
   ## This part is used for second order mixed derivatives.  
   r <- sum(1:(q-1))
-  m <- rbind(m,matrix(rep(vec,r*4),r*4,q))
+  m <- rbind(m,matrix(rep(vec,each=r*4),r*4,q))
 
 
   p <- 0
