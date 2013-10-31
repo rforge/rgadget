@@ -283,6 +283,7 @@ callParamin <- function(i='params.in',
 ##' @param run.serial should the weighting run be run in parallel (used in
 ##' bootstrap). 
 ##' @param method linear model or loess smoother used to calculate SI weights outside the gadget model.
+##' @param cv.cap 
 ##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
@@ -297,14 +298,15 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              qsub.script = NULL,
                              run.base=FALSE,
                              run.serial = FALSE,
-                             method = 'lm'
-                             ) {
+                             method = 'lm',
+                             cv.cap=NULL) {
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
   
+
   ## read model
   main <- read.gadget.main(main.file)
-  if(!is.null(main$printfiles)){
+  if(!is.null(main$printfiles) | !is.null(main$printfile)){
     printfile <- read.gadget.printfile(main$printfiles)
   } else {
     printfile <- NULL
@@ -474,6 +476,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     
     ## final run
     write.files <- function(comp,weights){
+      if(!is.null(cv.cap)){
+        weights$sigmahat[weights$comp %in% restr.SI] <-
+          pmax(weights$sigmahat[weights$comp %in% restr.SI],cv.cap)
+      }
       main <- main.base
       if(!is.null(printfile)){
         write.gadget.printfile(printfile,
@@ -514,33 +520,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
 }
 
-
-##' Read the results from the gadget run, in particular the sums of squares
-##' table which is useful for further analysis. TODO: add optional read
-##' printfiles
-##' @title read gadget results
-##' @param comp list of likelihood components (with groupings if necessary)
-##' @param final final postfix
-##' @param wgts wgts folder (defaults to WGTS)
-##' @param likelihood.file likelihood file for the model
-##' @return a list containing the sums of squares table for the various likelihood components while heavily weighted and the likelihood data. 
-##' @author Bjarki Þór Elvarsson
-#  names(res) <- sapply(comp,function(x) paste(x,collapse='.'))
-#  SS.table <- as.data.frame(t(sapply(res,function(x) x)))
-#  names(SS.table) <- likelihood$weights$name
-  
-#  res <- lapply(final,
-#                function(x)
-#                read.gadget.SS(paste(wgts,
-#                                     paste('lik',
-#                                           paste(x,collapse='.'),
-#                                           sep='.'),sep='/')))                
-#  names(res) <- sapply(final,function(x) paste(x,collapse='.'))
-#  res <- as.data.frame(t(sapply(res,function(x) x)))
-#  names(res) <- names(SS.table)
-#  SS.table <- rbind(SS.table,res)
-#  lik.dat <- read.gadget.data(likelihood)
-                                        # return(list(SS=SS.table,lik.dat=lik.dat))
 
 
 
@@ -749,7 +728,8 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                              grouping = NULL,
                              qsub.script = 'bootstrap.sh',
                              run.final = FALSE,
-                             PBS=TRUE
+                             PBS=TRUE,
+                             cv.cap=NULL
                              ){
   
   dir.create(bs.wgts,showWarnings=FALSE)
@@ -794,7 +774,8 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                               wgts = sprintf('%s/BS.%s',bs.wgts,i),
                               resume.final = TRUE,
                               run.final = TRUE,
-                              run.serial = TRUE)
+                              run.serial = TRUE,
+                              cv.cap = cv.cap)
       if(PBS)
         write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
       if(i > 100 & PBS)
@@ -1033,6 +1014,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   time.grid <- expand.grid(year = time$firstyear:time$lastyear,
                            step = 1:length(time$notimesteps),
                            area = area$areas)
+  
   area$temperature <- mutate(time.grid,
                              temperature = 5)
 
@@ -1070,8 +1052,11 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
 
   fleet.predict <- ddply(fleets,'fleet',function(x){
-    tmp <- mutate(subset(time.grid,year >= sim.begin &
-                         area %in% fleet$fleet$livesonareas),
+    tmp <- mutate(subset(time.grid,
+                         (year > sim.begin | (year==sim.begin &
+                                              step > time$laststep)) &
+                         area %in% fleet$fleet$livesonareas 
+                         ),
                   fleet = sprintf('%s.pre',x$fleet),
                   ratio = x$ratio)
     return(tmp)
