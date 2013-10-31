@@ -403,8 +403,16 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                             file=paste(wgts,
                               paste('likelihood',comp,sep='.'),sep='/'))
     main <- main.base
+    if(!is.null(printfile)){
+      write.gadget.printfile(printfile,
+                             sprintf('%s/%s.%s',wgts,'printfile',comp),
+                             sprintf('%s/out.%s',wgts,comp))
+      main$printfiles <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+      dir.create(sprintf('%s/out.%s',wgts,comp),showWarnings=FALSE)
+    }
     main$likelihoodfiles <- paste(wgts,paste('likelihood',comp,sep='.'),sep='/')
     write.gadget.main(main,file=paste(wgts,paste('main',comp,sep='.'),sep='/'))
+
     callGadget(l=1,
                main=paste(paste(wgts,'main',sep='/'),comp,sep='.'),
                i=params.file,
@@ -486,6 +494,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                sprintf('%s/%s.%s',wgts,'printfile',comp),
                                sprintf('%s/out.%s',wgts,comp))
         main$printfiles <- sprintf('%s/%s.%s',wgts,'printfile',comp)
+        dir.create(sprintf('%s/out.%s',wgts,comp),showWarnings=FALSE)
       }
       main$likelihoodfiles <- sprintf('%s/likelihood.%s',wgts,comp)
       write.gadget.main(main,sprintf('%s/main.%s',wgts,comp))
@@ -494,7 +503,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       likelihood$weights[weights$comp,'weight'] <- 1/weights$sigmahat
       write.gadget.likelihood(likelihood,
                               file=sprintf('%s/likelihood.%s',wgts,comp))
-      dir.create(sprintf('%s/out.%s',wgts,comp),showWarnings=FALSE)
     }
 
 
