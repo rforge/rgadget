@@ -10,12 +10,8 @@ library(stringr)
 ##' is the line describing the column names and is the last comment line.
 ##' @title Read gadget printfiles
 ##' @param path a character string with the name of the folder containing the printfiles
-##' @param printfile gadget printfile object that was used to create the output.
-##' Defaults to NULL
-##' @param likelihood gadget likelihood object pointing to the dataset used in
-##' the fit.
 ##' @return a list containing the data that has been read in named after the files found in path.
-read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL,suppress=FALSE){
+read.printfiles <- function(path='.',suppress=FALSE){
 ##' worker function
 ##' @title 
 ##' @param file 
@@ -70,48 +66,8 @@ read.printfiles <- function(path='.',printfile=NULL,likelihood=NULL,suppress=FAL
                           full.names=TRUE,recursive=TRUE)
   
   printfiles <- llply(out.files,read.printfile)
-  names(printfiles) <- gsub('/','',gsub(path.expand(path),'', out.files),fixed=TRUE)
-
-  if(!is.null(printfile)){
-    tmp <- ldply(printfile,
-                 function(x){
-                   c(x$type,gsub('out/','',x$printfile),
-                     ifelse(is.null(x$likelihood),'',
-                            x$likelihood))
-                 })
-    names(tmp) <- c('print.name','type','filename','likelihood')
-    lik.data <- read.gadget.data(likelihood)      
-    lik.comps <- llply(lik.data$dat,
-                       function(x) intersect(names(x),tmp$likelihood))
-    for(type in names(lik.comps)){
-      for(comp in lik.comps[[type]]){
-        restr <- tmp$print.name[tmp$likelihood %in% comp]
-        if(length(restr)>0){
-          print.tmp <- printfiles[[restr]]
-          lik.tmp <- lik.data$dat[[type]][[comp]]
-          col.x <- intersect(c('year', 'step', 'area', 'age', 'length','label'),
-                             names(print.tmp))
-          col.y <- intersect(c('year', 'step', 'area', 'age', 'length',
-                               'survey','fleet'),
-                             names(lik.tmp))
-          res.tmp <- merge(print.tmp, lik.tmp,
-                           by.x = col.x, by.y = col.y,
-                           suffixes = c(".fit",".dat"),
-                           all=TRUE)
-          if(type!='surveyindices'){
-            res.tmp <- mutate(res.tmp,
-                              resid = number.dat - number.fit)
-          } else {
-            res.tmp <- mutate(res.tmp,
-                              resid = log(number.dat) - log(predict))
-          }          
-          printfiles <- 
-            within(printfiles,
-                   assign(restr,res.tmp))
-        }
-      }
-    }
-  }
+  names(printfiles) <- gsub('/','',gsub(path.expand(path),'',
+                                        out.files),fixed=TRUE)
   return(printfiles)
 }
 ##' This functions reads the likelihood (input) file for gadget. The format of
@@ -1159,13 +1115,13 @@ read.gadget.bootstrap <- function(params.file='params.in',
 ##'
 ##' .. content for \details{} ..
 ##' @title 
-##' @param params.file 
-##' @param wgts 
-##' @param likelihood 
-##' @param lik.pre 
-##' @param params.pre 
-##' @param parallel 
-##' @return 
+##' @param params.file base parameter file
+##' @param wgts location of the reweighting folder
+##' @param likelihood likelihood file
+##' @param lik.pre strings matching the likelihood output
+##' @param params.pre strings matching the parameter estimates
+##' @param parallel should the files be read in parallel
+##' @return data.frame with parameter estimates and likelihood output from the iterative reweighting folder.
 ##' @author Bjarki Thor Elvarsson
 read.gadget.wgts <- function(params.file = 'params.in',
                              wgts = 'WGTS',
@@ -1176,14 +1132,13 @@ read.gadget.wgts <- function(params.file = 'params.in',
   
   params.in <- read.gadget.parameters(params.file)
   bs.lik <- read.gadget.likelihood(likelihood)
-  
   files <- unique(list.files(wgts))
 
-  ## read in all parameterfiles
-  ## params <- unique(files[grep('params',files)])
-  liks <- unique(files[grep(lik.pre,files,fixed=TRUE)])
-  comps <- gsub(lik.pre,'',liks)
-
+  lik.pre.g <- paste('^',gsub('.','[^a-zA-Z]',lik.pre,fixed=TRUE),sep='')
+  params.pre.g <- paste('^',gsub('.','[^a-zA-Z]',params.pre,fixed=TRUE),sep='')
+  
+  liks <- unique(files[grep(lik.pre.g,files)])
+  comps <- gsub(lik.pre.g,'',liks)
 
   tmp.func <- function(path){
     read.gadget.SS <- function(file='lik.out'){
@@ -1198,9 +1153,9 @@ read.gadget.wgts <- function(params.file = 'params.in',
       return(SS)
     }
     path.f <- list.files(path)
-    liks <- path.f[grep(lik.pre,path.f,fixed=TRUE)]
-    params <- path.f[grep(params.pre,path.f,fixed=TRUE)]
-    ldply(intersect(comps,unique(c(gsub(params.pre,'',params),
+    liks <- path.f[grep(lik.pre,path.f)]
+    params <- path.f[grep(params.pre.g,path.f)]
+    ldply(intersect(comps,unique(c(gsub(params.pre.g,'',params),
                                    'init'))),
           function(x){
             if(x=='init')
@@ -1234,6 +1189,19 @@ read.gadget.wgts <- function(params.file = 'params.in',
   dparam <- ldply(wgts,tmp.func,.parallel=parallel)
   attr(dparam,'init.param') <- params.in
   return(dparam)
+}
+
+read.gadget.wgtsprint <- function(wgts = 'WGTS',
+                                  comp = 'final',
+                                  out.pre = 'out.',
+                                  parallel = FALSE){
+  bs.print <- llply(sprintf('%s/%s%s',wgts,out.pre,comp),
+                    read.printfiles,.parallel=parallel)
+  names(bs.print) <- comp
+  tmp <- llply(names(bs.print[[1]]),
+               function(x) ldply(bs.print,function(y) y[[x]]))
+  names(tmp) <- names(bs.print[[1]])
+  return(tmp)
 }
 
 read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
