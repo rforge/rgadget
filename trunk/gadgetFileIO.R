@@ -336,7 +336,7 @@ clear.spaces <- function(text){
 ##' @return dataframe
 ##' @author Bjarki ??r Elvarsson
 read.gadget.parameters <- function(file='params.in'){
-  
+
   if(!file.exists(file)){
     warning(sprintf('Error in read.gadget.parameters -- file named %s not found',
                  file))
@@ -346,7 +346,6 @@ read.gadget.parameters <- function(file='params.in'){
     warning(sprintf('Error in read.gadget.parameters -- file named %s is empty',
                  file))
     return(NULL)
-
   }
   params <- read.table(file,header=TRUE,
                        comment.char=';',
