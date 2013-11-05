@@ -198,41 +198,13 @@ if(FALSE){
 ##' @return the hessian matrix
 hesse <- function(vec,y,h=TRUE){
   options(digits=19)
-  q <- nrow(vec)
-#  if (h==TRUE)
-#    h <- sqrt(.Machine$double.eps)*vec
-#  if(length(h) == 1)
-#    h <- rep(h,q)
-
-
-  hmat<-matrix(0,q,q)
-  
-  ##The hessian matrix
-  ##Start with the diagonal
-  j=1
-  for (i in 2*(1:q)){
-    hmat[j,j]<-(y[i+1]-2*y[1]+y[i])/h[j]^2
-    j=j+1
+  q <- length(vec)
+  if(length(h) == 1){
+    if (h==TRUE)
+      h <- sqrt(.Machine$double.eps)*vec
+    else
+      h <- rep(h,q)
   }
-  
-  ##Add the mixed partial derivatives
-  p=2*q+2
-  for (i in 1:(q-1)){
-    s=i+1  
-    while (s<=q){
-      for (j in s:q){
-        hmat[i,j]<-(y[p]-y[p+1]-y[p+2]+y[p+3])/(4*h[i]*h[j])  
-        s=s+1
-        p=p+4
-      }
-    }
-  }
-  
-  ##Copy to the lower part of the diagonal matrix
-  hmattrans<-t(hmat)
-  diag(hmattrans) <- 0
-  hmat<-hmat+hmattrans
-  if(FALSE){
   denom <- 4*h%o%h
   diag(denom) <- h^2
   

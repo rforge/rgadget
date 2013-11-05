@@ -71,6 +71,7 @@ setMethod("write",
     }
 )
 
+
 setMethod("write",
     signature(x = "gadget-stock"),
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
@@ -617,6 +618,78 @@ setGeneric('getSpawnSteps',def=function(object){standardGeneric("getSpawnSteps")
 setGeneric('straying',def=function(object,par){standardGeneric("straying")})
 
 setGeneric('getLaststep',def=function(object){standardGeneric("laststep")})
+
+
+setGeneric('writeAggfiles',
+           def=function(x,folder){standardGeneric("writeAggfiles")})
+setMethod('writeAggfiles','gadget-stock',
+          function(x,folder){
+            
+            ## length aggregation file
+            lengths <- seq(x@minlength,x@maxlength,by = x@dl)
+            lenAgg <- data.frame(length = paste('len',tail(lengths,-1),
+                                   sep = ''),
+                                 min = head(lengths,-1),
+                                 max = tail(lengths,-1)
+                                 )
+            
+            agg.head <-
+              paste(sprintf('; length aggregation file for %s created using rgadget at %s',
+                            x@stockname,Sys.Date()),
+                    paste(c('; ',names(lenAgg)),collapse = '\t'),
+                    sep = '\n')
+            write(agg.head,file = sprintf('%s/%s.len.agg',folder,
+                             x@stockname))
+            
+            write.table(lenAgg,
+                        file = sprintf('%s/%s.len.agg',folder,
+                          x@stockname),
+                        col.names=FALSE,append=TRUE,
+                        quote=FALSE,sep='\t',row.names=FALSE)
+
+            ## all length agg file
+            alllenAgg <- data.frame(length = 'alllen',
+                                    min = min(lengths),
+                                    max = max(lengths))
+            write(agg.head,file = sprintf('%s/%s.alllen.agg',folder,
+                             x@stockname))
+            write.table(alllenAgg,
+                        file = sprintf('%s/%s.alllen.agg',folder,x@stockname),
+                        col.names=FALSE,append=TRUE,
+                        quote=FALSE,sep='\t',row.names=FALSE)
+            
+            ## age agg file
+            ageAgg <- data.frame(label = x@minage:x@maxage,
+                                 age = x@minage:x@maxage)
+            write(agg.head,file = sprintf('%s/%s.age.agg',folder,x@stockname))
+            write.table(ageAgg,
+                        file = sprintf('%s/%s.age.agg',folder,x@stockname),
+                        col.names=FALSE,append=TRUE,
+                        quote=FALSE,sep='\t',row.names=FALSE)
+
+            ## allages.agg
+            allagesAgg <- data.frame(label = 'allages',
+                                     age = paste(x@minage:x@maxage,
+                                       collapse = '\t'))
+            write(agg.head,file = sprintf('%s/%s.allages.agg',folder,
+                             x@stockname))
+            write.table(allagesAgg,
+                        file = sprintf('%s/%s.allages.agg',folder,x@stockname),
+                        col.names=FALSE,append=TRUE,
+                        quote=FALSE,sep='\t',row.names=FALSE)
+            ## Area agg file
+            areaAgg <- data.frame(label=paste('area',
+                                    x@livesonareas,
+                                    sep = ''),
+                                  area = x@livesonareas)
+            write.table(areaAgg,
+                        file = sprintf('%s/%s.area.agg',folder,x@stockname),
+                        col.names=FALSE,append=TRUE,
+                        quote=FALSE,sep='\t',row.names=FALSE)
+            
+          })
+
+
 
 
 
