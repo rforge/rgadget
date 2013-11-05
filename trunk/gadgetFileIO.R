@@ -447,24 +447,72 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
 ##' @param file 
 ##' @return 
 ##' @author Bjarki Thor Elvarsson
-make.gadget.printfile <- function(lik,output='out',file='printfile'){
+make.gadget.printfile <- function(main,output='out',aggfiles='aggfiles',
+                                  file='printfile'){
+  lik <- read.gadget.likelihood(main$likelihoodfiles)
+  stocks <- read.gadget.stockfiles(main$stockfiles)
+  fleets <- read.gadget.fleet(main$fleetfiles)
+  
   header <-
     paste(sprintf('; gadget printfile, created in %s',Sys.Date()),
           '[component]',
           'type\tlikelihoodsummaryprinter',
           sprintf('printfile\t%s/likelihoodsummary', output),
           ';',sep='\n')
-  template <-
+
+  lik.template <-
     paste('[component]',
           'type\tlikelihoodprinter',
           'likelihood\t%1$s',
           sprintf('printfile\t%s/%%1$s',output),
           ';', sep='\n')
-  txt <- sprintf(template,
+
+  stock.std <-
+    paste('[component]',
+          'type\tstockstdprinter'
+          'stockname\t%1$s',
+          sprintf('printfile\t%s/%%1$s',output),
+          'yearsandsteps\t all all',sep='\n')
+
+  stock.full <-
+    paste('[component]',
+          'type\tstockfullprinter',
+          'stockname\t%1$s',
+          sprintf('printfile\t%s/%%1$s',output),
+          'yearsandsteps\t all all',sep='\n')
+
+  predator <-
+    paste('[component]',
+          'type\tpredatorprinter',
+          'predatornames\t%2$s'
+          'preynames\t%1$s',
+          sprintf('areaaggfile\t%s/%%1$s.area.agg',aggfiles),
+          sprintf('agaaggfile\t%s/%%1$s.age.agg',aggfiles),
+          sprintf('lenaggfile\t%s/%%1$s.len.agg',aggfiles),
+          sprintf('printfile\t%s/%%1$s',output),
+          'yearsandsteps\tall all',
+          sep = '\n')
+
+  dir.create(folder,showWarnings = FALSE)
+  l_ply(stocks,
+        function(x){
+          writeAggfiles(x,folder=aggfiles)          
+        })
+  
+  txt <- sprintf(lik.template,
                  subset(lik$weights,
                         !(type %in% c('understocking','penalty',
                                       'migrationpenalty')))[['name']])
-  write(paste(header,paste(txt,collapse='\n'),sep='\n'),
+  write(paste(header,paste(txt,collapse='\n'),
+              paste(sprintf(stock.std,laply(stocks,getStockNames)),
+                    collapse='\n'),
+              paste(sprintf(stock.full,laply(stocks,getStockNames)),
+                    collapse='\n'),
+              paste(sprintf(predator,paste(laply(stocks,getStockNames),
+                                           collapse = ' '),
+                            paste(fleets$fleet$fleet,collapse = ' '))
+                    collapse='\n'),
+              sep='\n'),
         file=file)
 
 }
@@ -663,13 +711,14 @@ read.gadget.data <- function(likelihood){
                    function(x) dlply(x,'name',read.func))
 
   df <- lapply(lik.dat,function(x)
-               sapply(x,function(x){
-                      tmp <- 0
-                      if(length(intersect(c('lower','upper'),names(x)))>0){
-                        tmp <- 2
-                      }
-                      dim(x[x[,dim(x)[2]-tmp]>0,])[1]
-                    }))
+              sapply(x,function(x){
+                x <- na.omit(x)
+                tmp <- 0
+                if(length(intersect(c('lower','upper'),names(x)))>0){
+                  tmp <- 2
+                }
+                nrow(x[x[,ncol(x)-tmp]>0,])
+              }))
   return(list(dat=lik.dat,df=df))
 }
 
