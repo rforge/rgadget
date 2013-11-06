@@ -886,6 +886,8 @@ gadget.ypr <- function(params.file = 'params.in',
                   beta = x@renewal.data[1,9])
     tmp$number[1] <- 100
     x@renewal.data <- tmp
+    x@doesspawn <- 0
+    
     write(x,file=ypr)
   })
 
@@ -955,7 +957,9 @@ gadget.ypr <- function(params.file = 'params.in',
                              bio=sum(x$biomass.consumed)/1e6))
   secant <- diff(ypr$bio)/diff(ypr$effort)
   f0.1 <- ypr$effort[min(which(secant<0.1*secant[1]))]
-  return(list(params=params,out=out,ypr=ypr, f0.1=data.frame(f0.1=f0.1)))
+  fmax <- min(ypr$effort[which(ypr$bio==max(ypr$bio,na.rm=TRUE))])
+  return(list(params=params,out=out,ypr=ypr,fmax=fmax,
+              f0.1=data.frame(f0.1=f0.1)))
 }
 
 
@@ -996,6 +1000,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            biomasslevel=NULL){
 
   dir.create(pre,showWarnings = FALSE, recursive = TRUE)
+  dir.create(sprintf('%s/aggfiles',pre), showWarnings = FALSE)
   params <-
     read.gadget.parameters(params.file)
   rec <- subset(params,grepl('rec',switch)&!(switch %in% c('recl','recsdev',
@@ -1008,9 +1013,15 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   ## read in model files
   main <- read.gadget.main(file = main.file)
+  stocks <- read.gadget.stockfiles(main$stockfiles)
   time <- read.gadget.time(main$timefile)
   area <- read.gadget.area(main$areafile)
   fleet <- read.gadget.fleet(main$fleetfiles)
+  ## write agg files
+  l_ply(stocks,
+        function(x){
+          writeAggfiles(x,folder=sprintf('%s/aggfiles',pre))          
+        })
   
   ## adapt model to include predictions
   sim.begin <- time$lastyear
@@ -1107,44 +1118,40 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   params.forward <- cbind(tmp,rec.forward)
   write.gadget.parameters(params.forward,file=sprintf('%s/params.forward',pre),
                           columns = FALSE)
-
+  ## create the output files
   print.txt <-
     paste('[component]',
           'type             stockprinter',
-          'stocknames       %s',
-          'areaaggfile      Aggfiles/area.agg',
-          'ageaggfile       Aggfiles/allage.agg',
-          'lenaggfile       Aggfiles/len.agg',
-          'printfile        %s/out/%1$s.lw',
+          'stocknames       %1$s',
+          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/aggfiles/%1$s.len.agg',
+          'printfile        %2$s/out/%1$s.lw',
           'printatstart     0',
-          'yearsandsteps    %s',
+          'yearsandsteps    all 1',
           sep = '\n')
 
   catch.print <-
     paste('[component]',
           'type\t\tpredatorpreyprinter',
-          'predatornames\t\t%s',
-          'preynames\t\t%s',
-          'areaaggfile      Aggfiles/area.agg',
-          'ageaggfile       Aggfiles/allage.agg',
-          'lenaggfile       Aggfiles/len.agg',
-          'printfile        %s/out/%1$s.lw',
-          'yearsandsteps    %s',
+          'predatornames\t\t%3$s',
+          'preynames\t\t%1$s',
+          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/aggfiles/%1$s.alllen.agg',
+          'printfile        %2$s/out/%4$s.%1$s.lw',
+          'yearsandsteps    all all',
           sep = '\n')
                     
   
   printfile <-
     paste(
-      paste(sprintf(catch.print, fleet$fleet$fleet,
-                    paste(unique(fleet$prey$stock),collapse=' '),
-                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years-1),
-                               'all',sep='\t',
-                               collapse = '\n')),
-            collapse = '\n'),
+      paste(sprintf(catch.print, unique(fleet$prey$stock), pre,
+                    paste(fleet$fleet$fleet,collapse='\n'),
+                    paste(fleet$fleet$fleet,collapse='.')),
+            collapse='\n'),
       paste(sprintf(print.txt,unique(fleet$prey$stock),
-                    pre, paste((tail(rec$year,1)+1):(tail(rec$year,1)+years),
-                               '1',sep='\t',
-                               collapse = '\n')),
+                    pre), 
             collapse = '\n'),
       ';',
       '[component]',
@@ -1175,7 +1182,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                  }),
            llply(unique(fleet$fleet$fleet),
                  function(x){
-                   tmp <- read.table(sprintf('%s/out/%s.lw',pre,x),
+                   tmp <- read.table(sprintf('%s/out/%s%s.lw',pre,
+                                             paste(fleet$fleet$fleet,
+                                                   collapse='.'),x),
                                      comment.char = ';')
                    names(tmp) <-  c('year', 'step', 'area', 'age',
                                     'length', 'number.consumed',

@@ -447,8 +447,10 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
 ##' @param file 
 ##' @return 
 ##' @author Bjarki Thor Elvarsson
-make.gadget.printfile <- function(main,output='out',aggfiles='aggfiles',
+make.gadget.printfile <- function(main='main',output='out',
+                                  aggfiles='print.aggfiles',
                                   file='printfile'){
+  main <- read.gadget.main(main)
   lik <- read.gadget.likelihood(main$likelihoodfiles)
   stocks <- read.gadget.stockfiles(main$stockfiles)
   fleets <- read.gadget.fleet(main$fleetfiles)
@@ -469,31 +471,33 @@ make.gadget.printfile <- function(main,output='out',aggfiles='aggfiles',
 
   stock.std <-
     paste('[component]',
-          'type\tstockstdprinter'
+          'type\tstockstdprinter',
           'stockname\t%1$s',
-          sprintf('printfile\t%s/%%1$s',output),
+          sprintf('printfile\t%s/%%1$s.std',output),
           'yearsandsteps\t all all',sep='\n')
 
   stock.full <-
     paste('[component]',
           'type\tstockfullprinter',
           'stockname\t%1$s',
-          sprintf('printfile\t%s/%%1$s',output),
+          sprintf('printfile\t%s/%%1$s.full',output),
           'yearsandsteps\t all all',sep='\n')
 
   predator <-
     paste('[component]',
-          'type\tpredatorprinter',
-          'predatornames\t%2$s'
+          'type\tpredatorpreyprinter',
+          'predatornames\t%2$s',
           'preynames\t%1$s',
           sprintf('areaaggfile\t%s/%%1$s.area.agg',aggfiles),
-          sprintf('agaaggfile\t%s/%%1$s.age.agg',aggfiles),
-          sprintf('lenaggfile\t%s/%%1$s.len.agg',aggfiles),
-          sprintf('printfile\t%s/%%1$s',output),
+          sprintf('ageaggfile\t%s/%%1$s.age.agg',aggfiles),
+          sprintf('lenaggfile\t%s/%%1$s.alllen.agg',aggfiles),
+          sprintf('printfile\t%s/%%1$s.prey',output),
           'yearsandsteps\tall all',
           sep = '\n')
 
-  dir.create(folder,showWarnings = FALSE)
+  dir.create(aggfiles, showWarnings = FALSE)
+  dir.create(output, showWarnings = FALSE)
+
   l_ply(stocks,
         function(x){
           writeAggfiles(x,folder=aggfiles)          
@@ -504,13 +508,15 @@ make.gadget.printfile <- function(main,output='out',aggfiles='aggfiles',
                         !(type %in% c('understocking','penalty',
                                       'migrationpenalty')))[['name']])
   write(paste(header,paste(txt,collapse='\n'),
-              paste(sprintf(stock.std,laply(stocks,getStockNames)),
+              paste(sprintf(stock.std,laply(stocks,
+                                            function(x) x@stockname)),
                     collapse='\n'),
-              paste(sprintf(stock.full,laply(stocks,getStockNames)),
+              paste(sprintf(stock.full,laply(stocks,
+                                            function(x) x@stockname)),
                     collapse='\n'),
-              paste(sprintf(predator,paste(laply(stocks,getStockNames),
-                                           collapse = ' '),
-                            paste(fleets$fleet$fleet,collapse = ' '))
+              paste(sprintf(predator,laply(stocks,
+                                           function(x) x@stockname),
+                            paste(fleets$fleet$fleet,collapse = ' ')),
                     collapse='\n'),
               sep='\n'),
         file=file)
@@ -1311,7 +1317,7 @@ merge.formula <- function(txt){
   }
 
   braces <- ddply(braces,'group',function(x) head(x,1))
-  for(i in 1:length(braces$group)){
+  for(i in length(braces$group):1){
     txt[braces$begin[i]] <- paste(txt[braces$begin[i]:braces$end[i]],
                                   collapse=' ')
     txt <- txt[-c((braces$begin[i]+1):braces$end[i])]
