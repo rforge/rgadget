@@ -1017,6 +1017,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   time <- read.gadget.time(main$timefile)
   area <- read.gadget.area(main$areafile)
   fleet <- read.gadget.fleet(main$fleetfiles)
+  all.fleets <- paste(fleet$fleet$fleet,collapse = ' ')
   ## write agg files
   l_ply(stocks,
         function(x){
@@ -1048,14 +1049,14 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   if(biomass){
     fleet$fleet <- mutate(fleet$fleet,
-                           fleet = sprintf('%s.pre',fleet),
-                           multiplicative = 1,
-                           quotafunction = 'annualselect',
-                           selectstocks = selectedstocks,
-                           biomasslevel = biomasslevel,
-                           quotalevel = paste(effort,collapse='\t'),
-                           amount = sprintf('%s/fleet.pre', pre),
-                           type = 'quotafleet')
+                          fleet = sprintf('%s.pre',fleet),
+                          multiplicative = 1,
+                          quotafunction = 'annualselect',
+                          selectstocks = selectedstocks,
+                          biomasslevel = biomasslevel,
+                          quotalevel = paste(effort,collapse='\t'),
+                          amount = sprintf('%s/fleet.pre', pre),
+                          type = 'quotafleet')
                            
                            
   } else {
@@ -1139,7 +1140,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
           'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
           'lenaggfile       %2$s/aggfiles/%1$s.alllen.agg',
-          'printfile        %2$s/out/%4$s.%1$s.lw',
+          'printfile        %2$s/out/catch.%1$s.lw',
           'yearsandsteps    all all',
           sep = '\n')
                     
@@ -1147,8 +1148,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   printfile <-
     paste(
       paste(sprintf(catch.print, unique(fleet$prey$stock), pre,
-                    paste(fleet$fleet$fleet,collapse='\n'),
-                    paste(fleet$fleet$fleet,collapse='.')),
+                    paste(all.fleets, paste(fleet$fleet$fleet,collapse=' '))),
             collapse='\n'),
       paste(sprintf(print.txt,unique(fleet$prey$stock),
                     pre), 
@@ -1171,38 +1171,56 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   callGadget(s = 1, i = sprintf('%s/params.forward',pre),
              main = sprintf('%s/main.pre',pre))
   
-  out <-
-    append(llply(unique(fleet$prey$stock),
-                 function(x){
-                   tmp <- read.table(sprintf('%s/out/%s.lw',pre,x),
-                                     comment.char = ';')
-                   names(tmp) <-  c('year', 'step', 'area', 'age',
-                                    'length', 'number', 'weight')
-                   return(tmp)
-                 }),
-           llply(unique(fleet$fleet$fleet),
-                 function(x){
-                   tmp <- read.table(sprintf('%s/out/%s%s.lw',pre,
-                                             paste(fleet$fleet$fleet,
-                                                   collapse='.'),x),
-                                     comment.char = ';')
-                   names(tmp) <-  c('year', 'step', 'area', 'age',
-                                    'length', 'number.consumed',
-                                    'biomass.consumed','mortality')
-                   return(tmp)
-                 })
-           )
-  names(out) <- c(unique(fleet$prey$stock),unique(fleet$fleet$fleet))
-  
-  out <- llply(out,function(x){
-    tmp <- length(unique(x$age))*length(unique(x$area))*
-      length(unique(x$length))*length(unique(x$step))
-    rec.out <- subset(rec.out,year %in% x$year)
-    dat <- cbind(trial=rep(rec.out$trial,each = tmp),
-                 x,
-                 recruitment = rep(rec.out$value,each = tmp))
-    return(dat)
-  })
+  out <- list(
+    lw = ldply(unique(fleet$prey$stock),
+      function(x){
+        tmp <- read.table(sprintf('%s/out/%s.lw',pre,x),
+                          comment.char = ';')
+        names(tmp) <-  c('year', 'step', 'area', 'age',
+                         'length', 'number', 'weight')
+        tmp$stock <- x
+        tmp2 <- length(unique(tmp$area))*
+          length(unique(tmp$length))*length(unique(tmp$year))
+                                        #rec.out <- subset(rec.out,year %in% tmp$year)
+        tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
+                     tmp)
+        return(tmp)
+      }),
+    catch = #ldply(unique(fleet$fleet$fleet),
+#      function(x){
+    ldply(unique(fleet$prey$stock),
+          function(x){
+            tmp <-
+              read.table(sprintf('%s/out/catch.%s.lw',pre,x),
+                         comment.char = ';')
+            names(tmp) <-  c('year', 'step', 'area', 'age',
+                             'length', 'number.consumed',
+                             'biomass.consumed','mortality')
+            tmp$stock <- x
+            
+            tmp2 <- length(unique(tmp$area))*
+              length(unique(tmp$length))*
+                length(unique(tmp$step))*
+                  length(unique(tmp$year))                          
+            
+            tmp <-
+              cbind(trial=rep(1:num.trials,each = tmp2),
+                    tmp)
+            return(tmp)
+          }),      
+    recruitment = rec.out
+    )
+  ##c(unique(fleet$prey$stock),unique(fleet$fleet$fleet))
+
+#  out <- llply(out,function(x){
+#    tmp <- length(unique(x$age))*length(unique(x$area))*
+#      length(unique(x$length))*length(unique(x$step))
+#    rec.out <- subset(rec.out,year %in% x$year)
+#    dat <- cbind(trial=rep(rec.out$trial,each = tmp),
+#                 x,
+#                 recruitment = rep(rec.out$value,each = tmp))
+#    return(dat)
+#  })
   
   return(out)
 }
