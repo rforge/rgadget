@@ -336,7 +336,6 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @author Bjarki Thor Elvarsson
   sI.weights <- function(lik.dat,method='lm'){
     if(method=='lm'){
-
       dat <- ldply(lik.dat$dat$surveyindices,
                    function(x) x)
 
@@ -1109,7 +1108,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   for(i in 1:years){
     rec.forward[,i+1] <- coeffAR[2]*rec.forward[,i] + x[,i]
   }
-  rec.out <- arrange(melt(rec.forward[,-1]),trial,year)
+  rec.out <- arrange(melt(rec.forward[,-1],value.name = 'recruitment'),
+                     trial,year)
   rec.forward <- as.data.frame(rec.forward[,-1])
   names(rec.forward) <-
     paste('rec',(tail(rec$year,1)+1):(tail(rec$year,1)+years),sep='')

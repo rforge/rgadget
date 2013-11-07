@@ -226,20 +226,28 @@ merge.gadget.likelihood <- function(lik1,lik2){
 ##' <details>
 ##' @title 
 ##' @param likelihood 
-##' @param comp 
+##' @param comp
+##' @param inverse
 ##' @return 
 ##' @author Bjarki Thor Elvarsson
-get.gadget.likelihood <- function(likelihood,comp){
-  weights <- likelihood$weights[likelihood$weights$name %in% comp,]
+get.gadget.likelihood <- function(likelihood,comp,inverse=FALSE){
+  if(inverse)
+    weights <- subset(likelihood$weights,!(name %in% comp))
+  else
+    weights <- subset(likelihood$weights,name %in% comp)
   tmp <-
     within(list(),
            for(type in weights$type){
+             restr <- likelihood[[type]][['name']] %in% comp
+             if(inverse)
+               restr <- !restr
              assign(type,
-                    likelihood[[type]][likelihood[[type]][['name']] %in% comp,])
+                    likelihood[[type]][restr,])
            }
            )
+  tmp$restr <- NULL
   tmp$type <- NULL
-  tmp$weigths <- weights
+  tmp$weights <- weights
   class(tmp) <- c('gadget.likelihood',class(tmp))
   return(tmp)
 }
