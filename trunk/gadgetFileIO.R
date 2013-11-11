@@ -482,14 +482,17 @@ make.gadget.printfile <- function(main='main',output='out',
           'type\tstockstdprinter',
           'stockname\t%1$s',
           sprintf('printfile\t%s/%%1$s.std',output),
-          'yearsandsteps\t all all',sep='\n')
+          'yearsandsteps\t all 1',sep='\n')
 
   stock.full <-
     paste('[component]',
-          'type\tstockfullprinter',
+          'type\tstockprinter',
+          sprintf('areaaggfile\t%s/%%1$s.area.agg',aggfiles),
+          sprintf('ageaggfile\t%s/%%1$s.age.agg',aggfiles),
+          sprintf('lenaggfile\t%s/%%1$s.alllen.agg',aggfiles),
           'stockname\t%1$s',
           sprintf('printfile\t%s/%%1$s.full',output),
-          'yearsandsteps\t all all',sep='\n')
+          'yearsandsteps\t all 1',sep='\n')
 
   predator <-
     paste('[component]',
@@ -1258,7 +1261,7 @@ read.gadget.wgtsprint <- function(wgts = 'WGTS',
                                   out.pre = 'out.',
                                   parallel = FALSE){
   bs.print <- llply(sprintf('%s/%s%s',wgts,out.pre,comp),
-                    read.printfiles,.parallel=parallel)
+                    read.printfiles,.parallel=parallel) 
   names(bs.print) <- comp
   tmp <- llply(names(bs.print[[1]]),
                function(x) ldply(bs.print,function(y) y[[x]]),.parallel=TRUE)
