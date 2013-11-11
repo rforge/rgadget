@@ -1261,7 +1261,7 @@ read.gadget.wgtsprint <- function(wgts = 'WGTS',
                     read.printfiles,.parallel=parallel)
   names(bs.print) <- comp
   tmp <- llply(names(bs.print[[1]]),
-               function(x) ldply(bs.print,function(y) y[[x]]))
+               function(x) ldply(bs.print,function(y) y[[x]]),.parallel=TRUE)
   names(tmp) <- names(bs.print[[1]])
   return(tmp)
 }
@@ -1468,7 +1468,7 @@ write.gadget.fleet <- function(fleet,file='fleet'){
 
 gadget.fit <- function(params.file = 'params.in',
                        wgts = 'WGTS', main.file = 'main', harv.param = NULL,
-                       mat.par = NULL, ypr.fleets = NULL){
+                       mat.par = NULL, ypr.fleets = NULL,parallel=FALSE){
   
   expL50 <- function(l50,b,l){
     1/(1+exp(-b*(l-l50)))
@@ -1490,7 +1490,7 @@ gadget.fit <- function(params.file = 'params.in',
                               params.file = params.file,
                               likelihood = main$likelihoodfiles)
   comp <- as.character(subset(wgtsRES,comp != 'init')$comp)
-  wgtsOUT <- read.gadget.wgtsprint(wgts = wgts,comp=comp)
+  wgtsOUT <- read.gadget.wgtsprint(wgts = wgts,comp=comp,parallel=parallel)
   SS.table <-
     read.gadget.results(wgts = wgts,
                         likelihood.file = sprintf('%s/likelihood.final',wgts),
