@@ -1464,3 +1464,183 @@ write.gadget.fleet <- function(fleet,file='fleet'){
         file=file)
   
 }
+
+
+gadget.fit <- function(params.file = 'params.in',
+                       wgts = 'WGTS', main.file = 'main', harv.param = NULL,
+                       mat.par = NULL, ypr.fleets = NULL){
+  
+  expL50 <- function(l50,b,l){
+    1/(1+exp(-b*(l-l50)))
+  }
+  
+  logit <- function(a,b,l){
+    p <- exp(a+b*l)
+    p/(1+p)
+  }
+  
+  main <- read.gadget.main(main.file)
+  lik <- read.gadget.likelihood(main$likelihoodfiles)
+  lik.dat <- read.gadget.data(lik)
+  params <-
+    read.gadget.parameters(sprintf('%s/params.final',wgts))
+  stocks <- read.gadget.stockfiles(main$stockfiles)
+  fleets <- read.gadget.fleet(main$fleetfiles)
+  wgtsRES <- read.gadget.wgts(wgts = wgts,
+                              params.file = params.file,
+                              likelihood = main$likelihoodfiles)
+  comp <- as.character(subset(wgtsRES,comp != 'init')$comp)
+  wgtsOUT <- read.gadget.wgtsprint(wgts = wgts,comp=comp)
+  SS.table <-
+    read.gadget.results(wgts = wgts,
+                        likelihood.file = sprintf('%s/likelihood.final',wgts),
+                        grouping=list(
+                          ind2045=c('FemSmh2045.si','MaleSmh2045.si'),
+                          ind4565=c('FemSmh4565.si','MaleSmh4565.si'),
+                          ind65120=c('FemSmh65120.si','MaleSmh65120.si')))
+  nSS.table <- dcast(ddply(melt(SS.table),'variable',
+                           mutate,value=value/min(value)),.id~variable)
+  
+  rec <- subset(params,grepl('rec[0-9]+',switch))
+  rec$year <- as.numeric(gsub('rec','',rec$switch))
+
+  if('surveyindices' %in% names(lik.dat$dat)){
+    sidat <- ldply(names(lik.dat$dat$surveyindices),
+                   function(x){
+                     sidat <-
+                       merge(lik.dat$dat$surveyindices[[x]],
+                             wgtsOUT[[x]],
+                             by.y=c('year','label','step','area'),
+                             by.x=c('year','length','step','area'),
+                             all.y=TRUE)
+                     sidat$length <- paste(sidat$lower,
+                                           sidat$upper, sep = ' - ')
+                     sidat$name <- x
+                     sidat <- merge(sidat,
+                                    subset(lik$surveyindices,
+                                           select=c(name,stocknames)),
+                                    by='name')
+                     return(sidat)
+                   })
+  } else {
+    sidat <- NULL
+  }
+    
+
+  if('catchdistribution' %in% names(lik.dat$dat)){
+    catchdist.fleets <-
+      ldply(names(lik.dat$dat$catchdistribution),
+            function(x){
+              ldist <-
+                merge(lik.dat$dat$catchdistribution[[x]],
+                      wgtsOUT[[x]],
+                      by=c('length', 'year',
+                        'step', 'area','age'),
+                      all.y=TRUE)
+              ldist$name <- x
+              ldist$age <- as.character(ldist$age)
+              ldist$area <- as.character(ldist$area)
+              ldist <- data.table(ldist)
+              ldist <-
+                ldist[,c('total.catch','total.pred', 'observed', 'predicted') :=
+                      list(total.catch = sum(number.x,na.rm=TRUE),
+                           total.pred = sum(number.y,na.rm=TRUE),
+                           observed = number.x/sum(number.x,na.rm=TRUE),
+                           predicted = number.y/sum(number.y,na.rm=TRUE)
+                           ),
+                by=list(year, step, .id)]
+            ldist <- ldist[,c('upper','lower','avg.length','observed') :=
+                           list(upper = max(ifelse(is.na(upper),0,upper)),
+                                lower = max(ifelse(is.na(lower),0,lower)),
+                                avg.length = (lower+upper)/2,
+                                residuals = observed - predicted),
+                           by = list(length)]              
+              ldist <- merge(ldist,
+                             subset(lik$catchdistribution,
+                                    select=c(name,fleetnames,stocknames)),
+                             by = 'name')          
+              return(ldist)
+            })
+  } else {
+    catchdist.fleets <- NULL
+  }
+  
+  if('stockdistribution' %in% names(lik.dat$dat)){
+    stockdist <-
+      ldply(names(lik.dat$dat$stockdistribution),
+            function(x){
+              stockdist <-
+                merge(lik.dat$dat$stockdistribution[[x]],
+                      wgtsOUT[[x]],
+                      by=c('length', 'year',
+                        'step', 'area','age','stock'),
+                      all.y=TRUE)
+              len.agg <-  tryCatch(read.table(lik$stockdistribution$lenaggfile,
+                                              stringsAsFactors=FALSE,
+                                              comment.char=';'),
+                                   warning = function(x) NULL,
+                                   error = function(x) NULL)
+              names(len.agg)[1:3] <- c('length','agg.lower','agg.upper')
+              stockdist <- merge(stockdist,len.agg)
+              stockdist$name <- x
+              stockdist <- data.table(stockdist)
+              stockdist <-
+                stockdist[,c('obs.ratio','pred.ratio','upper',
+                             'lower','avg.length') :=
+                          list(obs.ratio = number.x/sum(number.x,na.rm=TRUE),
+                               pred.ratio = number.y/sum(number.y),
+                               upper = max(ifelse(is.na(upper),
+                                 agg.upper,upper)),
+                               lower = max(ifelse(is.na(lower),
+                                 agg.lower,lower)),
+                               length2 = (lower+upper)/2),
+                          by = list(year, step, area, age, length, .id)]
+              stockdist <- stockdist[,c('agg.upper','agg.lower'):=NULL,]
+              stockdist <- merge(stockdist,
+                                 subset(lik$stockdistribution,
+                                        select=c(name,fleetnames,stocknames)),
+                                 by='name')
+              return(stockdist)
+            })
+  } else {
+    stockdist <- NULL
+  }
+
+  if(sum(grepl('.std',names(wgtsOUT),fixed = TRUE))>0){
+    res.by.year <- 
+      ldply(laply(stocks,function(x) x@stockname),function(x){
+        f.by.year <- ddply(subset(wgtsOUT[[sprintf('%s.std',x)]],
+                                  step == 1 & year < 2013),
+                           ~year + .id,
+                           summarise,
+                           F=max(Z-0.1,na.rm=TRUE))
+        bio.by.year <- ddply(subset(wgtsOUT[[sprintf('%s.full',x)]],
+                                    step == 1),
+                             ~year + .id,
+                             summarise,
+                             total.biomass = sum(number*mean.weight),
+                             harv.biomass =
+                             sum(mean.weight*expL50(harv.param[1],
+                                                    harv.param[2],
+                                                    length)*number),
+                             ssb = sum(mean.weight*logit(mat.par[1],
+                               mat.par[2],length)*number))
+        bio <- merge(f.by.year,bio.by.year)
+        bio$stock <- x
+        return(bio)
+      })
+  } else {
+    res.by.year <- NULL
+  }
+
+  if(!is.null(ypr.fleets)){
+    ypr <- gadget.ypr(params.file = params.file,
+                      fleets = ypr.fleets, ypr = sprintf('%s/YPR',wgts))
+  }
+  
+  return(list(wgtsRES = wgtsRES, wgtsOUT = wgtsOUT, sidat = sidat,
+              SS.table = SS.table, nSS.table = nSS.table, rec = rec,
+              ypr = ypr, res.by.year = res.by.year,
+              catchdist.fleets = catchdist.fleets, stockdist = stockdist))
+              
+}
