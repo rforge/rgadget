@@ -487,10 +487,10 @@ make.gadget.printfile <- function(main='main',output='out',
   stock.full <-
     paste('[component]',
           'type\tstockprinter',
+          'stocknames\t%1$s',
           sprintf('areaaggfile\t%s/%%1$s.area.agg',aggfiles),
           sprintf('ageaggfile\t%s/%%1$s.allages.agg',aggfiles),
           sprintf('lenaggfile\t%s/%%1$s.len.agg',aggfiles),
-          'stockname\t%1$s',
           sprintf('printfile\t%s/%%1$s.full',output),
           'yearsandsteps\t all 1',sep='\n')
 
@@ -1470,8 +1470,8 @@ write.gadget.fleet <- function(fleet,file='fleet'){
 
 
 gadget.fit <- function(params.file = 'params.in',
-                       wgts = 'WGTS', main.file = 'main', harv.param = NULL,
-                       mat.par = NULL, ypr.fleets = NULL,parallel=FALSE){
+                       wgts = 'WGTS', main.file = 'main', harvparam = NULL,
+                       matpar = NULL, ypr.fleets = NULL,parallel=FALSE){
   
   expL50 <- function(l50,b,l){
     1/(1+exp(-b*(l-l50)))
@@ -1552,7 +1552,7 @@ gadget.fit <- function(params.file = 'params.in',
                            predicted = number.y/sum(number.y,na.rm=TRUE)
                            ),
                 by=list(year, step, .id)]
-            ldist <- ldist[,c('upper','lower','avg.length','observed') :=
+            ldist <- ldist[,c('upper','lower','avg.length','residuals') :=
                            list(upper = max(ifelse(is.na(upper),0,upper)),
                                 lower = max(ifelse(is.na(lower),0,lower)),
                                 avg.length = (lower+upper)/2,
@@ -1619,15 +1619,17 @@ gadget.fit <- function(params.file = 'params.in',
                            F=max(Z-0.1,na.rm=TRUE))
         bio.by.year <- ddply(subset(wgtsOUT[[sprintf('%s.full',x)]],
                                     step == 1),
-                             ~year + .id,
+                             ~year + area + .id,
                              summarise,
                              total.biomass = sum(number*mean.weight),
                              harv.biomass =
-                             sum(mean.weight*expL50(harv.param[1],
-                                                    harv.param[2],
-                                                    length)*number),
-                             ssb = sum(mean.weight*logit(mat.par[1],
-                               mat.par[2],length)*number))
+                             sum(mean.weight*
+                                 expL50(harvparam[1], harvparam[2],
+                                        as.numeric(gsub('len','',length)))*
+                                 number),
+                             ssb = sum(mean.weight*logit(matpar[1],
+                               mat.par[2],as.numeric(gsub('len','',length)))*
+                             number))
         bio <- merge(f.by.year,bio.by.year)
         bio$stock <- x
         return(bio)
