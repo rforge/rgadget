@@ -948,6 +948,7 @@ gadget.ypr <- function(params.file = 'params.in',
                                                effort=effort),
                                     all.x=TRUE)
 #                 stock.std$effort <- arrange(effort.grid,effort)$effort
+                 file.remove(sprintf('%s/out/%s.std',ypr,x$stock))
                  return(stock.std)
                })
 
@@ -999,7 +1000,14 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            biomass = FALSE,
                            effort = 0.2,
                            selectedstocks=NULL,
-                           biomasslevel=NULL){
+                           biomasslevel=NULL,
+                           check.previous=TRUE){
+  if(check.previous){
+    if(file.exists(sprintf('%s/out.Rdata',pre))){
+      load(sprintf('%s/out.Rdata',pre))
+      return(out)
+    }
+  }
 
   dir.create(pre,showWarnings = FALSE, recursive = TRUE)
   dir.create(sprintf('%s/aggfiles',pre), showWarnings = FALSE)
@@ -1172,13 +1180,14 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   write.gadget.main(main,file=sprintf('%s/main.pre',pre))
 
 
-    callGadget(s = 1, i = sprintf('%s/params.forward',pre),
-               main = sprintf('%s/main.pre',pre))
+  callGadget(s = 1, i = sprintf('%s/params.forward',pre),
+             main = sprintf('%s/main.pre',pre))
   out <- list(
     lw = ldply(unique(fleet$prey$stock),
       function(x){
         tmp <- read.table(sprintf('%s/out/%s.lw',pre,x),
                           comment.char = ';')
+        file.remove(sprintf('%s/out/%s.lw',pre,x))
         names(tmp) <-  c('year', 'step', 'area', 'age',
                          'length', 'number', 'weight')
         tmp$stock <- x
@@ -1195,6 +1204,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
             tmp <-
               read.table(sprintf('%s/out/catch.%s.lw',pre,x),
                          comment.char = ';')
+            file.remove(sprintf('%s/out/catch.%s.lw',pre,x))
             names(tmp) <-  c('year', 'step', 'area', 'age',
                              'length', 'number.consumed',
                              'biomass.consumed','mortality')
