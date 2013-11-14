@@ -523,6 +523,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   } else {
     comp <- NULL
   }
+
   return(list(comp=run.string,final=comp,wgts=wgts))
 
 }
@@ -951,14 +952,16 @@ gadget.ypr <- function(params.file = 'params.in',
                })
 
   
-  ypr <- ddply(out,'effort',
+  res <- ddply(out,'effort',
                function(x) c(num=sum(x$number.consumed)/1e6,
                              bio=sum(x$biomass.consumed)/1e6))
-  secant <- diff(ypr$bio)/diff(ypr$effort)
-  f0.1 <- ypr$effort[min(which(secant<0.1*secant[1]))]
-  fmax <- min(ypr$effort[which(ypr$bio==max(ypr$bio,na.rm=TRUE))])
-  return(list(params=params,out=out,ypr=ypr,fmax=fmax,
-              f0.1=data.frame(f0.1=f0.1)))
+  secant <- diff(res$bio)/diff(res$effort)
+  f0.1 <- res$effort[min(which(secant<0.1*secant[1]))]
+  fmax <- min(res$effort[which(res$bio==max(res$bio,na.rm=TRUE))])
+  res <- list(params=params,out=out,ypr=res,fmax=fmax,
+              f0.1=data.frame(f0.1=f0.1))
+  save(res, file = sprintf('%s/ypr.Rdata',ypr))
+  return(res)
 }
 
 
@@ -1167,10 +1170,10 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   main$likelihoodfiles <- ';'
   write.gadget.main(main,file=sprintf('%s/main.pre',pre))
-  
-  callGadget(s = 1, i = sprintf('%s/params.forward',pre),
-             main = sprintf('%s/main.pre',pre))
-  
+
+
+    callGadget(s = 1, i = sprintf('%s/params.forward',pre),
+               main = sprintf('%s/main.pre',pre))
   out <- list(
     lw = ldply(unique(fleet$prey$stock),
       function(x){
@@ -1181,13 +1184,12 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
         tmp$stock <- x
         tmp2 <- length(unique(tmp$area))*
           length(unique(tmp$length))*length(unique(tmp$year))
-                                        #rec.out <- subset(rec.out,year %in% tmp$year)
+            
         tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
                      tmp)
         return(tmp)
       }),
-    catch = #ldply(unique(fleet$fleet$fleet),
-#      function(x){
+    catch = 
     ldply(unique(fleet$prey$stock),
           function(x){
             tmp <-
@@ -1210,18 +1212,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           }),      
     recruitment = rec.out
     )
-  ##c(unique(fleet$prey$stock),unique(fleet$fleet$fleet))
-
-#  out <- llply(out,function(x){
-#    tmp <- length(unique(x$age))*length(unique(x$area))*
-#      length(unique(x$length))*length(unique(x$step))
-#    rec.out <- subset(rec.out,year %in% x$year)
-#    dat <- cbind(trial=rep(rec.out$trial,each = tmp),
-#                 x,
-#                 recruitment = rep(rec.out$value,each = tmp))
-#    return(dat)
-#  })
-  
+  save(out,file = sprintf('%s/out.Rdata',pre))
   return(out)
 }
 

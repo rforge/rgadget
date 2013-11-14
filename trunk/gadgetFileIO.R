@@ -1551,7 +1551,7 @@ gadget.fit <- function(params.file = 'params.in',
                            observed = number.x/sum(number.x,na.rm=TRUE),
                            predicted = number.y/sum(number.y,na.rm=TRUE)
                            ),
-                by=list(year, step, .id)]
+                by=list(year, step, .id, area, age)]
             ldist <- ldist[,c('upper','lower','avg.length','residuals') :=
                            list(upper = max(ifelse(is.na(upper),0,upper)),
                                 lower = max(ifelse(is.na(lower),0,lower)),
@@ -1639,13 +1639,16 @@ gadget.fit <- function(params.file = 'params.in',
   }
 
   if(!is.null(ypr.fleets)){
-    ypr <- gadget.ypr(params.file = params.file,
+    ypr <- gadget.ypr(params.file = sprintf('%s/params.final',wgts),
                       fleets = ypr.fleets, ypr = sprintf('%s/YPR',wgts))
   }
-  
-  return(list(wgtsRES = wgtsRES, wgtsOUT = wgtsOUT, sidat = sidat,
+
+ 
+  out <- list(wgtsRES = wgtsRES, wgtsOUT = wgtsOUT, sidat = sidat,
               SS.table = SS.table, nSS.table = nSS.table, rec = rec,
               ypr = ypr, res.by.year = res.by.year,
-              catchdist.fleets = catchdist.fleets, stockdist = stockdist))
-              
+              catchdist.fleets = catchdist.fleets, stockdist = stockdist)
+
+  save(out,file=sprintf('%s/WGTS.Rdata',wgts))
+  return(out)
 }
