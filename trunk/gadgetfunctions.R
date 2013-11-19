@@ -353,16 +353,16 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                          length(fit)/sum((fit - log(x$number))^2)
                        })$V1
     }
-    names(weigths) <- names(lik.dat$dat$surveyindices)
+    names(weights) <- names(lik.dat$dat$surveyindices)
     return(weights)
   }
   
   restr.SI <- subset(likelihood$weights,type == 'surveyindices')$name  
   if(!rew.sI){
     if(is.null(grouping)){
-      grouping <- list(SI=likelihood$weights$name[restr.SI])
+      grouping <- list(SI=intersect(likelihood$weights$name,restr.SI))
     } else {
-      grouping$SI <- likelihood$weights$name[restr.SI]
+      grouping$SI <- intersect(likelihood$weights$name,restr.SI)
     }
     sIw <- sI.weights(lik.dat,method=method)
   } 
