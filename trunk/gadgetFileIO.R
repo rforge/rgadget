@@ -698,10 +698,10 @@ read.gadget.data <- function(likelihood){
         names(dat) <- c('tagid','year','step','area','number','mean')
     }
     if(x$type=='catchinkilos'){
-      if(x$aggregationlevel==1)
+#      if(x$aggregationlevel==1)
         names(dat) <- c('year','area','fleet','biomass')
-      else
-        names(dat) <- c('year','step','area','fleet','biomass')
+#      else
+#        names(dat) <- c('year','step','area','fleet','biomass')
     }
     
     restr.area <- (dat$area %in% area.agg)
@@ -860,7 +860,8 @@ read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
 ##' @author Bjarki Thor Elvarsson
 strip.comments <- function(file='main'){
   tmp <- unlist(llply(file,readLines))
-  main <- sub(' +$','',tmp)
+  main <- sub('\t+$',' ',tmp)
+  main <- sub(' +$','',main)
   main <- gsub('(','( ',main,fixed=TRUE)
   main <- gsub(')',' )',main,fixed=TRUE)
   main <- main[main!='']
@@ -1022,9 +1023,9 @@ read.gadget.stockfiles <- function(stock.files){
             maxage = stock[[init.loc + 2]][2],
             minlength = stock[[init.loc + 3]][2],
             maxlength = stock[[init.loc + 4]][2],
-            dl = ifelse(stock[[init.loc + 5]][1]=='dl',
+            dl = ifelse(tolower(stock[[init.loc + 5]][1])=='dl',
               stock[[init.loc + 5]][2],1),
-            sdev = ifelse(stock[[init.loc + 6]][1]=='sdev',
+            sdev = ifelse(tolower(stock[[init.loc + 6]][1])=='sdev',
               stock[[init.loc + 6]][2], 1)),
           initialdata = read.gadget.table(stock[[initfile.loc]][2]),
           doesmigrate = as.numeric(stock[[migrate.loc]][2]),
