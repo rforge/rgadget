@@ -306,8 +306,10 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
   ## read model
   main <- read.gadget.main(main.file)
-  if(!is.null(main$printfiles) | !is.null(main$printfile)){
+  if(!is.null(main$printfiles)) {
     printfile <- read.gadget.printfile(main$printfiles)
+  } else if(!is.null(main$printfile)){  
+    printfile <- read.gadget.printfile(main$printfile)
   } else {
     printfile <- NULL
   }
@@ -328,7 +330,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   lik.dat <- read.gadget.data(likelihood)
   restr <- !(likelihood$weights$type %in%
              c('penalty','understocking','migrationpenalty'))
-  SS <- read.gadget.lik.out(paste(wgts,'lik.init',sep='/'))$data[likelihood$weights$name[restr]]
+  SS <- read.gadget.lik.out(paste(wgts,'lik.init',
+                                  sep='/'))$data[likelihood$weights$name[restr]]
   ##' Survey indices get special treatment
   ##' @title survey index weight 
   ##' @param lik.dat Likelihood dataset
