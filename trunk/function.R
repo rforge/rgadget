@@ -85,10 +85,10 @@ catch <- function(N,
 }
 
 whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
-  MaleS <- suitability(salpha['Male'],sbeta['Male'],
-                       0,1,as.numeric(dimnames(N)$age))[1,]
-  FemaleS <- suitability(salpha['Female'],sbeta['Female'],
-                         0,1,as.numeric(dimnames(N)$age))[1,]
+  MaleS <- suitability(c(salpha['Male'],sbeta['Male'],
+                       0,1),as.numeric(dimnames(N)$age))[1,]
+  FemaleS <- suitability(c(salpha['Female'],sbeta['Female'],
+                         0,1),as.numeric(dimnames(N)$age))[1,]
   sl <- cbind(MaleS,FemaleS)
   F <- min(1,quota/sum(sl*t(apply((N+NTagged),2:3,sum))))
   #Proportion caught each year
@@ -442,7 +442,7 @@ recruits <- function(n,mu,sigma,
 ##' @param l prey length group(s)
 ##' @param L predator length group(s)
 ##' @return matrix of suitabilities, columns prey length, lines predator length
-suitability <- function(params
+suitability <- function(params,
 #                        salpha,
 #                        sbeta,
 #                        sgamma,
