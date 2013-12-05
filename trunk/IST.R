@@ -148,10 +148,10 @@ opt.h4$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
 names(opt.h3$init.abund) <- opt$stocks
 names(opt.h4$init.abund) <- opt$stocks
 opt.h3 <- dispersion.matrix(opt.h3)
+opt.h4$dispersion <- NULL
 
 
-
-power.analysis <- function(rec){
+Power.analysis <- function(rec){
 #  tmp.func <- function(x){
 #    tmp.year <- negbin(value~year,~1,x,method='SANN')
 #    tmp.0 <- negbin(value~1,~1,x,method='SANN')
@@ -210,9 +210,9 @@ run.tag.experiment <- function(num.tags){
   sim.h3 <- Rgadget(opt.h3)
   
   ## tags..
-  rec.h4 <- tagging.recaptures(sim.h4,2,100)
+  rec.h4 <- tagging.recaptures(sim.h4,2,1000)
   rec.h4$rec$year <- 2:10
-  rec.h3 <- tagging.recaptures(sim.h3,2,100)
+  rec.h3 <- tagging.recaptures(sim.h3,2,1000)
   rec.h3$rec$year <- 2:10
   ## test power of a regular tagging experiment
   p.h3 <- power.analysis(rec.h3$rec)

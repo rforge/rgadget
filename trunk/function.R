@@ -539,8 +539,8 @@ Births <- function(B,N,A,z,K){
                gender=c('Male','Female'),
                area=dimnames(N)$area))
   for(stock in dimnames(N)$stock){
-    b[stock,'Male',] <- 0.5*B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
-    b[stock,'Female',] <- 0.5*B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
+    b[stock,'Male',] <- B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
+    b[stock,'Female',] <- B*N[stock,]*(1+A*(1-(sum(N[stock,])/K[stock])^z))
   }
   return(b)
 }
