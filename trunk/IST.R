@@ -210,9 +210,9 @@ run.tag.experiment <- function(num.tags){
   sim.h3 <- Rgadget(opt.h3)
   
   ## tags..
-  rec.h4 <- tagging.recaptures(sim.h4,2,1000)
+  rec.h4 <- tagging.recaptures(sim.h4,2,100)
   rec.h4$rec$year <- 2:10
-  rec.h3 <- tagging.recaptures(sim.h3,2,1000)
+  rec.h3 <- tagging.recaptures(sim.h3,2,100)
   rec.h3$rec$year <- 2:10
   ## test power of a regular tagging experiment
   p.h3 <- power.analysis(rec.h3$rec)
@@ -226,20 +226,40 @@ run.tag.experiment <- function(num.tags){
 hypo.test <- mclapply(100*(1:15),run.tag.experiment)
 
 
+
+
+hypo.test <-
+  ldply(1:15,function(i){
+  load(sprintf('tag%s.RData',i*100))
+  t4 <- ddply(rec.h4$rec,'variable',summarise,rec=sum(value))
+  t3 <- ddply(rec.h3$rec,'variable',summarise,rec=sum(value))
+  qqrho <- quantile(rec.h4$rho,0.949)
+  qqrec <- quantile(t4$rec,0.949)
+  qqbin <- quantile(p.h4$V1,0.05)
+  rho4 <- sum(rec.h4$rho>qqrho)
+  rho3 <- sum(rec.h3$rho>qqrho)
+  rec4 <- sum(t4$rec>qqrec)
+  rec3 <- sum(t3$rec>qqrec)
+  rbin4 <- sum(p.h4$V1<qqbin)
+  rbin3 <- sum(p.h3$V1<qqbin)
+  
+  return(c(rho4=rho4,rho3=rho3,rec4=rec4,rec3=rec3,rbin4=rbin4,rbin3=rbin3))
+})
+
+
 res <-
   ldply(1:15,function(i){
   load(sprintf('tag%s.RData',i*100))
   t4 <- ddply(rec.h4$rec,'variable',summarise,rec=sum(value))
   t3 <- ddply(rec.h3$rec,'variable',summarise,rec=sum(value))
-  qqrho <- quantile(rec.h4$rho,0.94)
-  qqrec <- quantile(t4$rec,0.94)
-  qqbin <- quantile(p.h4$V1,0.05)
-  rho4 <- sum(rec.h4$rho>qqrho)/1000
-  rho3 <- sum(rec.h3$rho>qqrho)/1000
-  rec4 <- sum(t4$rec>qqrec)/1000
-  rec3 <- sum(t3$rec>qqrec)/1000
-  rbin4 <- sum(p.h4$V1<qqbin)/1000
-  rbin3 <- sum(p.h3$V1<qqbin)/1000
   
-  return(c(rho4=rho4,rho3=rho3,rec4=rec4,rec3=rec3,rbin4=rbin4,rbin3=rbin3))
+  return(cbind(num.tags=i*100,rho4=rec.h4$rho,rho3=rec.h3$rho,rec4=t4$rec,rec3=t3$rec,rbin4=p.h4$V1,rbin3=p.h3$V1))
+})
+
+recaptures <-
+  ldply(1:15,function(i){
+    load(sprintf('tag%s.RData',i*100))
+    return(cbind(num.tags=i*100,
+                 rbind.fill(cbind(Hypothesis = 'Mixing',rec.h4$rec),
+                            cbind(Hypothesis = 'Dispersion',rec.h3$rec))))
 })

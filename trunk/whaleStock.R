@@ -236,8 +236,8 @@ Rgadget <- function(opt=gadget.options()){
       }
       ## ASUMES ONE TAGGING AREA ONLY!!!!!!!!!!!!!!!!!!!!!!!!!!
       Tagged[,,names(opt$num.tags),,,1] <-
-        whaleCatch(Abundance[,,catch.switch,,,i],
-                   Tagged[,,catch.switch,,,i],
+        whaleCatch(Abundance[,,names(opt$num.tags),,,i],
+                   Tagged[,,names(opt$num.tags),,,i],
                    opt$num.tags,
                    opt$salpha,
                    opt$sbeta                    
