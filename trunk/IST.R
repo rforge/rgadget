@@ -2,7 +2,7 @@ source('function.R')
 source('whaleStock.R')
 source('summaryFunc.R')
 library(plyr)
-library(reshape)
+library(reshape2)
 library(aod)
 library(multicore)
 opt <- gadget.options()
@@ -122,18 +122,32 @@ dispersion.matrix <- function(opt){
                            dimnames = list(To = opt$stocks,
                              From = opt$stocks))
   diag(opt$dispersion) <- 1
-  opt$dispersion['C1',sprintf('C%s',1:3)] <- c(0.95,0.05,0)
-  opt$dispersion['C2',sprintf('C%s',1:3)] <- c(0.05572320,1-0.35572320,0.3)
-  opt$dispersion['C3',sprintf('C%s',1:3)] <- c(0,0.00157109,1-0.00157109)
+  c1c2 <-
+    min(0.99,0.05*0.5*(opt$init.abund['C1'] +
+                       opt$init.abund['C2'])/opt$init.abund['C1'])
+  c2c1 <-
+    min(0.99,0.05*0.5*(opt$init.abund['C1'] +
+                       opt$init.abund['C2'])/opt$init.abund['C2'])
+  c2c3 <-
+    min(0.99,0.3*0.5*(opt$init.abund['C3'] +
+                      opt$init.abund['C2'])/opt$init.abund['C2'])
+  c3c2 <-
+    min(0.99,0.3*0.5*(opt$init.abund['C3'] +
+                      opt$init.abund['C2'])/opt$init.abund['C3'])
+  
+  
+  opt$dispersion['C1',sprintf('C%s',1:3)] <- c(1-c1c2,c1c2,0)
+  opt$dispersion['C2',sprintf('C%s',1:3)] <- c(c2c1,1-(c2c1+c2c3),c2c3)
+  opt$dispersion['C3',sprintf('C%s',1:3)] <- c(0,c3c2,1-c3c2)
   return(opt)
 }
 
-opt.h3 <- dispersion.matrix(opt.h3)
+
 opt.h3$init.abund <- c(7595, 5260, 3362,  8183, 6613,  7841)
 opt.h4$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
 names(opt.h3$init.abund) <- opt$stocks
 names(opt.h4$init.abund) <- opt$stocks
-
+opt.h3 <- dispersion.matrix(opt.h3)
 
 
 
@@ -211,11 +225,21 @@ run.tag.experiment <- function(num.tags){
 
 hypo.test <- mclapply(100*(1:15),run.tag.experiment)
 
-rho.test <- within(list(h3=1:15,h4=1:15),
-                   for(i in 1:15){
-                     load(sprintf('tag%s.RData',i*100))
-                     qq <- quantile(rec.h4$rho,0.95)
-                     h4[i] <- sum(rec.h4$rho>qq)/1000
-                     h3[i] <- sum(rec.h3$rho>qq)/1000
-                   }
-                   )
+
+res <-
+  ldply(1:15,function(i){
+  load(sprintf('tag%s.RData',i*100))
+  t4 <- ddply(rec.h4$rec,'variable',summarise,rec=sum(value))
+  t3 <- ddply(rec.h3$rec,'variable',summarise,rec=sum(value))
+  qqrho <- quantile(rec.h4$rho,0.94)
+  qqrec <- quantile(t4$rec,0.94)
+  qqbin <- quantile(p.h4$V1,0.05)
+  rho4 <- sum(rec.h4$rho>qqrho)/1000
+  rho3 <- sum(rec.h3$rho>qqrho)/1000
+  rec4 <- sum(t4$rec>qqrec)/1000
+  rec3 <- sum(t3$rec>qqrec)/1000
+  rbin4 <- sum(p.h4$V1<qqbin)/1000
+  rbin3 <- sum(p.h3$V1<qqbin)/1000
+  
+  return(c(rho4=rho4,rho3=rho3,rec4=rec4,rec3=rec3,rbin4=rbin4,rbin3=rbin3))
+})

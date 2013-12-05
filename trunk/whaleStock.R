@@ -236,8 +236,14 @@ Rgadget <- function(opt=gadget.options()){
       }
       ## ASUMES ONE TAGGING AREA ONLY!!!!!!!!!!!!!!!!!!!!!!!!!!
       Tagged[,,names(opt$num.tags),,,1] <-
-        opt$num.tags*Abundance[,,names(opt$num.tags),,,1]/
-          sum(Abundance[,,names(opt$num.tags),,,1])
+        whaleCatch(Abundance[,,catch.switch,,,i],
+                   Tagged[,,catch.switch,,,i],
+                   opt$num.tags,
+                   opt$salpha,
+                   opt$sbeta                    
+                   )$C
+                                        #        opt$num.tags*Abundance[,,names(opt$num.tags),,,1]/
+#          sum(Abundance[,,names(opt$num.tags),,,1])
     } else {
       ## ###########
       ## Age update
