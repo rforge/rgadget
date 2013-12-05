@@ -129,10 +129,10 @@ dispersion.matrix <- function(opt){
     min(0.99,0.05*0.5*(opt$init.abund['C1'] +
                        opt$init.abund['C2'])/opt$init.abund['C2'])
   c2c3 <-
-    min(0.99,0.3*0.5*(opt$init.abund['C3'] +
+    min(0.99,0.05*0.5*(opt$init.abund['C3'] +
                       opt$init.abund['C2'])/opt$init.abund['C2'])
   c3c2 <-
-    min(0.99,0.3*0.5*(opt$init.abund['C3'] +
+    min(0.99,0.05*0.5*(opt$init.abund['C3'] +
                       opt$init.abund['C2'])/opt$init.abund['C3'])
   
   
