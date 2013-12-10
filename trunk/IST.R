@@ -1,10 +1,13 @@
 source('function.R')
 source('whaleStock.R')
 source('summaryFunc.R')
+source('gadgetoptions.R')
 library(plyr)
 library(reshape2)
 library(aod)
 library(multicore)
+library(doMC)
+registerDoMC()
 opt <- gadget.options()
 opt$stocks <- c('W','C1','C2','C3','E','S')
 
@@ -200,7 +203,7 @@ if(FALSE){
 
 
 
-run.tag.experiment <- function(num.tags){
+run.tag.experiment <- function(num.tags=100,num.trials=100,lambda=2){
   opt.h4$num.tags <- num.tags
   names(opt.h4$num.tags) <- 'EG'
   opt.h3$num.tags <- num.tags
@@ -210,20 +213,44 @@ run.tag.experiment <- function(num.tags){
   sim.h3 <- Rgadget(opt.h3)
   
   ## tags..
-  rec.h4 <- tagging.recaptures(sim.h4,2,1000)
+  rec.h4 <- tagging.recaptures(sim.h4,lambda,num.trials)
   rec.h4$rec$year <- 2:10
-  rec.h3 <- tagging.recaptures(sim.h3,2,1000)
+  rec.h4$rec$Hypothesis <- 'Mixing'
+  
+  rec.h3 <- tagging.recaptures(sim.h3,lambda,num.trials)
   rec.h3$rec$year <- 2:10
+  rec.h3$rec$Hypothesis <- 'Dispersion'
+  
   ## test power of a regular tagging experiment
-  p.h3 <- power.analysis(rec.h3$rec)
-  p.h4 <- power.analysis(rec.h4$rec)
- 
-  save(sim.h4,sim.h3,rec.h4,rec.h3,p.h3,p.h4,
+  recaptures <- rbind.fill(rec.h3$rec,rec.h4$rec)
+  recstat <- ddply(recaptures,~Hypothesis + variable,
+                   function(x){
+                     tmp <- drop1(glm(value~year,
+                                      family=poisson,
+                                      data=x))
+                     data.frame(diffAIC = diff(tmp$AIC),
+                                diffDev = diff(tmp$Deviance),
+                                rec = sum(x$value))
+                   })
+                                        #power.analysis(rec.h3$rec)
+  recstat$rho <- c(rec.h3$rho,rec.h4$rho)
+  Ri <- rbind.fill(data.frame(C2=rec.h3$Ri),
+                   as.data.frame(rec.h4$Ri))
+  names(Ri) <- paste('Rel',names(Ri),sep='.')
+  ci <- rbind.fill(data.frame(C2=rep(rec.h3$ci,num.trials)),
+                   as.data.frame(rec.h4$ci))
+  names(ci) <- paste('Catch',names(ci),sep='.')
+  recstat <- cbind(recstat,Ri,ci)
+  names(recstat)[2] <- 'Trial'
+  recstat$Trial <- as.numeric(gsub('V','',as.character(recstat$Trial)))
+  recstat$num.tags <- num.tags
+  recaptures$num.tags <- num.tags
+  save(recaptures,recstat, sim.h3, sim.h4,
        file=sprintf('tag%s.RData',num.tags))
-  return(list(h3=p.h3,h4=p.h4))
+  return(recstat)
 }
 
-hypo.test <- mclapply(100*(1:15),run.tag.experiment)
+hypo.test <- ldply(100*(1:15),run.tag.experiment,.parallel=TRUE)
 
 
 

@@ -494,14 +494,14 @@ length.at.age <- function(sim){
 tagging.recaptures <- function(sim,lambda,N){
   ## recaptures in WI
   U <- apply(sim$Tagged.C,7,sum)
-  p <- lambda/(1+lambda)
+#  p <- lambda/(1+lambda)
   
-  rec <- adply(U[-1],1,function(x) rnbinom(N,size=x,prob=p))
+  rec <- adply(U[-1],1,function(x) rnbinom(N,mu=x,size=x/lambda))
 
   if(!is.null(sim$opt$dispersion)){
     Cstock <- c('C1','C2','C3')
     ci <- sim$opt$quota*10
-    Ri <- ci*(ci-1)/(2*sum(sim$opt$init.abund[Cstock]))
+    Ri <- rpois(N,ci*(ci-1)/(2*sum(sim$opt$init.abund[Cstock])))
     rho <- apply(rec[,-1],2,sum)/Ri
   } else {
     ci <-t(rmultinom(N,
