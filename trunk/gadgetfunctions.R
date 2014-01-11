@@ -1004,7 +1004,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            effort = 0.2,
                            selectedstocks=NULL,
                            biomasslevel=NULL,
-                           check.previous=TRUE){
+                           check.previous=TRUE,
+                           stochastic = TRUE){
   if(check.previous){
     if(file.exists(sprintf('%s/out.Rdata',pre))){
       load(sprintf('%s/out.Rdata',pre))
@@ -1023,7 +1024,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   rec$year <- ifelse(str_length(tmp)==2,year(as.Date(tmp,'%y')),
                      year(as.Date(tmp,'%Y')))
   rec <- arrange(rec,year)
-
+  
   ## read in model files
   main <- read.gadget.main(file = main.file)
   stocks <- read.gadget.stockfiles(main$stockfiles)
@@ -1031,6 +1032,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   area <- read.gadget.area(main$areafile)
   fleet <- read.gadget.fleet(main$fleetfiles)
   all.fleets <- paste(fleet$fleet$fleet,collapse = ' ')
+  rec <- subset(rec,!(year > time$lastyear))
+  
   ## write agg files
   l_ply(stocks,
         function(x){
@@ -1038,9 +1041,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
         })
   
   ## adapt model to include predictions
-  sim.begin <- time$lastyear
+  sim.begin <- time$lastyear + 1
   
-  time$lastyear <- time$lastyear + years
+  time$lastyear <- time$lastyear + years 
   write.gadget.time(time,file = sprintf('%s/time.pre',pre))
   main$timefile <- sprintf('%s/time.pre',pre)
   
@@ -1086,7 +1089,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   fleet.predict <- ddply(fleets,'fleet',function(x){
     tmp <- mutate(subset(time.grid,
-                         (year > sim.begin | (year==sim.begin &
+                         (year >= sim.begin | (year==(sim.begin-1) &
                                               step > time$laststep)) &
                          area %in% fleet$fleet$livesonareas 
                          ),
@@ -1105,34 +1108,63 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   main$fleetfiles <- c(main$fleetfiles,sprintf('%s/fleet', pre))
   write.gadget.fleet(fleet,file=sprintf('%s/fleet', pre)) 
 
+  if(stochastic){
+    ## fit an AR model to the fitted recruiment 
+    fitAR <- lm(rec$value[-1]~head(rec$value,-1))
+    coeffAR <- as.numeric(coefficients(fitAR))
+    sdAR <- sd(resid(fitAR))
     
-  ## fit an AR model to the fitted recruiment 
-  fitAR <- lm(rec$value[-1]~head(rec$value,-1))
-  coeffAR <- as.numeric(coefficients(fitAR))
-  sdAR <- sd(resid(fitAR))
+    ## project next n years
+    x <- array(pmax(rnorm(years*num.trials,coeffAR[1],sdAR),0),
+               c(num.trials,years))
+  } else {
+    x <- array(mean(tail(rec$value,3)),c(num.trials,years))
+    coeffAR <- c(0,0,0)
+  }
 
-  ## project next n years
-  x <- array(pmax(rnorm(years*num.trials,coeffAR[1],sdAR),0),
-             c(num.trials,years))
   rec.forward <-
     array(0,c(num.trials,years+1),
           dimnames=list(trial=1:num.trials,
             year=tail(rec$year,1):(tail(rec$year,1)+years)))
-  rec.forward[,1] <- tail(rec$value,1)
-  for(i in 1:years){
-    rec.forward[,i+1] <- coeffAR[2]*rec.forward[,i] + x[,i]
-  }
-  rec.out <- arrange(melt(rec.forward[,-1],value.name = 'recruitment'),
+
+
+  if(num.trials == 1){
+    rec.forward[1] <- tail(rec$value,1)
+    for(i in 1:years){
+      rec.forward[i+1] <- coeffAR[2]*rec.forward[i] + x[i]
+    }
+
+    rec.out <- data.frame(year=tail(rec$year,1):(tail(rec$year,1)+years),
+                          recruitment=as.numeric(tail(rec.forward,years)))
+    tmp <- mutate(rec.out,lower=0,upper=9999,optimise=0)
+    tmp$year <- paste('rec',tmp$year,sep='')
+    names(tmp)[1:2] <- c('switch','value')
+    
+    params <- subset(params, !(switch %in% tmp$switch))
+    params.forward <- rbind.fill(params,tail(tmp,-1))
+    write.gadget.parameters(params.forward,
+                            file=sprintf('%s/params.forward', pre))
+  } else {
+    rec.forward[,1] <- tail(rec$value,1)
+    for(i in 1:years){
+      rec.forward[,i+1] <- coeffAR[2]*rec.forward[,i] + x[,i]
+    }
+
+    rec.out <- arrange(melt(rec.forward[,-1],value.name = 'recruitment'),
                      trial,year)
-  rec.forward <- as.data.frame(rec.forward[,-1])
-  names(rec.forward) <-
-    paste('rec',(tail(rec$year,1)+1):(tail(rec$year,1)+years),sep='')
   
-  tmp <- as.data.frame(t(params$value))
-  names(tmp) <- params$switch
-  params.forward <- cbind(tmp,rec.forward)
-  write.gadget.parameters(params.forward,file=sprintf('%s/params.forward',pre),
-                          columns = FALSE)
+    rec.forward <- as.data.frame(rec.forward[,-1])
+    names(rec.forward) <-
+      paste('rec',(tail(rec$year,1)+1):(tail(rec$year,1)+years),sep='')
+    
+    tmp <- as.data.frame(t(params$value))
+    names(tmp) <- params$switch
+    params.forward <- cbind(tmp,rec.forward)
+    write.gadget.parameters(params.forward,
+                            file=sprintf('%s/params.forward',
+                              pre),
+                            columns = FALSE)
+  }
   ## create the output files
   print.txt <-
     paste('[component]',
@@ -1194,11 +1226,13 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
         names(tmp) <-  c('year', 'step', 'area', 'age',
                          'length', 'number', 'weight')
         tmp$stock <- x
-        tmp2 <- length(unique(tmp$area))*
-          length(unique(tmp$length))*length(unique(tmp$year))
-            
-        tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
-                     tmp)
+        if(num.trials > 1){    
+          tmp2 <- length(unique(tmp$area))*
+            length(unique(tmp$length))*length(unique(tmp$year))
+          
+          tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
+                       tmp)
+        }
         return(tmp)
       }),
     catch = 
@@ -1213,14 +1247,17 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                              'biomass.consumed','mortality')
             tmp$stock <- x
             
-            tmp2 <- length(unique(tmp$area))*
-              length(unique(tmp$length))*
-                length(unique(tmp$step))*
-                  length(unique(tmp$year))                          
-            
-            tmp <-
-              cbind(trial=rep(1:num.trials,each = tmp2),
-                    tmp)
+            if(num.trials > 1){    
+              
+              tmp2 <- length(unique(tmp$area))*
+                length(unique(tmp$length))*
+                  length(unique(tmp$step))*
+                    length(unique(tmp$year))                          
+              
+              tmp <-
+                cbind(trial=rep(1:num.trials,each = tmp2),
+                      tmp)
+            }
             return(tmp)
           }),      
     recruitment = rec.out

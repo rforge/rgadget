@@ -910,6 +910,10 @@ read.gadget.stockfiles <- function(stock.files){
     growth.loc <- grep('doesgrow', stock, ignore.case = TRUE)
     mort.loc <- grep('naturalmortality', stock, ignore.case = TRUE)
     init.loc <- grep('initialconditions', stock, ignore.case = TRUE)
+    pred.loc <- init.loc - 1
+    if(tolwer(stock[init.loc+1])=='numbers'){
+      init.loc <- init.loc +1 v
+    }
 #    initfile.loc <- #grep('normalcondfile',stock, ignore.case =TRUE)
 #      c(grep('normalcondfile',stock, ignore.case =TRUE),
 #        grep('normalparamfile',stock, ignore.case =TRUE),
@@ -1018,7 +1022,7 @@ read.gadget.stockfiles <- function(stock.files){
           iseaten = as.numeric(stock[[mort.loc+1]][2]),
           preyinfo = prey.info(stock[(mort.loc+1):(eat.loc-1)]),
           doeseat = as.numeric(stock[[eat.loc]][2]),
-          predator = pred.info(stock[eat.loc:(init.loc-1)]),
+          predator = pred.info(stock[eat.loc:(pred.loc)]),
           initialconditions = list(minage = stock[[init.loc + 1]][2],
             maxage = stock[[init.loc + 2]][2],
             minlength = stock[[init.loc + 3]][2],
