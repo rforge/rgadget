@@ -911,8 +911,8 @@ read.gadget.stockfiles <- function(stock.files){
     mort.loc <- grep('naturalmortality', stock, ignore.case = TRUE)
     init.loc <- grep('initialconditions', stock, ignore.case = TRUE)
     pred.loc <- init.loc - 1
-    if(tolwer(stock[init.loc+1])=='numbers'){
-      init.loc <- init.loc +1 v
+    if(tolower(stock[init.loc+1])=='numbers'){
+      init.loc <- init.loc + 1
     }
 #    initfile.loc <- #grep('normalcondfile',stock, ignore.case =TRUE)
 #      c(grep('normalcondfile',stock, ignore.case =TRUE),

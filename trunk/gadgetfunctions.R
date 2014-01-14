@@ -981,17 +981,21 @@ gadget.bootypr <- function(params.file='params.final',
   tmp <-
     llply(bs.samples,function(x){
       
-        gadget.ypr(params.file = sprintf('%s/BS.%s/%s',bs.wgts,x,params.file),
-                   main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
-                   effort = effort,
-                   begin = begin, end = end, fleets = fleets,
-                   ypr = sprintf('%s/BS.%s/%s',bs.wgts,x,ypr))
+      tryCatch(gadget.ypr(params.file = sprintf('%s/BS.%s/%s',
+                            bs.wgts,x,params.file),
+                 main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
+                 effort = effort,
+                 begin = begin, end = end, fleets = fleets,
+                 ypr = sprintf('%s/BS.%s/%s',bs.wgts,x,ypr)),
+               error = function(e){
+                 print(sprintf('YPR run %s corrupted',x))
+               })
       
     },.parallel = .parallel)
   print('ypr finished -- tidying up')
   names(tmp) <- sprintf('BS.%s',bs.samples)
-  tmp.names <- c('params','out','ypr','f01')
-  names(tmp.names) <- c('params','out','ypr','f01')
+  tmp.names <- c('params','out','ypr','fmax','f0.1')
+  names(tmp.names) <- c('params','out','ypr','fmax','f0.1')
   llply(tmp.names,
         function(x) ldply(tmp,function(y) y[[x]]))
 }
@@ -1078,7 +1082,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   } else {
     fleet$fleet <- mutate(fleet$fleet,
                           fleet = sprintf('%s.pre',fleet),
-                          multiplicative = effort,
+                          multiplicative = '#rgadget.effort',   #effort,
                           amount = sprintf('%s/fleet.pre', pre),
                           type = 'linearfleet')
   }
@@ -1142,6 +1146,10 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     
     params <- subset(params, !(switch %in% tmp$switch))
     params.forward <- rbind.fill(params,tail(tmp,-1))
+    params.forward <- ldply(effort, function(x){
+      params.forward$rgadget.effort <- x
+      return(params.forward)
+    })
     write.gadget.parameters(params.forward,
                             file=sprintf('%s/params.forward', pre))
   } else {
@@ -1151,7 +1159,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     }
 
     rec.out <- arrange(melt(rec.forward[,-1],value.name = 'recruitment'),
-                     trial,year)
+                       trial,year)
   
     rec.forward <- as.data.frame(rec.forward[,-1])
     names(rec.forward) <-
@@ -1160,6 +1168,11 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     tmp <- as.data.frame(t(params$value))
     names(tmp) <- params$switch
     params.forward <- cbind(tmp,rec.forward)
+    params.forward <- ldply(effort, function(x){
+      params.forward$rgadget.effort <- x
+      return(params.forward)
+    })
+
     write.gadget.parameters(params.forward,
                             file=sprintf('%s/params.forward',
                               pre),
@@ -1231,6 +1244,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
             length(unique(tmp$length))*length(unique(tmp$year))
           
           tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
+                       effort
                        tmp)
         }
         return(tmp)
@@ -1276,6 +1290,7 @@ gadget.bootforward <- function(years = 20,
                                num.trials = 10,
                                bs.wgts = 'BS.WGTS',
                                bs.samples = 1:1000,
+                               check.previous = TRUE,
                                .parallel = TRUE){
   tmp <-
     llply(bs.samples,function(x){
@@ -1283,10 +1298,16 @@ gadget.bootforward <- function(years = 20,
                        params.file = sprintf('%s/BS.%s/%s',bs.wgts,x,params.file),
                        main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
                        effort = effort, fleets = fleets,
-                       pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre))
+                       pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre),
+                       check.previous = check.previous)
       
     },.parallel = .parallel)
   names(tmp) <- sprintf('BS.%s',bs.samples)
 
-  ldply(tmp,function(y) y[[1]])
+  out <- list(lw = ldply(tmp,function(y) y[[1]]),
+              catch = ldply(tmp,function(y) y[[2]]),
+              recruitment = ldply(tmp,function(y) y[[3]]),
+              effort = effort,
+              fleets = fleets)
+  
 }
