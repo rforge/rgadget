@@ -154,7 +154,7 @@ opt.h3 <- dispersion.matrix(opt.h3)
 opt.h4$dispersion <- NULL
 
 
-Power.analysis <- function(rec){
+power.analysis <- function(rec){
 #  tmp.func <- function(x){
 #    tmp.year <- negbin(value~year,~1,x,method='SANN')
 #    tmp.0 <- negbin(value~1,~1,x,method='SANN')

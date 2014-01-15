@@ -1006,9 +1006,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            fleets = data.frame(fleet='comm',ratio = 1),
                            biomass = FALSE,
                            effort = 0.2,
-                           selectedstocks=NULL,
-                           biomasslevel=NULL,
-                           check.previous=TRUE,
+                           selectedstocks = NULL,
+                           biomasslevel = NULL,
+                           check.previous = FALSE,
                            stochastic = TRUE){
   if(check.previous){
     if(file.exists(sprintf('%s/out.Rdata',pre))){
@@ -1225,6 +1225,55 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   write(printfile,file = sprintf('%s/printfile',pre))
 
   main$likelihoodfiles <- ';'
+
+  ## hockey stick stuff
+  
+  write(sprintf(paste('hockeystick'
+                      '; one word description of the data'
+                      '; multipler <optional multipler> ; default value 1'
+                      'stockdata'
+                      '; biomass 1 ; default value 1'
+                      '%s',
+                      sep = '\n'),
+                paste(laply(stocks,function(x) x@stockname),
+                      collapse = ' '))
+        file = sprintf('%s/hockeystick',pre))
+
+  hockeystring <-
+    '(* #hockey.alpha (if (< %s/hockeystick $hockey.s) %s/hockeystick #hockey.s))'
+  
+
+  ## Change the recruitment file
+
+  llply(stocks,function(x){
+    x@renewal.data <-
+      rbind.fill(subset(x@renewal.data,V1 < tail(rec$year,1) + 1),
+                 data.frame(V1 = (tail(rec$year,1)+1):(tail(rec$year,1)+years),
+                            V2 = x@renewal.data$V2[1],
+                            V3 = x@renewal.data$V3[1],
+                            V4 = x@renewal.data$V4[1],
+                            V5 = sprintf('(* %s %s)',
+                              sprintf(sprintf(gsub('rec[0-9]+',
+                                                   'rec%s',
+                                                   x@renewal.data$V5[1]),
+                                              (tail(rec$year,1)+1):
+                                              (tail(rec$year,1)+years))),
+                              sprintf(hockeystring,pre)),
+                            V6 = x@renewal.data$V6[1],
+                            V7 = x@renewal.data$V7[1],
+                            V8 = x@renewal.data$V8[1],
+                            V9 = x@renewal.data$V9[1],
+                            stringsAsFactors = FALSE))
+    
+    write(x,file=pre)
+    })
+  
+  
+  main$stockfiles <- sprintf('%s/%s',pre,
+                             paste(laply(stocks,function(x) x@stockname),
+                                   collapse = ' '))
+                             
+  
   write.gadget.main(main,file=sprintf('%s/main.pre',pre))
 
 
@@ -1244,7 +1293,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
             length(unique(tmp$length))*length(unique(tmp$year))
           
           tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
-                       effort
+                       effort,
                        tmp)
         }
         return(tmp)
