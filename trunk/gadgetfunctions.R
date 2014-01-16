@@ -1041,7 +1041,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   ## write agg files
   l_ply(stocks,
         function(x){
-          writeAggfiles(x,folder=sprintf('%s/aggfiles',pre))          
+          writeAggfiles(x,folder=sprintf('%s/Aggfiles',pre))          
         })
   
   ## adapt model to include predictions
@@ -1183,9 +1183,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     paste('[component]',
           'type             stockprinter',
           'stocknames       %1$s',
-          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
-          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
-          'lenaggfile       %2$s/aggfiles/%1$s.len.agg',
+          'areaaggfile      %2$s/Aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/Aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/Aggfiles/%1$s.len.agg',
           'printfile        %2$s/out/%1$s.lw',
           'printatstart     0',
           'yearsandsteps    all 1',
@@ -1196,9 +1196,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           'type\t\tpredatorpreyprinter',
           'predatornames\t\t%3$s',
           'preynames\t\t%1$s',
-          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
-          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
-          'lenaggfile       %2$s/aggfiles/%1$s.alllen.agg',
+          'areaaggfile      %2$s/Aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/Aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/Aggfiles/%1$s.alllen.agg',
           'printfile        %2$s/out/catch.%1$s.lw',
           'yearsandsteps    all all',
           sep = '\n')
@@ -1228,19 +1228,19 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   ## hockey stick stuff
   
-  write(sprintf(paste('hockeystick'
-                      '; one word description of the data'
-                      '; multipler <optional multipler> ; default value 1'
-                      'stockdata'
-                      '; biomass 1 ; default value 1'
+  write(sprintf(paste('hockeystick',
+                      '; one word description of the data',
+                      '; multipler <optional multipler> ; default value 1',
+                      'stockdata',
+                      '; biomass 1 ; default value 1',
                       '%s',
                       sep = '\n'),
                 paste(laply(stocks,function(x) x@stockname),
-                      collapse = ' '))
+                      collapse = ' ')),
         file = sprintf('%s/hockeystick',pre))
 
-  hockeystring <-
-    '(* #hockey.alpha (if (< %s/hockeystick $hockey.s) %s/hockeystick #hockey.s))'
+  hockeystring <- '#hockeystick'
+#    '(* #hockey.alpha (if (< %1$s/hockeystick #hockey.s) %1$s/hockeystick #hockey.s))'
   
 
   ## Change the recruitment file
