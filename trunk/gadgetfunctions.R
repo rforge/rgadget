@@ -1006,9 +1006,11 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            fleets = data.frame(fleet='comm',ratio = 1),
                            biomass = FALSE,
                            effort = 0.2,
+                           spawnmodel = NULL,
                            selectedstocks = NULL,
                            biomasslevel = NULL,
                            check.previous = FALSE,
+                           save.results = TRUE,
                            stochastic = TRUE){
   if(check.previous){
     if(file.exists(sprintf('%s/out.Rdata',pre))){
@@ -1244,31 +1246,55 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   
 
   ## Change the recruitment file
+  if (spawnmodel == 'hockeystick' ){
+    llply(stocks,function(x){
+      x@renewal.data <-
+        subset(x@renewal.data,V1 < tail(rec$year,1) + 1)
+      
+      x@doesspawn <- 1
+      x@spawning = new('gadget-spawning',
+        spawnsteps = 1,
+        spawnareas = 1,
+        firstspawnyear = tail(rec$year,1) + 1,
+        lastspawnyear = tail(rec$year,1) + years,
+        spawnstockandratio = x@stockname,
+        proportionfunction = sprintf('function exponential %s %s'
+          mat.par[1],mat.par[2]),
+        weightlossfunction = 'function constant 1',
+        recruitment = sprintf('recruitment hockeystick %s/hockey.rec #ssb',
+          pre),
+        stockparameters = data.frame())
+      write(x,file=pre)
 
-  llply(stocks,function(x){
-    x@renewal.data <-
-      rbind.fill(subset(x@renewal.data,V1 < tail(rec$year,1) + 1),
-                 data.frame(V1 = (tail(rec$year,1)+1):(tail(rec$year,1)+years),
-                            V2 = x@renewal.data$V2[1],
-                            V3 = x@renewal.data$V3[1],
-                            V4 = x@renewal.data$V4[1],
-                            V5 = sprintf('(* %s %s)',
-                              sprintf(sprintf(gsub('rec[0-9]+',
-                                                   'rec%s',
-                                                   x@renewal.data$V5[1]),
-                                              (tail(rec$year,1)+1):
-                                              (tail(rec$year,1)+years))),
-                              sprintf(hockeystring,pre)),
-                            V6 = x@renewal.data$V6[1],
-                            V7 = x@renewal.data$V7[1],
-                            V8 = x@renewal.data$V8[1],
-                            V9 = x@renewal.data$V9[1],
-                            stringsAsFactors = FALSE))
-    
-    write(x,file=pre)
     })
-  
-  
+
+    
+
+  } else { 
+    llply(stocks,function(x){
+      x@renewal.data <-
+        rbind.fill(subset(x@renewal.data,V1 < tail(rec$year,1) + 1),
+                   data.frame(V1 = (tail(rec$year,1)+1):(tail(rec$year,1)+years),
+                              V2 = x@renewal.data$V2[1],
+                              V3 = x@renewal.data$V3[1],
+                              V4 = x@renewal.data$V4[1],
+                              V5 = sprintf('(* %s %s)',
+                                sprintf(sprintf(gsub('rec[0-9]+',
+                                                     'rec%s',
+                                                     x@renewal.data$V5[1]),
+                                                (tail(rec$year,1)+1):
+                                                (tail(rec$year,1)+years))),
+                                sprintf(hockeystring,pre)),
+                              V6 = x@renewal.data$V6[1],
+                              V7 = x@renewal.data$V7[1],
+                              V8 = x@renewal.data$V8[1],
+                              V9 = x@renewal.data$V9[1],
+                              stringsAsFactors = FALSE))
+      
+      write(x,file=pre)
+    })
+  }
+    
   main$stockfiles <- sprintf('%s/%s',pre,
                              paste(laply(stocks,function(x) x@stockname),
                                    collapse = ' '))
