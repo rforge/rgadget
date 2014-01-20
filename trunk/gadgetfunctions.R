@@ -1006,12 +1006,15 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            fleets = data.frame(fleet='comm',ratio = 1),
                            biomass = FALSE,
                            effort = 0.2,
-                           spawnmodel = NULL,
+                           spawnmodel = 'none',
+                           spawnvar = NULL,
                            selectedstocks = NULL,
                            biomasslevel = NULL,
                            check.previous = FALSE,
                            save.results = TRUE,
-                           stochastic = TRUE){
+                           stochastic = TRUE,
+                           mat.par = NULL,
+                           rec.window = NULL){
   if(check.previous){
     if(file.exists(sprintf('%s/out.Rdata',pre))){
       load(sprintf('%s/out.Rdata',pre))
@@ -1038,7 +1041,6 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   area <- read.gadget.area(main$areafile)
   fleet <- read.gadget.fleet(main$fleetfiles)
   all.fleets <- paste(fleet$fleet$fleet,collapse = ' ')
-  rec <- subset(rec,!(year > time$lastyear))
   
   ## write agg files
   l_ply(stocks,
@@ -1048,6 +1050,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   
   ## adapt model to include predictions
   sim.begin <- time$lastyear + 1
+  rec <- subset(rec,year < sim.begin))
+
   
   time$lastyear <- time$lastyear + years 
   write.gadget.time(time,file = sprintf('%s/time.pre',pre))
@@ -1115,8 +1119,13 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   write.gadget.fleet(fleet,file=sprintf('%s/fleet', pre)) 
 
   if(stochastic){
-    ## fit an AR model to the fitted recruiment 
-    fitAR <- lm(rec$value[-1]~head(rec$value,-1))
+    ## fit an AR model to the fitted recruiment
+    if(!is.null(rec.window)){
+      tmp <- subset(rec,year < rec.window)
+    } else {
+      tmp <- rec
+    }
+    fitAR <- lm(tmp$value[-1]~head(tmp$value,-1))
     coeffAR <- as.numeric(coefficients(fitAR))
     sdAR <- sd(resid(fitAR))
     
@@ -1131,7 +1140,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   rec.forward <-
     array(0,c(num.trials,years+1),
           dimnames=list(trial=1:num.trials,
-            year=tail(rec$year,1):(tail(rec$year,1)+years)))
+            year=sim.begin:(sim.begin+years)))
 
 
   if(num.trials == 1){
@@ -1140,7 +1149,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
       rec.forward[i+1] <- coeffAR[2]*rec.forward[i] + x[i]
     }
 
-    rec.out <- data.frame(year=tail(rec$year,1):(tail(rec$year,1)+years),
+    rec.out <- data.frame(year=sim.begin:(sim.begin+years),
                           recruitment=as.numeric(tail(rec.forward,years)))
     tmp <- mutate(rec.out,lower=0,upper=9999,optimise=0)
     tmp$year <- paste('rec',tmp$year,sep='')
@@ -1165,11 +1174,14 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   
     rec.forward <- as.data.frame(rec.forward[,-1])
     names(rec.forward) <-
-      paste('rec',(tail(rec$year,1)+1):(tail(rec$year,1)+years),sep='')
+      paste('rec',sim.begin:(sim.begin+years-1),sep='')
     
     tmp <- as.data.frame(t(params$value))
     names(tmp) <- params$switch
     params.forward <- cbind(tmp,rec.forward)
+    if(spawnmodel == 'hockeystick'){
+      params.forward$hockey.ssb <- spawnvar$hockey.ssb
+    }
     params.forward <- ldply(effort, function(x){
       params.forward$rgadget.effort <- x
       return(params.forward)
@@ -1230,18 +1242,18 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   ## hockey stick stuff
   
-  write(sprintf(paste('hockeystick',
-                      '; one word description of the data',
-                      '; multipler <optional multipler> ; default value 1',
-                      'stockdata',
-                      '; biomass 1 ; default value 1',
-                      '%s',
-                      sep = '\n'),
-                paste(laply(stocks,function(x) x@stockname),
-                      collapse = ' ')),
-        file = sprintf('%s/hockeystick',pre))
+#  write(sprintf(paste('hockeystick',
+#                      '; one word description of the data',
+#                      '; multipler <optional multipler> ; default value 1',
+#                      'stockdata',
+#                      '; biomass 1 ; default value 1',
+#                      '%s',
+#                      sep = '\n'),
+#                paste(laply(stocks,function(x) x@stockname),
+#                      collapse = ' ')),
+#        file = sprintf('%s/hockeystick',pre))
 
-  hockeystring <- '#hockeystick'
+#  hockeystring <- '#hockeystick'
 #    '(* #hockey.alpha (if (< %1$s/hockeystick #hockey.s) %1$s/hockeystick #hockey.s))'
   
 
@@ -1249,7 +1261,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   if (spawnmodel == 'hockeystick' ){
     llply(stocks,function(x){
       x@renewal.data <-
-        subset(x@renewal.data,V1 < tail(rec$year,1) + 1)
+        subset(x@renewal.data,V1 <  sim.begin)
       
       x@doesspawn <- 1
       x@spawning = new('gadget-spawning',
@@ -1258,14 +1270,32 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
         firstspawnyear = tail(rec$year,1) + 1,
         lastspawnyear = tail(rec$year,1) + years,
         spawnstockandratio = x@stockname,
-        proportionfunction = sprintf('function exponential %s %s'
-          mat.par[1],mat.par[2]),
+        proportionfunction = sprintf('function exponential %s %s',
+          -mat.par[1]/mat.par[2],mat.par[2]),
         weightlossfunction = 'function constant 1',
-        recruitment = sprintf('recruitment hockeystick %s/hockey.rec #ssb',
+        recruitment =
+        sprintf('recruitment hockeystick %s/hockey.rec #hockey.ssb',
           pre),
-        stockparameters = data.frame())
+        stockparameters = data.frame(mean='#recl',stddev='#recsdev',
+          alpha = 0.00000495, beta = 3.01793))
       write(x,file=pre)
 
+      ## write time variable file
+      
+      time.var <-
+        data.frame(year = sim.begin:(sim.begin+years),
+                   step = x@renewal.data$V2[1],
+                   value = sprintf('(/ %s  #hockey.ssb)',
+                     sprintf(gsub('rec[0-9]+',
+                                  'rec%s',
+                                  x@renewal.data$V5[1]),
+                             sim.begin:
+                             (sim.begin+years))))
+      write('hockey.rec\ndata\n; year step value',
+            file = sprintf('%s/hockey.rec',pre))
+      
+      write.table(time.var, col.names = FALSE, row.names = FALSE,
+                  append = TRUE)
     })
 
     
@@ -1273,18 +1303,16 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   } else { 
     llply(stocks,function(x){
       x@renewal.data <-
-        rbind.fill(subset(x@renewal.data,V1 < tail(rec$year,1) + 1),
-                   data.frame(V1 = (tail(rec$year,1)+1):(tail(rec$year,1)+years),
+        rbind.fill(subset(x@renewal.data,V1 < sim.begin,
+                   data.frame(V1 = sim.begin:(sim.begin+years),
                               V2 = x@renewal.data$V2[1],
                               V3 = x@renewal.data$V3[1],
                               V4 = x@renewal.data$V4[1],
-                              V5 = sprintf('(* %s %s)',
-                                sprintf(sprintf(gsub('rec[0-9]+',
-                                                     'rec%s',
-                                                     x@renewal.data$V5[1]),
-                                                (tail(rec$year,1)+1):
-                                                (tail(rec$year,1)+years))),
-                                sprintf(hockeystring,pre)),
+                              V5 = sprintf(sprintf(gsub('rec[0-9]+',
+                                'rec%s',
+                                x@renewal.data$V5[1]),
+                                sim.begin:
+                                (sim.begin+years))),
                               V6 = x@renewal.data$V6[1],
                               V7 = x@renewal.data$V7[1],
                               V8 = x@renewal.data$V8[1],
@@ -1318,8 +1346,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           tmp2 <- length(unique(tmp$area))*
             length(unique(tmp$length))*length(unique(tmp$year))
           
-          tmp <- cbind(trial=rep(1:num.trials,each = tmp2),
-                       effort,
+          tmp <- cbind(trial = rep(1:num.trials,each = tmp2),
+                       effort = rep(effort,each = tmp2*num.trials),
                        tmp)
         }
         return(tmp)
@@ -1345,6 +1373,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
               
               tmp <-
                 cbind(trial=rep(1:num.trials,each = tmp2),
+                      effort = rep(effort,each = tmp2*num.trials),
                       tmp)
             }
             return(tmp)
