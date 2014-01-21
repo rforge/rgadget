@@ -1413,6 +1413,7 @@ gadget.bootforward <- function(years = 20,
                                bs.samples = 1:1000,
                                check.previous = FALSE,
                                rec.window = NULL,
+                               mat.par = NULL,
                                .parallel = TRUE){
   tmp <-
     llply(bs.samples,function(x){
@@ -1424,6 +1425,7 @@ gadget.bootforward <- function(years = 20,
                        effort = effort, fleets = fleets,
                        pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre),
                        check.previous = check.previous,
+                       mat.par = mat.par,
                        save.results = FALSE)
       
     },.parallel = .parallel)
