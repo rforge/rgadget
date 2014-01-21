@@ -1028,7 +1028,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                            save.results = TRUE,
                            stochastic = TRUE,
                            mat.par = NULL,
-                           rec.window = NULL){
+                           rec.window = NULL,
+                           compact = TRUE){
   if(check.previous){
     if(file.exists(sprintf('%s/out.Rdata',pre))){
       load(sprintf('%s/out.Rdata',pre))
@@ -1254,23 +1255,6 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
 
   main$likelihoodfiles <- ';'
 
-  ## hockey stick stuff
-  
-#  write(sprintf(paste('hockeystick',
-#                      '; one word description of the data',
-#                      '; multipler <optional multipler> ; default value 1',
-#                      'stockdata',
-#                      '; biomass 1 ; default value 1',
-#                      '%s',
-#                      sep = '\n'),
-#                paste(laply(stocks,function(x) x@stockname),
-#                      collapse = ' ')),
-#        file = sprintf('%s/hockeystick',pre))
-
-#  hockeystring <- '#hockeystick'
-#    '(* #hockey.alpha (if (< %1$s/hockeystick #hockey.s) %1$s/hockeystick #hockey.s))'
-  
-
   ## Change the recruitment file
   if (spawnmodel == 'hockeystick' ){
     llply(stocks,function(x){
@@ -1364,6 +1348,23 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
                        effort = rep(effort,each = tmp2*num.trials),
                        tmp)
         }
+        tmp$length <- as.numeric(gsub('len','',tmp$length))
+        if(!is.null(mat.par)){
+          tmp <-
+            mutate(tmp,
+            
+                   ##               harv.bio = number*weight*expL50(params['L50Longline','value'],
+                   ##                 params['aLongline','value'],length),
+                   ssb = number*weight*logit(mat.par[1],mat.par[2],length))
+        }
+        
+        if(compact & !is.null(mat.par)){
+          tmp <- ddply(tmp,~year+step+trial+effort+stock,
+                       summarise,
+                       ssb = sum(ssb),
+                       total.bio = sum(number*weight)
+                       )
+        }
         return(tmp)
       }),
     catch = 
@@ -1436,4 +1437,14 @@ gadget.bootforward <- function(years = 20,
 
   save(out,file=sprintf('%s/bsforward.RData',bs.wgts))
   return(out)
+}
+
+
+expL50 <- function(l50,b,l){
+  1/(1+exp(-b*(l-l50)))
+}
+
+logit <- function(a,b,l){
+  p <- exp(a+b*l)
+  p/(1+p)
 }
