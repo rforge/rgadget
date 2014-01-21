@@ -805,9 +805,18 @@ gadget.ypr <- function(params.file = 'params.in',
                        effort = seq(0, 1, by=0.01),
                        begin=1990,end=2020,
                        fleets = data.frame(fleet='comm',ratio=1),
-                       ypr='YPR'){
+                       ypr='YPR',
+                       check.previous = FALSE,
+                       save.results = TRUE){
   ## model setup
+  if(check.previous){
+    if(file.exists(sprintf('%s/ypr.Rdata',ypr))){
+      load(sprintf('%s/ypr.Rdata',ypr))
+      return(res)
+    }
+  }
 
+  
   dir.create(ypr,showWarnings = FALSE, recursive = TRUE)
   main <- read.gadget.main(main.file)
   stocks <- read.gadget.stockfiles(main$stockfiles)
@@ -952,6 +961,7 @@ gadget.ypr <- function(params.file = 'params.in',
                                     all.x=TRUE)
 #                 stock.std$effort <- arrange(effort.grid,effort)$effort
                  file.remove(sprintf('%s/out/%s.std',ypr,x$stock))
+                 file.remove(sprintf('%s/out/%s.std0',ypr,x$stock))
                  return(stock.std)
                })
 
@@ -964,7 +974,9 @@ gadget.ypr <- function(params.file = 'params.in',
   fmax <- min(res$effort[which(res$bio==max(res$bio,na.rm=TRUE))])
   res <- list(params=params,out=out,ypr=res,fmax=fmax,
               f0.1=data.frame(f0.1=f0.1))
-  save(res, file = sprintf('%s/ypr.Rdata',ypr))
+  if(save.results){
+    save(res, file = sprintf('%s/ypr.Rdata',ypr))
+  }
   return(res)
 }
 
@@ -988,7 +1000,7 @@ gadget.bootypr <- function(params.file='params.final',
                  begin = begin, end = end, fleets = fleets,
                  ypr = sprintf('%s/BS.%s/%s',bs.wgts,x,ypr)),
                error = function(e){
-                 print(sprintf('YPR run %s corrupted',x))
+                 print(sprintf('YPR run %s was corrupted',x))
                })
       
     },.parallel = .parallel)
@@ -996,8 +1008,10 @@ gadget.bootypr <- function(params.file='params.final',
   names(tmp) <- sprintf('BS.%s',bs.samples)
   tmp.names <- c('params','out','ypr','fmax','f0.1')
   names(tmp.names) <- c('params','out','ypr','fmax','f0.1')
-  llply(tmp.names,
-        function(x) ldply(tmp,function(y) y[[x]]))
+  bsypr <- llply(tmp.names,
+                 function(x) ldply(tmp,function(y) y[[x]]))
+  save(bsypr,file=sprintf('%s/bsypr.RData',bs.wgts))
+  return(bsypr)
 }
 
 
@@ -1045,15 +1059,15 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   ## write agg files
   l_ply(stocks,
         function(x){
-          writeAggfiles(x,folder=sprintf('%s/Aggfiles',pre))          
+          writeAggfiles(x,folder=sprintf('%s/aggfiles',pre))          
         })
   
   ## adapt model to include predictions
   sim.begin <- time$lastyear + 1
-  rec <- subset(rec,year < sim.begin))
+  rec <- subset(rec,year < sim.begin)
 
   
-  time$lastyear <- time$lastyear + years 
+  time$lastyear <- sim.begin + years 
   write.gadget.time(time,file = sprintf('%s/time.pre',pre))
   main$timefile <- sprintf('%s/time.pre',pre)
   
@@ -1180,7 +1194,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     names(tmp) <- params$switch
     params.forward <- cbind(tmp,rec.forward)
     if(spawnmodel == 'hockeystick'){
-      params.forward$hockey.ssb <- spawnvar$hockey.ssb
+      params.forward$hockey.ssb <- spawnvar$ssb
     }
     params.forward <- ldply(effort, function(x){
       params.forward$rgadget.effort <- x
@@ -1197,9 +1211,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     paste('[component]',
           'type             stockprinter',
           'stocknames       %1$s',
-          'areaaggfile      %2$s/Aggfiles/%1$s.area.agg',
-          'ageaggfile       %2$s/Aggfiles/%1$s.allages.agg',
-          'lenaggfile       %2$s/Aggfiles/%1$s.len.agg',
+          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/aggfiles/%1$s.len.agg',
           'printfile        %2$s/out/%1$s.lw',
           'printatstart     0',
           'yearsandsteps    all 1',
@@ -1210,9 +1224,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           'type\t\tpredatorpreyprinter',
           'predatornames\t\t%3$s',
           'preynames\t\t%1$s',
-          'areaaggfile      %2$s/Aggfiles/%1$s.area.agg',
-          'ageaggfile       %2$s/Aggfiles/%1$s.allages.agg',
-          'lenaggfile       %2$s/Aggfiles/%1$s.alllen.agg',
+          'areaaggfile      %2$s/aggfiles/%1$s.area.agg',
+          'ageaggfile       %2$s/aggfiles/%1$s.allages.agg',
+          'lenaggfile       %2$s/aggfiles/%1$s.alllen.agg',
           'printfile        %2$s/out/catch.%1$s.lw',
           'yearsandsteps    all all',
           sep = '\n')
@@ -1267,35 +1281,35 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
       x@spawning = new('gadget-spawning',
         spawnsteps = 1,
         spawnareas = 1,
-        firstspawnyear = tail(rec$year,1) + 1,
-        lastspawnyear = tail(rec$year,1) + years,
-        spawnstockandratio = x@stockname,
-        proportionfunction = sprintf('function exponential %s %s',
+        firstspawnyear = sim.begin,
+        lastspawnyear = sim.begin + years,
+        spawnstocksandratio = data.frame(stock=x@stockname,ratio=1),
+        proportionfunction = c(func='exponential',
           -mat.par[1]/mat.par[2],mat.par[2]),
-        weightlossfunction = 'function constant 1',
-        recruitment =
-        sprintf('recruitment hockeystick %s/hockey.rec #hockey.ssb',
-          pre),
-        stockparameters = data.frame(mean='#recl',stddev='#recsdev',
+        weightlossfunction = c(func='constant', 1),
+        recruitment = c(func='hockeystick',
+          sprintf('%s/hockey.rec', pre), '#hockey.ssb'),
+        stockparameters = data.frame(mean='22#recl',std.dev='3.8#recsdev',
           alpha = 0.00000495, beta = 3.01793))
       write(x,file=pre)
 
       ## write time variable file
       
       time.var <-
-        data.frame(year = sim.begin:(sim.begin+years),
+        data.frame(year = c(time$firstyear,sim.begin:(sim.begin+years)),
                    step = x@renewal.data$V2[1],
-                   value = sprintf('(/ %s  #hockey.ssb)',
+                   value = c(0,sprintf('(/ %s  #hockey.ssb)',
                      sprintf(gsub('rec[0-9]+',
                                   'rec%s',
                                   x@renewal.data$V5[1]),
                              sim.begin:
-                             (sim.begin+years))))
+                             (sim.begin+years)))))
       write('hockey.rec\ndata\n; year step value',
             file = sprintf('%s/hockey.rec',pre))
       
       write.table(time.var, col.names = FALSE, row.names = FALSE,
-                  append = TRUE)
+                  append = TRUE, file = sprintf('%s/hockey.rec',pre),
+                  quote = FALSE)
     })
 
     
@@ -1303,7 +1317,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   } else { 
     llply(stocks,function(x){
       x@renewal.data <-
-        rbind.fill(subset(x@renewal.data,V1 < sim.begin,
+        rbind.fill(subset(x@renewal.data,V1 < sim.begin),
                    data.frame(V1 = sim.begin:(sim.begin+years),
                               V2 = x@renewal.data$V2[1],
                               V3 = x@renewal.data$V3[1],
@@ -1380,7 +1394,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           }),      
     recruitment = rec.out
     )
-  save(out,file = sprintf('%s/out.Rdata',pre))
+  if(save.results){
+    save(out,file = sprintf('%s/out.Rdata',pre))
+  }
   return(out)
 }
 
@@ -1394,16 +1410,20 @@ gadget.bootforward <- function(years = 20,
                                num.trials = 10,
                                bs.wgts = 'BS.WGTS',
                                bs.samples = 1:1000,
-                               check.previous = TRUE,
+                               check.previous = FALSE,
+                               rec.window = NULL,
                                .parallel = TRUE){
   tmp <-
     llply(bs.samples,function(x){
         gadget.forward(years = years,
-                       params.file = sprintf('%s/BS.%s/%s',bs.wgts,x,params.file),
+                       params.file = sprintf('%s/BS.%s/%s',
+                         bs.wgts,x,params.file),
+                       rec.window = rec.window,
                        main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
                        effort = effort, fleets = fleets,
                        pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre),
-                       check.previous = check.previous)
+                       check.previous = check.previous,
+                       save.results = FALSE)
       
     },.parallel = .parallel)
   names(tmp) <- sprintf('BS.%s',bs.samples)
@@ -1413,5 +1433,7 @@ gadget.bootforward <- function(years = 20,
               recruitment = ldply(tmp,function(y) y[[3]]),
               effort = effort,
               fleets = fleets)
-  
+
+  save(out,file=sprintf('%s/bsforward.RData',bs.wgts))
+  return(out)
 }

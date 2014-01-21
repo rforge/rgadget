@@ -57,15 +57,15 @@ setMethod("write",
     function (x, file = "data", ncolumns = if (is.character(x)) 1 else 5, 
         append = FALSE, sep = " ") 
     {
-      dir.create(sprintf('%s/Aggfiles',file), showWarnings = FALSE, recursive = TRUE)
+      dir.create(sprintf('%s/aggfiles',file), showWarnings = FALSE, recursive = TRUE)
       header <- paste(sprintf('; prey aggregation file for %s',x@name),
                       sprintf('; created using rgadget at %s', Sys.Date()),
                       sep = '\n')
-      write(header,file = sprintf('%s/Aggfiles/%s.prey.agg',file,x@name))
-      write.table(x@preylengths,file = sprintf('%s/Aggfiles/%s.prey.agg',file,x@name),
+      write(header,file = sprintf('%s/aggfiles/%s.prey.agg',file,x@name))
+      write.table(x@preylengths,file = sprintf('%s/aggfiles/%s.prey.agg',file,x@name),
             col.names=FALSE,append=TRUE,
             quote=FALSE,sep='\t',row.names=FALSE)
-      paste(sprintf('preylengths\t%s/Aggfiles/%s.prey.agg',file,x@name),
+      paste(sprintf('preylengths\t%s/aggfiles/%s.prey.agg',file,x@name),
             sprintf('energycontent\t%s',x@energycontent),
             sep = '\n')    
     }
@@ -78,7 +78,7 @@ setMethod("write",
         append = FALSE, sep = " ") 
     {
         dir.create(sprintf('%s/Data', file), showWarnings = FALSE, recursive = TRUE)
-        dir.create(sprintf('%s/Aggfiles', file), showWarnings = FALSE, recursive = TRUE)
+        dir.create(sprintf('%s/aggfiles', file), showWarnings = FALSE, recursive = TRUE)
         
         ref.head <- paste(sprintf('; refweight file for %s created using rgadget at %s',
                                   x@stockname,Sys.Date()),
@@ -105,32 +105,32 @@ setMethod("write",
                                   x@stockname,Sys.Date()),
                           paste(c('; ',names(lenAgg)),collapse = '\t'),
                           sep = '\n')
-        write(agg.head,file = sprintf('%s/Aggfiles/%s.len.agg',file,x@stockname))
+        write(agg.head,file = sprintf('%s/aggfiles/%s.len.agg',file,x@stockname))
         
         write.table(lenAgg,
-                    file = sprintf('%s/Aggfiles/%s.len.agg',file,x@stockname),
+                    file = sprintf('%s/aggfiles/%s.len.agg',file,x@stockname),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
         
-        write(agg.head,file = sprintf('%s/Aggfiles/%s.alllen.agg',file,x@stockname))
+        write(agg.head,file = sprintf('%s/aggfiles/%s.alllen.agg',file,x@stockname))
         write.table(alllenAgg,
-                    file = sprintf('%s/Aggfiles/%s.alllen.agg',file,x@stockname),
+                    file = sprintf('%s/aggfiles/%s.alllen.agg',file,x@stockname),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
  
         ## age agg file
         ageAgg <- data.frame(label = x@minage:x@maxage,
                              age = x@minage:x@maxage)
-        write(agg.head,file = sprintf('%s/Aggfiles/%s.age.agg',file,x@stockname))
+        write(agg.head,file = sprintf('%s/aggfiles/%s.age.agg',file,x@stockname))
         write.table(ageAgg,
-                    file = sprintf('%s/Aggfiles/%s.age.agg',file,x@stockname),
+                    file = sprintf('%s/aggfiles/%s.age.agg',file,x@stockname),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
         allagesAgg <- data.frame(label = 'allages',
                                  age = paste(x@minage:x@maxage,collapse = '\t'))
-        write(agg.head,file = sprintf('%s/Aggfiles/%s.allages.agg',file,x@stockname))
+        write(agg.head,file = sprintf('%s/aggfiles/%s.allages.agg',file,x@stockname))
         write.table(allagesAgg,
-                    file = sprintf('%s/Aggfiles/%s.allages.agg',file,x@stockname),
+                    file = sprintf('%s/aggfiles/%s.allages.agg',file,x@stockname),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
         
@@ -158,7 +158,7 @@ setMethod("write",
             sprintf('maxlength\t%s',x@maxlength),
             sprintf('dl\t%s',x@dl),
             sprintf('refweightfile\t%s/Data/%s.refweigthfile',file,x@stockname),
-            sprintf('growthandeatlengths\t%s/Aggfiles/%s.len.agg',file,x@stockname),
+            sprintf('growthandeatlengths\t%s/aggfiles/%s.len.agg',file,x@stockname),
             sprintf('doesgrow\t%s',x@doesgrow),
             growth = ';',
             sprintf('naturalmortality\t%s',paste(x@naturalmortality,collapse = '\t')),
@@ -193,8 +193,10 @@ setMethod("write",
           stock.text['eat'] <- toString(x@predator)
         }
         if(x@doesspawn == 1){
-          stock.text['spawning'] <- sprintf('spawnfile\tData/%s.spawnfile',x@stockname)
-          write(x@spawning,file = sprintf('%s/Data/%s.spawnfile',file,x@stockname))
+          stock.text['spawning'] <- sprintf('spawnfile\t%s/Data/%s.spawnfile',
+                                            file, x@stockname)
+          write(x@spawning,file = sprintf('%s/Data/%s.spawnfile',file,
+                             x@stockname))
         }
         if(x@doesmigrate == 1){
           stock.text['migration'] <- 
@@ -346,7 +348,7 @@ setMethod("write",
       ## area aggregation files
       allareasAgg <- data.frame(label = 'allareas',areas = paste(x@area@areas,collapse = '\t'))
       write.table(allareasAgg,
-                  file = sprintf('%s/Aggfiles/allareas.agg',loc),
+                  file = sprintf('%s/aggfiles/allareas.agg',loc),
                   col.names=FALSE,append=FALSE,
                   quote=FALSE,sep='\t',row.names=FALSE)
       write(x@time, file = sprintf('%s/time',loc))
