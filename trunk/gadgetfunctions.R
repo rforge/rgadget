@@ -1330,9 +1330,9 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     })
   }
     
-  main$stockfiles <- sprintf('%s/%s',pre,
-                             paste(laply(stocks,function(x) x@stockname),
-                                   collapse = ' '))
+  main$stockfiles <- paste(sprintf('%s/%s',pre,
+                             laply(stocks,function(x) x@stockname)),
+                           collapse = ' ')
                              
   
   write.gadget.main(main,file=sprintf('%s/main.pre',pre))
