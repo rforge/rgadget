@@ -44,9 +44,10 @@ read.printfiles <- function(path='.',suppress=FALSE){
     }
     pos <- grep('Regression information',tmp)
     if(length(pos)!=0){
-      regr <- as.numeric(unlist(strsplit(gsub('; ','',
-                                              tmp[pos+1]),' '))[c(3,5,7)])
-      data[c('intercept','slope','sse')] <- as.data.frame(t(regr))
+      regr <- read.table(text=gsub('; ','',
+                           tmp[(pos+1):length(tmp)]))[c(1,3,5,7)]
+      names(regr) <- c('label','intercept','slope','sse')
+      data <- merge(data,regr)
       data <- mutate(data,
                      predict = exp(intercept)*number^slope) ## 1000 hmm
     }
@@ -68,6 +69,7 @@ read.printfiles <- function(path='.',suppress=FALSE){
   printfiles <- llply(out.files,read.printfile)
   names(printfiles) <- gsub('/','',gsub(path.expand(path),'',
                                         out.files),fixed=TRUE)
+  class(printfiles) <- c('gadgetOut','list')
   return(printfiles)
 }
 ##' This functions reads the likelihood (input) file for gadget. The format of
@@ -736,7 +738,9 @@ read.gadget.data <- function(likelihood){
                 }
                 nrow(x[x[,ncol(x)-tmp]>0,])
               }))
-  return(list(dat=lik.dat,df=df))
+  gadDat <- list(dat=lik.dat,df=df)
+  class(gadDat) <- c('gadgetData','list')
+  return(gadDat)
 }
 
 ##' Read optinfo parameters from file
@@ -1361,10 +1365,11 @@ eval.gadget.formula <- function(gad.for,par){
           x <- gsub("*","'*'(",x,fixed=TRUE)
           x <- gsub("/","'/'(",x,fixed=TRUE)
           x <- gsub("+","'+'(",x,fixed=TRUE)
-          x <- gsub("-","'-'(",x,fixed=TRUE)
+          x <- gsub("- ","'-'(",x,fixed=TRUE)
           x <- gsub('exp','exp(',x,fixed = TRUE)
           x <- gsub('log','log(',x,fixed = TRUE)
           x <- gsub('sqrt','sqrt(',x,fixed = TRUE)
+          x <- gsub('[0-9]+.[0-9]+#|[0-9]+#','#',x)
           x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']          
           x <- gsub(',)',')',gsub('(,','(',paste(x,collapse=','),fixed=TRUE),
                     fixed=TRUE)
@@ -1471,6 +1476,16 @@ write.gadget.fleet <- function(fleet,file='fleet'){
                 tmp$multiplicative,tmp$suitability, tmp$amount),
         file=file)
   
+}
+
+get.gadget.suitability <- function(fleets,params,lengths){
+  ddply(fleets$prey,~fleet+stock,
+        function(x){
+          txt.split <- merge.formula(unlist(strsplit(x$params[1],' ')))
+          suit.par <- eval.gadget.formula(txt.split,params)$V1
+          suitability(suit.par,l = lengths, type = x$suitability,
+                      to.data.frame = TRUE)
+        })
 }
 
 

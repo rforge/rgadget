@@ -1041,8 +1041,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   dir.create(sprintf('%s/aggfiles',pre), showWarnings = FALSE)
   params <-
     read.gadget.parameters(params.file)
-  rec <- subset(params,grepl('rec',switch)&!(switch %in% c('recl','recsdev',
-                                                           'murec','sdrec')))
+  rec <- subset(params,grepl('rec[0-9]+',switch))
+
   ## need a more flexible definition of year
   tmp <- gsub('rec','',rec$switch)
   rec$year <- ifelse(str_length(tmp)==2,year(as.Date(tmp,'%y')),
@@ -1066,7 +1066,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   ## adapt model to include predictions
   sim.begin <- time$lastyear + 1
   rec <- subset(rec,year < sim.begin)
-
+  if(nrow(rec) == 0)
+    stop('No recruitment info found')
   
   time$lastyear <- sim.begin + years 
   write.gadget.time(time,file = sprintf('%s/time.pre',pre))
@@ -1170,12 +1171,20 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     tmp$year <- paste('rec',tmp$year,sep='')
     names(tmp)[1:2] <- c('switch','value')
     
+    
     params <- subset(params, !(switch %in% tmp$switch))
-    params.forward <- rbind.fill(params,tail(tmp,-1))
-    params.forward <- ldply(effort, function(x){
-      params.forward$rgadget.effort <- x
-      return(params.forward)
-    })
+    params.forward <- rbind.fill(params,
+                                 data.frame(switch = 'rgadget.effort',
+                                            value = effort,lower = 0.0001,
+                                            upper = 100, optimise = 0,
+                                            stringsAsFactors = FALSE),
+                                 tail(tmp,-1))
+    
+#    params.forward <- ldply(effort, function(x){
+#      params.forward$rgadget.effort <- x
+#      return(params.forward)
+#    })
+    
     write.gadget.parameters(params.forward,
                             file=sprintf('%s/params.forward', pre))
   } else {

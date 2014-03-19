@@ -449,9 +449,15 @@ suitability <- function(params,
 #                        sdelta,
                         l,
                         L=c(0),
-                        type = 'exponential')
+                        type = 'exponential',
+                        to.data.frame = FALSE)
 {
 
+  if(tolower(type) == 'andersenfleet'){
+    type <- 'andersen'
+    L <- params[6]
+  }
+  
   if(tolower(type) == 'constant'){
     S <- array(params[1],c(length(L),length(l)))
 
@@ -477,7 +483,7 @@ suitability <- function(params,
     l.tmp <- rep(l,each=length(L))
     L.tmp <- rep(L,length(l))
     if(L==0)
-      L.tmp <- max(l)
+      L.tmp <- median(l.tmp)
     
     S <- array(params[1] + params[3]*
                ifelse(log(L.tmp/l.tmp) < params[2],
@@ -494,9 +500,16 @@ suitability <- function(params,
   } else {
     stop(sprintf('Error in suitability -- %s not defined',type))
   }
-  
-  dimnames(S) <- list(sprintf('Pred_length_%s',L),
-                      sprintf('Prey_length_%s',l))
+  if(to.data.frame){
+    dimnames(S) <- list(L=L,l=l)
+    S <- as.data.frame.table(S,responseName = 'suit')
+    S$suit <- S$suit/max(S$suit)
+    S$L <- as.numeric(S$L)
+    S$l <- as.numeric(S$l)
+  } else {
+    dimnames(S) <- list(sprintf('Pred_length_%s',L),
+                        sprintf('Prey_length_%s',l))
+  }
   return(S)
 }
 
