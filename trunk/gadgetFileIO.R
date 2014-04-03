@@ -28,7 +28,8 @@ read.printfiles <- function(path='.',suppress=FALSE){
     skip <- max(grep(';',tmp[1:7]))
     header <- gsub('; ','',tmp[skip])
     header <- gsub(' ','.',unlist(strsplit(header,'-')))
-    data <- tryCatch(read.table(file,comment.char=';',header=FALSE),
+    data <- tryCatch(read.table(file,comment.char=';',header=FALSE,
+                                stringsAsFactors = FALSE),
                      error = function(e){
                        if(!suppress)
                          print(sprintf('file corrupted -- %s', file))
@@ -347,19 +348,15 @@ clear.spaces <- function(text){
 ##' @author Bjarki ??r Elvarsson
 read.gadget.parameters <- function(file='params.in'){
 
-  if(!file.exists(file)){
-    warning(sprintf('Error in read.gadget.parameters -- file named %s not found',
-                 file))
-    return(NULL)
-  }
-  if(substr(system(sprintf('wc -l %s', file),intern=TRUE),1,1) == 0){
-    warning(sprintf('Error in read.gadget.parameters -- file named %s is empty',
-                 file))
-    return(NULL)
-  }
-  params <- read.table(file,header=TRUE,
+  params <- tryCatch(read.table(file,header=TRUE,
                        comment.char=';',
-                       stringsAsFactors=FALSE)
+                       stringsAsFactors=FALSE),
+                     error = function(e){
+                       print(sprintf('Error in read.gadget.parameters -- %s cannot be read', file))
+                       return(NULL)
+                     })
+  if(is.null(params))
+    return(params)
   row.names(params) <- params$switch
   ## digg through the data written in the header
   header <- readLines(file)

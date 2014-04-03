@@ -173,10 +173,10 @@ callGadget <- function(l=NULL,
   invisible(run.history)
 }
 
-##' <description>
+##' Probably defunct
 ##'
 ##' <details>
-##' @title 
+##' @title Call paramin
 ##' @param i 
 ##' @param func 
 ##' @param opt 
@@ -283,7 +283,7 @@ callParamin <- function(i='params.in',
 ##' @param run.serial should the weighting run be run in parallel (used in
 ##' bootstrap). 
 ##' @param method linear model or loess smoother used to calculate SI weights outside the gadget model.
-##' @param cv.cap 
+##' @param cv.floor a value for an optional floor for survey indices CV, used to prevent overfitting in the final run.
 ##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
@@ -299,11 +299,23 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              run.base=FALSE,
                              run.serial = FALSE,
                              method = 'lm',
-                             cv.cap=NULL) {
+                             cv.floor=NULL) {
+  ## Ensure all files exist
+  if(!file.exists(main.file)) {
+    stop('Main file not found')
+  }
+
+  if(!file.exists(params.file)) {
+    stop('Parameter file not found')
+  }
+  
+  if(!file.exists(optinfofile)) {
+    stop('Optinfofile not found')
+  }
+  
   ## store the results in a special folder to prevent clutter
   dir.create(wgts,showWarnings=FALSE)
   
-
   ## read model
   main <- read.gadget.main(main.file)
   if(!is.null(main$printfiles)) {
@@ -396,11 +408,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ##' @return Sums of squares
   ##' @author Bjarki Thor Elvarsson
   run.iterative <- function(comp){
+    
     likelihood <- likelihood.base
     which.comp <- likelihood$weights$name %in% comp
     likelihood$weights$weight[which.comp] <-
       10000*likelihood$weights$weight[which.comp]
     comp <- paste(comp,collapse='.')
+    print(sprinf('Running %s',comp))
     write.gadget.likelihood(likelihood,
                             file=paste(wgts,
                               paste('likelihood',comp,sep='.'),sep='/'))
@@ -486,9 +500,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     
     ## final run
     write.files <- function(comp,weights){
-      if(!is.null(cv.cap)){
+      if(!is.null(cv.floor)){
         weights$sigmahat[weights$comp %in% restr.SI] <-
-          pmax(weights$sigmahat[weights$comp %in% restr.SI],cv.cap)
+          pmax(weights$sigmahat[weights$comp %in% restr.SI],cv.floor)
       }
       main <- main.base
       if(!is.null(printfile)){
@@ -713,7 +727,7 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
 ##'
 ##' <details>
 ##' @title Bootstrap control 
-##' @param bs.likfile Likelihood file from the DW
+##' @param bs.likfile Likelihood template file 
 ##' @param bs.samples number (or vector of numbers) indicating what bootstrap
 ##' samples should be used
 ##' @param main Main file for the gagdet model
@@ -740,8 +754,26 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                              qsub.script = 'bootstrap.sh',
                              run.final = FALSE,
                              PBS=TRUE,
-                             cv.cap=NULL
+                             cv.floor=NULL
                              ){
+  ## Ensure all files exist
+  if(!file.exists(main)) {
+    stop('Main file not found')
+  }
+
+  if(!file.exists(params.file)) {
+    stop('Parameter file not found')
+  }
+  
+  if(!file.exists(optinfofile)) {
+    stop('Optinfofile not found')
+  }
+
+  if(!file.exists(bs.likfile)) {
+    stop('likelihoodfile not found')
+  }
+
+  ## Do stuff
   
   dir.create(bs.wgts,showWarnings=FALSE)
   main <- read.gadget.main(main)
@@ -786,7 +818,7 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
                               resume.final = TRUE,
                               run.final = TRUE,
                               run.serial = TRUE,
-                              cv.cap = cv.cap)
+                              cv.floor = cv.floor)
       if(PBS)
         write(sprintf('# bootstrap sample %s',i),file=qsub.script,append=TRUE)
       if(i > 100 & PBS)
@@ -799,7 +831,21 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   return(NULL)
 }
 
-
+##' 
+##'
+##' Assumes sed is present in the command line
+##' @title Gadget Yield per Recruit 
+##' @param params.file Parameter file for the gagdet model
+##' @param main.file Main file for the gagdet model
+##' @param effort The range of fishing mortality 
+##' @param begin Start year of the simulation
+##' @param end End year of the simulation 
+##' @param fleets Data frame comtaining the fleet names and ratio in future catches
+##' @param ypr the folder containing the results from the yield per recruit
+##' @param check.previous check if the analysis have been done before
+##' @param save.results should the results be saved? 
+##' @return a list containing the yield per recruit by F, estimate of Fmax and F0.1
+##' @author Bjarki Thor Elvarsson
 gadget.ypr <- function(params.file = 'params.in',
                        main.file = 'main',
                        effort = seq(0, 1, by=0.01),
@@ -808,6 +854,16 @@ gadget.ypr <- function(params.file = 'params.in',
                        ypr='YPR',
                        check.previous = FALSE,
                        save.results = TRUE){
+
+  ## ensure that files exist
+  if(!file.exists(params.file)) {
+    stop('Parameter file not found')
+  }
+
+  if(!file.exists(main.file)) {
+    stop('Main file not found')
+  }
+
   ## model setup
   if(check.previous){
     if(file.exists(sprintf('%s/ypr.Rdata',ypr))){
@@ -816,7 +872,7 @@ gadget.ypr <- function(params.file = 'params.in',
     }
   }
 
-  
+  ## File I/O
   dir.create(ypr,showWarnings = FALSE, recursive = TRUE)
   main <- read.gadget.main(main.file)
   stocks <- read.gadget.stockfiles(main$stockfiles)
@@ -825,6 +881,7 @@ gadget.ypr <- function(params.file = 'params.in',
   time <- read.gadget.time(main$timefile)
   area <- read.gadget.area(main$areafile)
 
+  ## basic setup
   time$lastyear <-  end
   time$firstyear <- begin
   time$laststep <- length(time$notimesteps)
@@ -910,7 +967,8 @@ gadget.ypr <- function(params.file = 'params.in',
   write.gadget.main(main,file=sprintf('%s/main.ypr',ypr))
 
   ## model parameters
-  if(sum(names(params) %in% c('switch','value','lower','upper','optimise'))==5){
+  if(sum(names(params) %in% c('switch','value',
+                              'lower','upper','optimise'))==5){
     tmp <- as.data.frame(t(params$value))
     names(tmp) <- params$switch
     params <- tmp
@@ -931,12 +989,6 @@ gadget.ypr <- function(params.file = 'params.in',
   callGadget(s=1,i=sprintf('%s/params.ypr',ypr),main=sprintf('%s/main.ypr',ypr))
 
   ## read output
-#  effort.grid <- ddply(,
-#                       'trial',
-#                       function(x){
-#                         mutate(time.grid,
-#                                effort = x$effort)})
-
   
   out <- ddply(data.frame(stock = unique(fleet$prey$stock),tmp=1),
                'stock',
@@ -959,7 +1011,7 @@ gadget.ypr <- function(params.file = 'params.in',
                                     data.frame(trial=1:length(effort),
                                                effort=effort),
                                     all.x=TRUE)
-#                 stock.std$effort <- arrange(effort.grid,effort)$effort
+                 ## clean up
                  file.remove(sprintf('%s/out/%s.std',ypr,x$stock))
                  file.remove(sprintf('%s/out/%s.std0',ypr,x$stock))
                  return(stock.std)
@@ -1278,10 +1330,10 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
         lastspawnyear = sim.begin + years,
         spawnstocksandratio = data.frame(stock=x@stockname,ratio=1),
         proportionfunction = c(func='exponential',
-          -mat.par[1]/mat.par[2],mat.par[2]),
-        weightlossfunction = c(func='constant', 1),
+          mat.par[2],-mat.par[1]/mat.par[2]),
+        weightlossfunction = c(func='constant', 0),
         recruitment = c(func='hockeystick',
-          sprintf('%s/hockey.rec', pre), '#hockey.ssb'),
+          sprintf('%s/hockey.rec', pre), '(* 1000000 #hockey.ssb )'),
         stockparameters = data.frame(mean='22#recl',std.dev='3.8#recsdev',
           alpha = 0.00000495, beta = 3.01793))
       write(x,file=pre)
@@ -1291,7 +1343,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
       time.var <-
         data.frame(year = c(time$firstyear,sim.begin:(sim.begin+years)),
                    step = x@renewal.data$V2[1],
-                   value = c(0,sprintf('(/ %s  #hockey.ssb)',
+                   value = c(0,sprintf('(/ %s  (* 100 #hockey.ssb))',
                      sprintf(gsub('rec[0-9]+',
                                   'rec%s',
                                   x@renewal.data$V5[1]),

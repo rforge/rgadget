@@ -443,10 +443,6 @@ recruits <- function(n,mu,sigma,
 ##' @param L predator length group(s)
 ##' @return matrix of suitabilities, columns prey length, lines predator length
 suitability <- function(params,
-#                        salpha,
-#                        sbeta,
-#                        sgamma,
-#                        sdelta,
                         l,
                         L=c(0),
                         type = 'exponential',
@@ -487,8 +483,8 @@ suitability <- function(params,
     
     S <- array(params[1] + params[3]*
                ifelse(log(L.tmp/l.tmp) < params[2],
-                      exp(-(log(L.tmp/l.tmp)-params[2])/params[5]),
-                      exp(-(log(L.tmp/l.tmp)-params[2])/params[4])),
+                      exp(-(log(L.tmp/l.tmp)-params[2])^2/params[5]),
+                      exp(-(log(L.tmp/l.tmp)-params[2])^2/params[4])),
                c(length(L),length(l)))
     
   } else if(tolower(type) == 'gamma'){
