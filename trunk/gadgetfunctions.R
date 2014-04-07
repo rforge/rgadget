@@ -1186,13 +1186,14 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   main$fleetfiles <- c(main$fleetfiles,sprintf('%s/fleet', pre))
   write.gadget.fleet(fleet,file=sprintf('%s/fleet', pre)) 
 
+  if(!is.null(rec.window)){
+    tmp <- subset(rec,year < rec.window)
+  } else {
+    tmp <- rec
+  }
+  
   if(stochastic){
     ## fit an AR model to the fitted recruiment
-    if(!is.null(rec.window)){
-      tmp <- subset(rec,year < rec.window)
-    } else {
-      tmp <- rec
-    }
     fitAR <- lm(tmp$value[-1]~head(tmp$value,-1))
     coeffAR <- as.numeric(coefficients(fitAR))
     sdAR <- sd(resid(fitAR))
@@ -1201,7 +1202,7 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
     x <- array(pmax(rnorm(years*num.trials,coeffAR[1],sdAR),0),
                c(num.trials,years))
   } else {
-    x <- array(mean(tail(rec$value,3)),c(num.trials,years))
+    x <- array(mean(tail(tmp$value,3)),c(num.trials,years))
     coeffAR <- c(0,0,0)
   }
 
