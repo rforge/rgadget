@@ -414,7 +414,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     likelihood$weights$weight[which.comp] <-
       10000*likelihood$weights$weight[which.comp]
     comp <- paste(comp,collapse='.')
-    print(sprinf('Running %s',comp))
+    print(sprintf('Running %s',comp))
     write.gadget.likelihood(likelihood,
                             file=paste(wgts,
                               paste('likelihood',comp,sep='.'),sep='/'))

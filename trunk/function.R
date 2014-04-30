@@ -446,7 +446,8 @@ suitability <- function(params,
                         l,
                         L=c(0),
                         type = 'exponential',
-                        to.data.frame = FALSE)
+                        to.data.frame = FALSE,
+                        normalize = FALSE)
 {
 
   if(tolower(type) == 'andersenfleet'){
@@ -499,7 +500,8 @@ suitability <- function(params,
   if(to.data.frame){
     dimnames(S) <- list(L=L,l=l)
     S <- as.data.frame.table(S,responseName = 'suit')
-    S$suit <- S$suit/max(S$suit)
+    if(normalize)
+      S$suit <- S$suit/max(S$suit)
     S$L <- as.numeric(S$L)
     S$l <- as.numeric(S$l)
   } else {
