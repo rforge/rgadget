@@ -2,6 +2,7 @@ source('function.R')
 source('whaleStock.R')
 source('summaryFunc.R')
 source('gadgetoptions.R')
+library(ggplot2)
 library(plyr)
 library(reshape2)
 library(aod)
@@ -77,7 +78,7 @@ opt$tag.loss <- 1
 opt$recapture.lambda <- 2
 opt$gender.division <- c(Male=1/2,Female=1/2)
 
-## birth parameters obtained in the IST-trial 
+## birth parameters obtained in the IST-trial
 opt$density.z <- 2.38980
 opt$age.of.parturation <- 6
 opt$resiliance.a <- c(r1=0.17031,r2=0.42577,r4=0.68123)
@@ -137,8 +138,8 @@ dispersion.matrix <- function(opt){
   c3c2 <-
     min(0.99,0.05*0.5*(opt$init.abund['C3'] +
                       opt$init.abund['C2'])/opt$init.abund['C3'])
-  
-  
+
+
   opt$dispersion['C1',sprintf('C%s',1:3)] <- c(1-c1c2,c1c2,0)
   opt$dispersion['C2',sprintf('C%s',1:3)] <- c(c2c1,1-(c2c1+c2c3),c2c3)
   opt$dispersion['C3',sprintf('C%s',1:3)] <- c(0,c3c2,1-c3c2)
@@ -146,7 +147,8 @@ dispersion.matrix <- function(opt){
 }
 
 
-opt.h3$init.abund <- c(7595, 5260, 3362,  8183, 6613,  7841)
+#opt.h3$init.abund <- c(7595, 5260, 3362,  8183, 6613,  7841)
+opt.h3$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
 opt.h4$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
 names(opt.h3$init.abund) <- opt$stocks
 names(opt.h4$init.abund) <- opt$stocks
@@ -165,17 +167,17 @@ power.analysis <- function(rec){
 #  AIC.0 <- ddply(rec,'variable', tmp.0)
 
   tagLik <- function(y,theta){
-    
+
     sum(-(lgamma(y+theta)+theta*log(1/3) + y*log(2/3) - (lgamma(y+1) + lgamma(theta))))
   }
-  
+
   tagMin <- function(x,y){
     if(x[1] < 0 | x[2] < 0)
       1e6
     else
       tagLik(y,2:10*x[1]+x[2])
   }
-  
+
   tagMin0 <- function(x,y){
     if(x < 0)
       1e6
@@ -189,14 +191,14 @@ power.analysis <- function(rec){
     lrt <- 2*(tmp.0$value - tmp.year$value)
     return(1-pchisq(lrt,df=1))
   }
-  
+
   return(ddply(rec,'variable', tmp.func))
-  
+
 }
 if(FALSE){
   p.h3 <- power.analysis(rec.h3)
   p.h4 <- power.analysis(rec.h4)
-  
+
   print(sprintf('Hypothesis 4 rejected when true: %s',sum(p.h4<1)))
   print(sprintf('Hypothesis 3 rejected when true: %s',sum(p.h3>1)))
 }
@@ -211,21 +213,21 @@ run.tag.experiment <- function(num.tags=100,num.trials=100,lambda=2){
   ## run the simulation
   sim.h4 <- Rgadget(opt.h4)
   sim.h3 <- Rgadget(opt.h3)
-  
+
   ## tags..
   rec.h4 <- tagging.recaptures(sim.h4,lambda,num.trials)
   rec.h4$rec$year <- 2:10
   rec.h4$rec$Hypothesis <- 'Mixing'
-  
+
   rec.h3 <- tagging.recaptures(sim.h3,lambda,num.trials)
   rec.h3$rec$year <- 2:10
   rec.h3$rec$Hypothesis <- 'Dispersion'
-  
+
   ## test power of a regular tagging experiment
   recaptures <- rbind.fill(rec.h3$rec,rec.h4$rec)
   recstat <- ddply(recaptures,~Hypothesis + variable,
                    function(x){
-                     tmp <- drop1(glm(value~year,
+                     tmp <- drop1(glm(value~year + offset(-0.08*year),
                                       family=poisson,
                                       data=x))
                      data.frame(diffAIC = diff(tmp$AIC),
@@ -252,41 +254,88 @@ run.tag.experiment <- function(num.tags=100,num.trials=100,lambda=2){
 
 hypo.test <- ldply(100*(1:15),run.tag.experiment,.parallel=TRUE)
 
+recaptures <- ldply(100*(1:15),
+                    function(i){
+                      load(sprintf('tag%s.RData',i))
+                      recaptures
+                    })
+
+power.anal <-
+  ddply(hypo.test,~num.tags,
+        function(x){
+          h4 <- subset(x,Hypothesis == 'Mixing')
+          h3 <- subset(x,Hypothesis != 'Mixing')
+          devQ <- quantile(h4$diffDev,0.95)
+          devh3 <- sum(h3$diffDev>devQ)/100
+          recQ <- quantile(h4$rec,0.95)
+          rech3 <- sum(h3$rec>recQ)/100
+          rhoQ <- quantile(h4$rho,0.95)
+          rhoh3 <- sum(h3$rho>rhoQ)/100
+          data.frame(poisson=devh3,rec=rech3,rho=rhoh3)
+        })
 
 
+recapture.plot <-
+  ggplot(subset(recaptures, num.tags %in% (c(2*(0:7)+1)*100)),
+                aes(year,value,fill=Hypothesis,
+                        group=interaction(year,Hypothesis))) +
+  geom_boxplot() + facet_wrap(~num.tags,scale='free_y') +
+  theme_bw() + ylab('Number of recaptures') + xlab('Year') +
+  theme(legend.position = c(0.8,0.15)) +
+#        strip.background = element_blank()) + #,
+#        panel.margin = unit(-1,'lines'),
+#        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
+  scale_fill_manual(values = c('gray40','gray70'))
 
-hypo.test <-
-  ldply(1:15,function(i){
-  load(sprintf('tag%s.RData',i*100))
-  t4 <- ddply(rec.h4$rec,'variable',summarise,rec=sum(value))
-  t3 <- ddply(rec.h3$rec,'variable',summarise,rec=sum(value))
-  qqrho <- quantile(rec.h4$rho,0.949)
-  qqrec <- quantile(t4$rec,0.949)
-  qqbin <- quantile(p.h4$V1,0.05)
-  rho4 <- sum(rec.h4$rho>qqrho)
-  rho3 <- sum(rec.h3$rho>qqrho)
-  rec4 <- sum(t4$rec>qqrec)
-  rec3 <- sum(t3$rec>qqrec)
-  rbin4 <- sum(p.h4$V1<qqbin)
-  rbin3 <- sum(p.h3$V1<qqbin)
-  
-  return(c(rho4=rho4,rho3=rho3,rec4=rec4,rec3=rec3,rbin4=rbin4,rbin3=rbin3))
-})
+pdf(file='fig01-rec.pdf',width=10,height=7)
+print(recapture.plot)
+dev.off()
 
+poisson.plot <-
+  ggplot(hypo.test,aes(num.tags,diffDev,
+                       fill=Hypothesis,
+                       group=interaction(num.tags,Hypothesis))) +
+  stat_summary(fun.data=f, geom="boxplot", position = 'dodge')+
+  theme_bw() + ylab('Difference in deviance') + xlab('Number of tags') +
+  theme(legend.position = c(0.2,0.8)) +
+#        strip.background = element_blank()) + #,
+#        panel.margin = unit(-1,'lines'),
+#        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
+  scale_fill_manual(values = c('gray40','gray70'))
 
-res <-
-  ldply(1:15,function(i){
-  load(sprintf('tag%s.RData',i*100))
-  t4 <- ddply(rec.h4$rec,'variable',summarise,rec=sum(value))
-  t3 <- ddply(rec.h3$rec,'variable',summarise,rec=sum(value))
-  
-  return(cbind(num.tags=i*100,rho4=rec.h4$rho,rho3=rec.h3$rho,rec4=t4$rec,rec3=t3$rec,rbin4=p.h4$V1,rbin3=p.h3$V1))
-})
+pdf('fig02-poisson.pdf',width=10,height=7)
+print(poisson.plot)
+dev.off()
 
-recaptures <-
-  ldply(1:15,function(i){
-    load(sprintf('tag%s.RData',i*100))
-    return(cbind(num.tags=i*100,
-                 rbind.fill(cbind(Hypothesis = 'Mixing',rec.h4$rec),
-                            cbind(Hypothesis = 'Dispersion',rec.h3$rec))))
-})
+rec.plot <-
+  ggplot(hypo.test,aes(num.tags,rec,
+                       fill=Hypothesis,
+                       group=interaction(num.tags,Hypothesis))) +
+  stat_summary(fun.data=f, geom="boxplot", position = 'dodge')+
+  theme_bw() + ylab('Total recaptures') + xlab('Number of tags') +
+  theme(legend.position = c(0.2,0.8)) +
+#        strip.background = element_blank()) + #,
+#        panel.margin = unit(-1,'lines'),
+#        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
+  scale_fill_manual(values = c('gray40','gray70'))
+
+pdf('fig03-recaptures.pdf',width=10,height=7)
+print(rec.plot)
+dev.off()
+
+rho.plot <-
+  ggplot(hypo.test,aes(num.tags,rho,
+                       fill=Hypothesis,
+                       group=interaction(num.tags,Hypothesis))) +
+  stat_summary(fun.data=f, geom="boxplot", position = 'dodge')+
+  theme_bw() + ylab('Ratio of recaptures to relatives in catch') + xlab('Number of tags') +
+  theme(legend.position = c(0.2,0.8)) +
+#        strip.background = element_blank()) + #,
+#        panel.margin = unit(-1,'lines'),
+#        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
+  scale_fill_manual(values = c('gray40','gray70'))
+
+pdf('fig04-rho.pdf',width=10,height=7)
+print(rho.plot)
+dev.off()
+
