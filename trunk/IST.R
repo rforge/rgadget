@@ -148,8 +148,8 @@ dispersion.matrix <- function(opt){
 
 
 #opt.h3$init.abund <- c(7595, 5260, 3362,  8183, 6613,  7841)
-opt.h3$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
-opt.h4$init.abund <- c(7266,  3317,  5422,  7730,  7064,  7995)
+opt.h3$init.abund <- rep(14000,6)#c(7266,  3317,  5422,  7730,  7064,  7995)
+opt.h4$init.abund <- rep(14000,6)#c(7266,  3317,  5422,  7730,  7064,  7995)
 names(opt.h3$init.abund) <- opt$stocks
 names(opt.h4$init.abund) <- opt$stocks
 opt.h3 <- dispersion.matrix(opt.h3)
@@ -287,6 +287,18 @@ recapture.plot <-
 #        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
   scale_fill_manual(values = c('gray40','gray70'))
 
+f <- function(x) {
+  r <- quantile(x, probs = c(0.025, 0.25, 0.5, 0.75, 0.975))
+  names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+  r
+}
+
+o <- function(x) {
+  subset(x, x < quantile(x,probs=0.025) | quantile(x,probs=0.975) < x)
+}
+
+
+
 pdf(file='fig01-rec.pdf',width=10,height=7)
 print(recapture.plot)
 dev.off()
@@ -296,6 +308,7 @@ poisson.plot <-
                        fill=Hypothesis,
                        group=interaction(num.tags,Hypothesis))) +
   stat_summary(fun.data=f, geom="boxplot", position = 'dodge')+
+#  geom_boxplot() +
   theme_bw() + ylab('Difference in deviance') + xlab('Number of tags') +
   theme(legend.position = c(0.2,0.8)) +
 #        strip.background = element_blank()) + #,
