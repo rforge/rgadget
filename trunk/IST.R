@@ -147,9 +147,8 @@ dispersion.matrix <- function(opt){
 }
 
 
-#opt.h3$init.abund <- c(7595, 5260, 3362,  8183, 6613,  7841)
-opt.h3$init.abund <- rep(14000,6)#c(7266,  3317,  5422,  7730,  7064,  7995)
-opt.h4$init.abund <- rep(14000,6)#c(7266,  3317,  5422,  7730,  7064,  7995)
+opt.h3$init.abund <- rep(7000,6)#c(7595, 5260, 3362,  8183, 6613,  7841)
+opt.h4$init.abund <- rep(7000,6)#c(7266,  3317,  5422,  7730,  7064,  7995)
 names(opt.h3$init.abund) <- opt$stocks
 names(opt.h4$init.abund) <- opt$stocks
 opt.h3 <- dispersion.matrix(opt.h3)
@@ -259,6 +258,26 @@ recaptures <- ldply(100*(1:15),
                       load(sprintf('tag%s.RData',i))
                       recaptures
                     })
+
+sim.h4 <- Rgadget(opt.h4)
+sim.h3 <- Rgadget(opt.h3)
+
+Tnum <-
+  rbind.fill(mutate(subset(adply(sim.h4$Tagged,c(3,6),sum),
+                           area %in% c('EG','WI','EIF')),
+                    Year = as.numeric(time),
+                    Hypothesis = 'Mixing'),
+             mutate(subset(adply(sim.h3$Tagged,c(3,6),sum),
+                           area %in% c('EG','WI','EIF')),
+                    Year = as.numeric(time),
+                    Hypothesis = 'Dispersion'))
+
+tag.plot <-
+  ggplot(Tnum,aes(Year,V1/1000,lty=Hypothesis)) + geom_line() +
+  facet_wrap(~area, scale='free_y') + theme_bw() +
+  geom_point(data=data.frame(Year=0,V1=0,
+               Hypothesis=c('Mixing','Dispersion')),col='white') +
+  ylab('Proportion tags remaining')
 
 power.anal <-
   ddply(hypo.test,~num.tags,

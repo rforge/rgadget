@@ -100,6 +100,8 @@ callGadget <- function(l=NULL,
                        PBS.name='run',
                        qsub.output='output'
                        ){
+
+
   switches <- paste(ifelse(is.null(l),'','-l'),
                     ifelse(is.null(s),'','-s'),
                     ifelse(is.null(n),'','-n'),
@@ -1409,6 +1411,8 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
           tmp <- cbind(trial = rep(1:num.trials,each = tmp2),
                        effort = rep(effort,each = tmp2*num.trials),
                        tmp)
+        } else {
+          tmp$trial <- 1
         }
         tmp$length <- as.numeric(gsub('len','',tmp$length))
         if(!is.null(mat.par)){
@@ -1476,18 +1480,21 @@ gadget.bootforward <- function(years = 20,
                                check.previous = FALSE,
                                rec.window = NULL,
                                mat.par = NULL,
+                               stochastic = TRUE,
                                .parallel = TRUE){
   tmp <-
     llply(bs.samples,function(x){
         gadget.forward(years = years,
+                       num.trials = num.trials,
                        params.file = sprintf('%s/BS.%s/%s',
-                         bs.wgts,x,params.file),
+                       bs.wgts,x,params.file),
                        rec.window = rec.window,
                        main.file = sprintf('%s/BS.%s/%s',bs.wgts,x,main.file),
                        effort = effort, fleets = fleets,
                        pre = sprintf('%s/BS.%s/%s',bs.wgts,x,pre),
                        check.previous = check.previous,
                        mat.par = mat.par,
+                       stochastic=stochastic,
                        save.results = FALSE)
       
     },.parallel = .parallel)

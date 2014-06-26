@@ -1755,38 +1755,55 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
 gadget.bootfit <- function(main = 'main', dparam.file = 'bsres_v1.RData',
                            bsprint.file = 'bsprint.RData',
                            fleet.predict = data.frame(fleet='comm',ratio=1),
-                           mat.par=NULL, .parallel = TRUE){
+                           mat.par=NULL, .parallel = TRUE
+                           ){
+
+
   load(dparam.file)
   load(bsprint.file)
   main <- read.gadget.main(main)
+  lik <- read.gadget.likelihood(main$likelihoodfiles)
+  lik.dat <- read.gadget.data(lik)
+
   fleets <- read.gadget.fleet(main$fleetfiles)
   stocks <- read.gadget.stockfiles(main$stockfiles)
   dfinal <- subset(dparam,comp=='final')
+  dfinal$comp <- NULL
   boot.rec <-
-    ddply(melt(mutate(dfinal,comp = NULL),
-               id.vars='bs.data',variable.name = 'switch'),
+    ddply(melt(dfinal,id.vars='bs.data',variable.name = 'switch'),
           ~bs.data,function(x){
             rownames(x) <- x$switch
             get.gadget.recruitment(stocks,x)
           })
   boot.sel <-
-    ddply(melt(mutate(dfinal,comp = NULL),
-               id.vars='bs.data',variable.name = 'switch'),
+    ddply(melt(dfinal,id.vars='bs.data',variable.name = 'switch'),
           ~bs.data,function(x){
             rownames(x) <- x$switch
             get.gadget.suitability(fleets,x,getLengthGroups(stocks[[1]]))
           })
   boot.growth <- 
-    ddply(melt(mutate(dfinal,comp = NULL),
-               id.vars='bs.data',variable.name = 'switch'),
+    ddply(melt(dfinal,id.vars='bs.data',variable.name = 'switch'),
           ~bs.data,function(x){
             rownames(x) <- x$switch
             get.gadget.growth(stocks,x,age.based = TRUE)
           })
+
+#  boot.ldistfit <-
+#    rbindlist(llply(names(lik.dat$dat$catchdistribution),
+#                    function(x){
+#                      si <-
+#                        data.table(noageprint[[x]]) %.%
+#                        group_by(.id,year,step,area) %.%
+#                        mutate(proportion = number/sum(number)) %.%
+#                        group_by(year,step,age,length,add=FALSE) %.%
+#                        summarise(upper = quantile(proportion,0.975,na.rm=TRUE),
+#                                  lower = quantile(proportion,0.025,na.rm=TRUE))
+#                      si$fleet <- x
+#                      return(si)
+#                    }))
   
   harv.suit <- function(l, .id){
-    x <- subset(melt(mutate(dfinal,comp = NULL),
-                     id.vars='bs.data',variable.name = 'switch'),
+    x <- subset(melt(dfinal,id.vars='bs.data',variable.name = 'switch'),
                 bs.data == .id)
     rownames(x) <- x$switch
     ddply(merge(get.gadget.suitability(fleets,x,l),fleet.predict),~l,
