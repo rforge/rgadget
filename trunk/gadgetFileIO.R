@@ -2,6 +2,7 @@ library(plyr)
 library(reshape2)
 library(lubridate)
 library(stringr)
+library(data.table)
 
 ##' This function attempts to read in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
@@ -1049,10 +1050,10 @@ read.gadget.stockfiles <- function(stock.files){
           doesrenew =  as.numeric(stock[[renew.loc]][2]),
           renewal = list(
             minlength = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
-              NULL,
+              '',
               as.numeric(stock[[renew.loc + 1]][2])),
             maxlength = ifelse(as.numeric(stock[[renew.loc]][2]) == 0,
-              NULL,
+              '',
               as.numeric(stock[[renew.loc + 2]][2]))),
           renewal.data = tryCatch(read.gadget.table(stock[[renew.loc+3]][2]),
             error=function(x) data.frame(text='No renewal data')),
@@ -1515,11 +1516,15 @@ get.gadget.growth <- function(stocks,params,dt=0.25,age.based=FALSE){
 
 get.gadget.recruitment <- function(stocks,params){
   ldply(stocks, function(x){
-    na.omit(data.frame(stock = x@stockname,
-                       year=x@renewal.data$V1,
-                       recruitment =
-                       10000*unlist(eval.gadget.formula(x@renewal.data$V5,
-                                                        params))))
+    if(x@doesrenew == 1){
+      na.omit(data.frame(stock = x@stockname,
+                         year=x@renewal.data$V1,
+                         recruitment =
+                         10000*unlist(eval.gadget.formula(x@renewal.data$V5,
+                                                          params))))
+    } else {
+      data.frame()
+    }
   })
 }
 
@@ -1573,10 +1578,11 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
   lik.dat <- read.gadget.data(lik)
   
   ## model output, i.e printfiles
-  make.gadget.printfile(file = sprintf('%s/printfile.fit',wgts),
+  make.gadget.printfile(main = main.file,
+                        file = sprintf('%s/printfile.fit',wgts),
                         out = sprintf('%s/out.fit',wgts),
                         aggfiles = sprintf('%s/print.aggfiles',wgts))
-  main <- read.gadget.main()
+  main <- read.gadget.main(file = main.file)
   main$printfiles <- sprintf('%s/printfile.fit',wgts)
   write.gadget.main(main,file = sprintf('%s/main.print',wgts))
   callGadget(s=1,
@@ -1729,7 +1735,7 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
                                lower = max(ifelse(is.na(lower),
                                  agg.lower,lower)),
                                length2 = (lower+upper)/2),
-                          by = list(year, step, area, age, length, .id)]
+                          by = list(year, step, area, age, length)]
               stockdist <- stockdist[,c('agg.upper','agg.lower'):=NULL,]
               stockdist <- merge(stockdist,
                                  subset(lik$stockdistribution,

@@ -1,6 +1,6 @@
 library(reshape2)
 library(plyr)
-library(multicore)
+library(parallel)
 #library(doMC)
 #library(foreach)
 #registerDoMC()
@@ -454,7 +454,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     if(run.serial)
       res <- lapply(run.string,run.iterative)
     else
-      res <- mclapply(run.string,run.iterative)
+      res <- mclapply(run.string,run.iterative,
+                      mc.cores = detectCores(logical = TRUE))
   }
 
   ## Do we want to run the final optimisation (only used for debug purposes,

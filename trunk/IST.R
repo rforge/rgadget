@@ -3,6 +3,8 @@ source('whaleStock.R')
 source('summaryFunc.R')
 source('gadgetoptions.R')
 library(ggplot2)
+library(gridExtra)
+library(xtable)
 library(plyr)
 library(reshape2)
 library(aod)
@@ -204,7 +206,7 @@ if(FALSE){
 
 
 
-run.tag.experiment <- function(num.tags=100,num.trials=100,lambda=2){
+run.tag.experiment <- function(num.tags=100,num.trials=1000,lambda=2){
   opt.h4$num.tags <- num.tags
   names(opt.h4$num.tags) <- 'EG'
   opt.h3$num.tags <- num.tags
@@ -277,7 +279,12 @@ tag.plot <-
   facet_wrap(~area, scale='free_y') + theme_bw() +
   geom_point(data=data.frame(Year=0,V1=0,
                Hypothesis=c('Mixing','Dispersion')),col='white') +
-  ylab('Proportion tags remaining')
+  ylab('Proportion tags remaining') +
+  theme(legend.position = c(0.1,0.2))
+
+pdf(file='fig00-tagplot.pdf',width=10,height=4)
+print(tag.plot)
+dev.off()
 
 power.anal <-
   ddply(hypo.test,~num.tags,
@@ -285,11 +292,11 @@ power.anal <-
           h4 <- subset(x,Hypothesis == 'Mixing')
           h3 <- subset(x,Hypothesis != 'Mixing')
           devQ <- quantile(h4$diffDev,0.95)
-          devh3 <- sum(h3$diffDev>devQ)/100
+          devh3 <- sum(h3$diffDev>devQ)/1000
           recQ <- quantile(h4$rec,0.95)
-          rech3 <- sum(h3$rec>recQ)/100
+          rech3 <- sum(h3$rec>recQ)/1000
           rhoQ <- quantile(h4$rho,0.95)
-          rhoh3 <- sum(h3$rho>rhoQ)/100
+          rhoh3 <- sum(h3$rho>rhoQ)/1000
           data.frame(poisson=devh3,rec=rech3,rho=rhoh3)
         })
 
@@ -333,10 +340,20 @@ poisson.plot <-
 #        strip.background = element_blank()) + #,
 #        panel.margin = unit(-1,'lines'),
 #        strip.text.x = element_text(vjust=-2,hjust=0.8)) +
-  scale_fill_manual(values = c('gray40','gray70'))
+  scale_fill_manual(values = c('gray40','gray70')) 
 
-pdf('fig02-poisson.pdf',width=10,height=7)
-print(poisson.plot)
+trendsig.plot <-
+  ggplot(ddply(hypo.test,~Hypothesis + num.tags,
+               summarise, app=mean(diffDev>1.96)),
+         aes(num.tags,app,col=Hypothesis,group=Hypothesis)) + 
+  geom_line()+
+  scale_colour_manual(values = c('gray40','gray70')) +
+  theme_bw() + ylab('Proportion significant') + xlab('Number of tags') +
+  theme(legend.position = c(0.2,0.8)) + ylim(c(0,1))
+
+
+pdf('fig02-poisson.pdf',width=10,height=14)
+grid.arrange(poisson.plot,trendsig.plot,ncol=1)
 dev.off()
 
 rec.plot <-
@@ -371,3 +388,11 @@ pdf('fig04-rho.pdf',width=10,height=7)
 print(rho.plot)
 dev.off()
 
+
+relatives <-
+  subset(melt(hypo.test, id.vars=c('Hypothesis', 'Trial','num.tags')),
+         grepl('Rel',variable) & !is.na(value) & value > 0)
+
+ddply(ddply(relatives,~Hypothesis + num.tags+Trial,summarise,value=sum(value)),
+      ~Hypothesis,summarise,m=median(value),q.upper=quantile(value,0.975),
+      q.lower=quantile(value,0.025))
