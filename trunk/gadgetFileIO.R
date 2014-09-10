@@ -1553,7 +1553,9 @@ read.gadget.grouping <- function(lik = read.gadget.likelihood(),
           function(x){
             text <- gsub('params.','',
                         grep('params',list.files(wgts),value = TRUE))
-            pos <- grep(x,text,fixed=TRUE)            
+            x1 <- gsub('.','\\.',x,fixed=TRUE)
+            x1 <- paste('(',x1,'[[:punct:]]','|',x1,'$)',sep='')  
+            pos <- grep(x1,text)            
             data.frame(name = x,
                        pos = pos,
                        ord = regexpr(x,text[pos])[1],
@@ -1593,7 +1595,11 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
   stocks <- read.gadget.stockfiles(main$stockfiles)
   fleets <- read.gadget.fleet(main$fleetfiles)
   catches <- get.gadget.catches(fleets)
-  gss.suit <- get.gadget.suitability(fleets,params,getLengthGroups(stocks[[1]]))
+  gss.suit <- ldply(stocks,
+                    function(x){
+                      get.gadget.suitability(fleets,params,
+                                             getLengthGroups(x))
+                    })
   stock.growth <- get.gadget.growth(stocks,params,age.based=TRUE)
   stock.recruitment <- get.gadget.recruitment(stocks,params)
 
