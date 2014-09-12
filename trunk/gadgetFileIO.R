@@ -1056,7 +1056,10 @@ read.gadget.stockfiles <- function(stock.files){
               '',
               as.numeric(stock[[renew.loc + 2]][2]))),
           renewal.data = tryCatch(read.gadget.table(stock[[renew.loc+3]][2]),
-            error=function(x) data.frame(text='No renewal data')),
+            error=function(x){
+              tryCatch(read.gadget.table(stock[[renew.loc+4]][2]),
+                       error=function(x) data.frame(text='No renewal data'))
+            }),
           doesspawn = as.numeric(stock[[spawn.loc]][2]),
           doesstray = ifelse(length(stray.loc)==0,
             0,as.numeric(stock[[stray.loc]][2]))
@@ -1523,22 +1526,23 @@ get.gadget.recruitment <- function(stocks,params){
                          10000*unlist(eval.gadget.formula(x@renewal.data$V5,
                                                           params))))
     } else {
-      data.frame()
+      data.frame(stock = x@stockname,year=NA,recruitment=NA)
     }
   })
 }
 
 
-get.gadget.catches <- function(fleets){
+get.gadget.catches <- function(fleets,params){
   tmp <- ddply(fleets$fleet,~fleet,
                function(x){
-                 subset(read.table(x$amount,comment.char=';'),
+                 subset(read.gadget.table(x$amount),
                         V4 == x$fleet)
                })
   tmp$fleet <- NULL
   names(tmp) <- c('year','step','area','fleet','catch')
   tmp <- merge(merge(fleets$prey[c('fleet','stock')],tmp),
                fleets$fleet[c('fleet','type')])
+  tmp$catch <- unlist(eval.gadget.formula(tmp$catch,params))
   return(tmp)
 }
 
@@ -1594,7 +1598,7 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
 
   stocks <- read.gadget.stockfiles(main$stockfiles)
   fleets <- read.gadget.fleet(main$fleetfiles)
-  catches <- get.gadget.catches(fleets)
+  catches <- get.gadget.catches(fleets,params)
   gss.suit <- ldply(stocks,
                     function(x){
                       get.gadget.suitability(fleets,params,
