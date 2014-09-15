@@ -11,6 +11,7 @@ library(data.table)
 ##' is the line describing the column names and is the last comment line.
 ##' @title Read gadget printfiles
 ##' @param path a character string with the name of the folder containing the printfiles
+##' @param suppress logical should warnings of missing files be suppressed
 ##' @return a list containing the data that has been read in named after the files found in path.
 read.printfiles <- function(path='.',suppress=FALSE){
 ##' worker function
@@ -164,8 +165,8 @@ read.gadget.likelihood <- function(files='likelihood'){
 ##' @title Write likelihood
 ##' @param lik object of class gadget.likelihood
 ##' @param file name of the likelihood file
-##' @param data.folder 
-##' @param bs.sample 
+##' @param data.folder location of data folder (if changed)
+##' @param bs.sample (for bootstrap), appends the appropriate replicate number to data file
 ##' @return character string corresponding to the likelihood file (if desired)
 ##' @author Bjarki ??r Elvarsson
 write.gadget.likelihood <- function(lik,file='likelihood',
