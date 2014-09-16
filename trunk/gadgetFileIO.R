@@ -4,7 +4,7 @@ library(lubridate)
 library(stringr)
 library(data.table)
 
-##' This function attempts to read in the gadget output files defined in
+##' This function reads in the gadget output files defined in
 ##' printfiles. This is a quick and dirty implementation that has been 
 ##' designed to read a few nice examples, so it may work for some instances
 ##' and it may not. It assumes that the last line containing a comment ';'
@@ -209,13 +209,11 @@ write.gadget.likelihood <- function(lik,file='likelihood',
   invisible(lik.text)
 }
 
-##' <description>
-##'
-##' <details>
-##' @title 
-##' @param lik1 
-##' @param lik2 
-##' @return 
+##' This function merges to likelihood objects in one
+##' @title Merge gadget likelihood
+##' @param lik1 likelihood object
+##' @param lik2 likelihood object
+##' @return merged gadget likelihood object
 ##' @author Bjarki Thor Elvarsson
 merge.gadget.likelihood <- function(lik1,lik2){
   tmp <- within(list(),
@@ -226,14 +224,13 @@ merge.gadget.likelihood <- function(lik1,lik2){
   class(tmp) <- c('gadget.likelihood',class(tmp))
   return(tmp)
 }
-##' <description>
-##'
-##' <details>
-##' @title 
-##' @param likelihood 
-##' @param comp
-##' @param inverse
-##' @return 
+
+##' This function retrives selected parts of the likelihood object
+##' @title Get Gagdget likelihood component(s)  
+##' @param likelihood likelihood object
+##' @param comp selected likelihood components
+##' @param inverse (logical) should inverse selection be applied
+##' @return likelihood object
 ##' @author Bjarki Thor Elvarsson
 get.gadget.likelihood <- function(likelihood,comp,inverse=FALSE){
   if(inverse)
@@ -258,6 +255,12 @@ get.gadget.likelihood <- function(likelihood,comp,inverse=FALSE){
 }
 
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 new.gadget.main <- function(){
   main <-
     list(timefile = '',
@@ -278,6 +281,9 @@ new.gadget.main <- function(){
 ##' @return object of class gadget.main
 ##' @author Bjarki ??r Elvarsson
 read.gadget.main <- function(file='main'){
+  if(!file.exists(file)) {
+    stop('Main file not found')
+  }
   main <- sub(' +$','',readLines(file))
   if(length(main) == 0)
     stop(sprintf('Error in read.gadget.main, file %s is empty',file))
@@ -291,6 +297,8 @@ read.gadget.main <- function(file='main'){
   class(main) <- c('gadget.main',class(main))
   return(main)
 }
+
+
 ##' Write gadget.main object to file
 ##' @title Write main
 ##' @param main gadget.main object
@@ -343,11 +351,13 @@ clear.spaces <- function(text){
                          }),' '),
          function(x) x)
 }
+
+
 ##' Read gadget parameter file
 ##' @title Read param
 ##' @param file parameter file
 ##' @return dataframe
-##' @author Bjarki ??r Elvarsson
+##' @author Bjarki  Thor Elvarsson
 read.gadget.parameters <- function(file='params.in'){
 
   params <- tryCatch(read.table(file,header=TRUE,
@@ -380,8 +390,6 @@ read.gadget.parameters <- function(file='params.in'){
   
   bfgs.func.str <- '; BFGS algorithm ran for '
   bfgs.pos <- grep(bfgs.func.str,header)
-  
-
   
   ## final likelihood values from each component
   lik.func <- function(i){
@@ -422,6 +430,7 @@ read.gadget.parameters <- function(file='params.in'){
   attr(params,'optim.info') <- tmp
   return(params)
 }
+
 ##' Write gadget input parameters
 ##' @title Write params
 ##' @param params params dataframe
@@ -447,6 +456,7 @@ write.gadget.parameters <- function(params,file='params.out',columns=TRUE){
               append=TRUE, sep="\t")
 
 }
+
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -589,7 +599,17 @@ write.gadget.printfile <- function(print,file='prinfile',output.dir='out'){
   invisible(print.text)
 }
 
-
+##' Produce diagnostics 
+##'
+##' .. content for \details{} ..
+##' @title Gadget results
+##' @param grouping --defunct--
+##' @param final --defunct--
+##' @param wgts location of the folder whith results from the
+##' iterative refweighting
+##' @param normalize (logical) should the resulting table be normalized
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.results <- function(grouping=list(),
                                 final=list(final='final'),
                                 wgts='WGTS',
@@ -781,6 +801,7 @@ read.gadget.optinfo <- function(file='optinfofile'){
   class(optinfo) <- c('gadget.optinfo',class(optinfo))
   return(optinfo)
 }
+
 ##' Write optinfo to file
 ##' @title Write gadget optinfo
 ##' @param optinfo optinfo object
@@ -885,6 +906,7 @@ strip.comments <- function(file='main'){
 #  attr(main,'comments') <- comments
   return(main)
 }
+
 
 ##' <description>
 ##'
@@ -1277,6 +1299,16 @@ read.gadget.wgts <- function(params.file = 'params.in',
   return(dparam)
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param wgts 
+##' @param comp 
+##' @param out.pre 
+##' @param parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.wgtsprint <- function(wgts = 'WGTS',
                                   comp = 'final',
                                   out.pre = 'out.',
@@ -1290,6 +1322,16 @@ read.gadget.wgtsprint <- function(wgts = 'WGTS',
   return(tmp)
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param bs.wgts 
+##' @param bs.samples 
+##' @param printfile 
+##' @param final 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.bootprint <- function(bs.wgts='BS.WGTS',
                                   bs.samples=1:1000,
                                   printfile='printfile',
@@ -1449,6 +1491,7 @@ read.gadget.fleet <- function(fleet.file='fleet'){
                 })
   return(list(fleet=fleet.dat,prey=prey))
 }
+
 ##' <description>
 ##'
 ##' <details>
@@ -1490,6 +1533,16 @@ write.gadget.fleet <- function(fleet,file='fleet'){
   
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param fleets 
+##' @param params 
+##' @param lengths 
+##' @param normalize 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 get.gadget.suitability <- function(fleets,params,lengths,normalize=FALSE){
   ddply(fleets$prey,~fleet+stock,
         function(x){
@@ -1500,6 +1553,16 @@ get.gadget.suitability <- function(fleets,params,lengths,normalize=FALSE){
         })
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param stocks 
+##' @param params 
+##' @param dt 
+##' @param age.based 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 get.gadget.growth <- function(stocks,params,dt=0.25,age.based=FALSE){
   ldply(stocks,function(x){
     txt.split <- merge.formula(unlist(strsplit(x@growth@growthparameters,' ')))
@@ -1518,6 +1581,14 @@ get.gadget.growth <- function(stocks,params,dt=0.25,age.based=FALSE){
   })
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param stocks 
+##' @param params 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 get.gadget.recruitment <- function(stocks,params){
   ldply(stocks, function(x){
     if(x@doesrenew == 1){
@@ -1532,7 +1603,14 @@ get.gadget.recruitment <- function(stocks,params){
   })
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param fleets 
+##' @param params 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 get.gadget.catches <- function(fleets,params){
   tmp <- ddply(fleets$fleet,~fleet,
                function(x){
@@ -1547,6 +1625,14 @@ get.gadget.catches <- function(fleets,params){
   return(tmp)
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param lik 
+##' @param wgts 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 read.gadget.grouping <- function(lik = read.gadget.likelihood(),
                                  wgts = 'WGTS'){
   lik.tmp <- subset(lik$weights,
@@ -1573,7 +1659,16 @@ read.gadget.grouping <- function(lik = read.gadget.likelihood(),
   return(grouping)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param wgts 
+##' @param main.file 
+##' @param fleet.predict 
+##' @param mat.par 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
                        fleet.predict = data.frame(fleet='comm',ratio=1),
                        mat.par=NULL){
@@ -1652,23 +1747,20 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
               ldist$name <- x
               ldist$age <- as.character(ldist$age)
               ldist$area <- as.character(ldist$area)
-              ldist <- data.table(ldist)
               ldist <-
-                ldist[,c('total.catch','total.pred', 'observed', 'predicted') :=
-                      list(total.catch = sum(number.x,na.rm=TRUE),
-                           total.pred = sum(number.y,na.rm=TRUE),
-                           observed = number.x/sum(number.x,na.rm=TRUE),
-                           predicted = number.y/sum(number.y,na.rm=TRUE)
-                           ),
-                by=list(year, step,  area)]
-            ldist <- ldist[,c('upper','lower','avg.length','residuals') :=
-                           list(upper = as.integer(max(ifelse(is.na(upper),0.0,
-                                  upper))),
-                                lower = as.integer(max(ifelse(is.na(lower),0.0,
-                                  lower))),
-                                avg.length = as.numeric((lower+upper)/2),
-                                residuals = as.numeric(observed - predicted)),
-                           by = list(length,age)]              
+                data.table(ldist) %>%
+                  group_by(year, step,  area, add=FALSE) %>%
+                  mutate(total.catch = sum(number.x,na.rm=TRUE),
+                         total.pred = sum(number.y,na.rm=TRUE),
+                         observed = number.x/sum(number.x,na.rm=TRUE),
+                         predicted = number.y/sum(number.y,na.rm=TRUE)) %>%
+                  group_by(length,age,add=FALSE) %>%
+                  mutate(upper = (max(ifelse(is.na(upper),0.0,
+                                             upper))),
+                         lower = (max(ifelse(is.na(lower),0.0,
+                                             lower))),
+                         avg.length = as.numeric((lower+upper)/2),
+                         residuals = as.numeric(observed - predicted))
               ldist <- merge(ldist,
                              subset(lik$catchdistribution,
                                     select=c(name,fleetnames,stocknames)),
@@ -1715,7 +1807,13 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
     res.by.year <- NULL
   }
 
-  
+#  if('catchinkilos' %in% names(lik.dat$dat)){
+#    catchdist <-
+#      ldply(names(lik.dat$dat$catchinkilos),
+#            function(x){
+#              
+#            }
+#  }
   
   if('stockdistribution' %in% names(lik.dat$dat)){
     stockdist <-
@@ -1769,6 +1867,18 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
   return(out)
 }
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param main 
+##' @param dparam.file 
+##' @param bsprint.file 
+##' @param fleet.predict 
+##' @param mat.par 
+##' @param .parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 gadget.bootfit <- function(main = 'main', dparam.file = 'bsres_v1.RData',
                            bsprint.file = 'bsprint.RData',
                            fleet.predict = data.frame(fleet='comm',ratio=1),

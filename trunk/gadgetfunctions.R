@@ -210,59 +210,63 @@ callParamin <- function(i='params.in',
 }
 
 
-##' An implementation of the iterative reweigthing of likelihood components
-##' in gadget. It analyzes a given gadget model and, after a series of
-##' optimisations where each likelihood component is heavily weigthed,
-##' suggests a weigthing for the components based on the respective variance.
-##' If one (or more) components, other than understocking and
-##' penalty, are 0 then the gadget optimisation with the final weights will
-##' not be completed.
+##' An implementation of the iterative reweigthing of likelihood
+##' components in gadget. It analyzes a given gadget model and, after
+##' a series of optimisations where each likelihood component is
+##' heavily weigthed, suggests a weigthing for the components based on
+##' the respective variance.  If one (or more) components, other than
+##' understocking and penalty, are 0 then the gadget optimisation with
+##' the final weights will not be completed.
 ##' 
-##' In Taylor et. al an objective reweighting scheme for likelihood components 
-##' is described for cod in Icelandic waters. The authors nota that the issue
-##' of component weighting has been discussed for some time, as the data
-##' sources have different natural scales (e.g g vs. kg) that should not
-##' affect the outcome. A simple heuristic, where the weights are 
-##' the inverse of the initial sums of squares for the respective component
-##' resulting in an initials score equal to the number of components, is
-##' therfor often used. This has
-##' the intutitive advantage of all components being normalised. There is
-##' however a drawback to this since the component scores, given the initial
-##' parametrisation, are most likely not equally far from their respective
-##' optima resulting in sub-optimal weighting.
-##' The iterative reweighting heuristic tackles this problem by optimising
-##' each component separately in order to determine the lowest possible value
-##' for each component. This is then used to determine the final weights.
-##' The resoning for this approach is as follows:
-##' Conceptually the likelihood components can be thought of as residual sums
-##' of squares, and as such their variance can be esimated by dividing the
-##' SS by the degrees of freedom. The optimal weighting strategy is the inverse
-##' of the variance.
-##' Here the iteration starts with assigning the inverse SS as the initial
-##' weight, that is the initial score of each component when multiplied with
-##' the weight is 1. Then an optimisation run for each component with the intial
-##' score for that component set to 10000. After the optimisation run
-##' the inverse of the resulting SS is multiplied by the effective number of
-##' datapoints and used as the final weight for that particular component.
-##' The effective number of datapoints is used as a proxy for the degrees of
-##' freedom is determined from the number of non-zero datapoints. This is viewed
-##' as satisfactory proxy when the dataset is large, but for smaller datasets
-##' this could be a gross overestimate. In particular, if the surveyindices
-##' are weigthed on their own while the yearly recruitment is esimated they
-##' could be overfitted. If there are two surveys within the year Taylor et. al
-##' suggest that the corresponding indices from each survey are weigthed
-##' simultaneously in order to make sure that there are at least two measurement for each
-##' yearly recruit, this is done through component grouping which is implemented. Another approach, which is also implemented,
-##' for say a single survey fleet the weight for each index component is
-##' estimated from a model of the form
-##' \deqn{\log(I_{lts}) = \mu + Y_t + \lambda_l + \Sigma_s + \epsilon_{lts}}{%
-##' log(I_lts) = mu + Y_t + lambda_l + Sigma_s + e_lts}
-##' where the residual term, \eqn{\epsilon_{lts}}{e_lts}, is independent normal
-##' with variance \eqn{\sigma_{ls}^2}{sigma_ls^2}. The inverse of the estimated
-##' variance from the above model as the weights between the surveyindices.
-##' After these weights have been determined all surveyindices are weighted
-##' simultaneously. 
-##' @title Iterative reweighting
+##' In Taylor et. al an objective reweighting scheme for likelihood
+##' components is described for cod in Icelandic waters. The authors
+##' nota that the issue of component weighting has been discussed for
+##' some time, as the data sources have different natural scales (e.g
+##' g vs. kg) that should not affect the outcome. A simple heuristic,
+##' where the weights are the inverse of the initial sums of squares
+##' for the respective component resulting in an initials score equal
+##' to the number of components, is therfor often used. This has the
+##' intutitive advantage of all components being normalised. There is
+##' however a drawback to this since the component scores, given the
+##' initial parametrisation, are most likely not equally far from
+##' their respective optima resulting in sub-optimal weighting.  The
+##' iterative reweighting heuristic tackles this problem by optimising
+##' each component separately in order to determine the lowest
+##' possible value for each component. This is then used to determine
+##' the final weights.  The resoning for this approach is as follows:
+##' Conceptually the likelihood components can be thought of as
+##' residual sums of squares, and as such their variance can be
+##' esimated by dividing the SS by the degrees of freedom. The optimal
+##' weighting strategy is the inverse of the variance.  Here the
+##' iteration starts with assigning the inverse SS as the initial
+##' weight, that is the initial score of each component when
+##' multiplied with the weight is 1. Then an optimisation run for each
+##' component with the intial score for that component set to
+##' 10000. After the optimisation run the inverse of the resulting SS
+##' is multiplied by the effective number of datapoints and used as
+##' the final weight for that particular component.  The effective
+##' number of datapoints is used as a proxy for the degrees of freedom
+##' is determined from the number of non-zero datapoints. This is
+##' viewed as satisfactory proxy when the dataset is large, but for
+##' smaller datasets this could be a gross overestimate. In
+##' particular, if the surveyindices are weigthed on their own while
+##' the yearly recruitment is esimated they could be overfitted. If
+##' there are two surveys within the year Taylor et. al suggest that
+##' the corresponding indices from each survey are weigthed
+##' simultaneously in order to make sure that there are at least two
+##' measurement for each yearly recruit, this is done through
+##' component grouping which is implemented. Another approach, which
+##' is also implemented, for say a single survey fleet the weight for
+##' each index component is estimated from a model of the form
+##' \deqn{\log(I_{lts}) = \mu + Y_t + \lambda_l + \Sigma_s +
+##' \epsilon_{lts}}{% log(I_lts) = mu + Y_t + lambda_l + Sigma_s +
+##' e_lts} where the residual term, \eqn{\epsilon_{lts}}{e_lts}, is
+##' independent normal with variance
+##' \eqn{\sigma_{ls}^2}{sigma_ls^2}. The inverse of the estimated
+##' variance from the above model as the weights between the
+##' surveyindices.  After these weights have been determined all
+##' surveyindices are weighted simultaneously.
+##' @title Iterative reweighting for Gadget models
 ##' @param main.file a string containing the location of the main file
 ##' @param gadget.exe a string containing the location of the gadget
 ##' executable
@@ -284,10 +288,18 @@ callParamin <- function(i='params.in',
 ##' @param run.base should the base (inverse initial SS) parameters be estimated
 ##' @param run.serial should the weighting run be run in parallel (used in
 ##' bootstrap). 
-##' @param method linear model or loess smoother used to calculate SI weights outside the gadget model.
-##' @param cv.floor a value for an optional floor for survey indices CV, used to prevent overfitting in the final run.
-##' @return a matrix containing the weights of the likelihood components at each iteration (defaults to FALSE).
+##' @param method linear model or loess smoother used to calculate SI
+##' weights outside the gadget model.
+##' @param cv.floor a value for an optional floor for survey indices
+##' CV, used to prevent overfitting in the final run.
+##' @param comp string vector of names of likelihood components to be
+##' used in the model (if NULL use all)
+##' @param inverse should inverse selection be used for likelihood
+##' components
+##' @return a matrix containing the weights of the likelihood
+##' components at each iteration (defaults to FALSE).
 ##' @author Bjarki Þór Elvarsson
+##' @export
 gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              params.file='params.in',
                              rew.sI=FALSE,
@@ -301,7 +313,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                              run.base=FALSE,
                              run.serial = FALSE,
                              method = 'lm',
-                             cv.floor=NULL) {
+                             cv.floor=NULL,
+                             comp=NULL,
+                             inverse=FALSE) {
   ## Ensure all files exist
   if(!file.exists(main.file)) {
     stop('Main file not found')
@@ -328,6 +342,11 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
     printfile <- NULL
   }
   likelihood <- read.gadget.likelihood(main$likelihoodfiles)
+  if(!is.null(comp)){
+    likelihood <- get.gadget.likelihood(likelihood,
+                                        comp=comp,
+                                        inverse = inverse)
+  }
   
   ## initial run (to determine the initial run)
   main.init <- main
@@ -447,6 +466,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                gadget.exe=gadget.exe,
                PBS=PBS,
                PBS.name=paste(wgts,comp,sep='/'))
+    print(sprintf('Comp %s completed',comp))
   }
   ## 
   if(!resume.final){
@@ -464,11 +484,12 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   if(run.final){
     res <- ldply(run.string,
                  function(x){
-                   tmp <- read.gadget.lik.out(paste(wgts,
-                                                    paste('lik',
-                                                          paste(x,collapse='.'),
-                                                          sep='.'),
-                                                    sep='/'))$data
+                   tmp <-
+                     read.gadget.lik.out(paste(wgts,
+                                               paste('lik',
+                                                     paste(x,collapse='.'),
+                                                     sep='.'),
+                                               sep='/'))$data
                    tmp[likelihood$weights$name[restr]]
                  })
     row.names(res) <- res$.id
@@ -476,6 +497,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                                   
     
     run.final <- function(comp){
+      print(sprintf('Running %s',comp))
       callGadget(l=1,
                  main=sprintf('%s/main.%s',wgts,comp),
                  i=params.file,
@@ -490,6 +512,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
                  i=sprintf('%s/params.%s',wgts,comp),
                  o=sprintf('%s/lik.%s',wgts,comp),
                  gadget.exe=gadget.exe)
+      print(sprintf('Comp %s completed',comp))
     }
 
     ## read in the results from previous runs
@@ -507,6 +530,13 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
         weights$sigmahat[weights$comp %in% restr.SI] <-
           pmax(weights$sigmahat[weights$comp %in% restr.SI],cv.floor)
       }
+      
+      if(sum(weights$sigmahat == 0) >0){
+        warning(sprintf('Perfect fit for component %s, weight 10*df used',
+                        weights$comp[weights$sigmahat == 0]))
+        weigths$sigmahat[weights$sigmahat == 0] <- 0.1
+      }
+
       main <- main.base
       if(!is.null(printfile)){
         write.gadget.printfile(printfile,
@@ -520,6 +550,7 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
       
       likelihood <- likelihood.base
       likelihood$weights[weights$comp,'weight'] <- 1/weights$sigmahat
+      
       write.gadget.likelihood(likelihood,
                               file=sprintf('%s/likelihood.%s',wgts,comp))
     }
@@ -834,7 +865,7 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
   return(NULL)
 }
 
-##' 
+##' Calculate yield per recruit of a stock in a Gadget model
 ##'
 ##' Assumes sed is present in the command line
 ##' @title Gadget Yield per Recruit 
@@ -843,11 +874,14 @@ gadget.bootstrap <- function(bs.likfile = 'likelihood.bs',
 ##' @param effort The range of fishing mortality 
 ##' @param begin Start year of the simulation
 ##' @param end End year of the simulation 
-##' @param fleets Data frame comtaining the fleet names and ratio in future catches
-##' @param ypr the folder containing the results from the yield per recruit
+##' @param fleets Data frame comtaining the fleet names and ratio in
+##' future catches
+##' @param ypr the folder containing the results from the yield per
+##' recruit
 ##' @param check.previous check if the analysis have been done before
-##' @param save.results should the results be saved? 
-##' @return a list containing the yield per recruit by F, estimate of Fmax and F0.1
+##' @param save.results should the results be saved?
+##' @return a list containing the yield per recruit by F, estimate of
+##' Fmax and F0.1
 ##' @author Bjarki Thor Elvarsson
 gadget.ypr <- function(params.file = 'params.in',
                        main.file = 'main',
@@ -947,23 +981,26 @@ gadget.ypr <- function(params.file = 'params.in',
   ## remove recruitment and initialdata from the stockfiles
 
   l_ply(stocks,function(x){
-    x@initialdata[,3] <- 0 ## nothing in the beginning
-    tmp <- subset(time.grid,step == 1)
-    tmp <- mutate(tmp,
-                  age = x@renewal.data[1,4],
-                  number = 0,
-                  mean = x@renewal.data[1,6],
-                  stddev = x@renewal.data[1,7],
-                  alpha = x@renewal.data[1,8],
-                  beta = x@renewal.data[1,9])
-    tmp$number[1] <- 100
-    x@renewal.data <- tmp
-    x@doesspawn <- 0
-    
-    write(x,file=ypr)
+    if(x@doesrenew==1){
+      x@initialdata[,3] <- 0 ## nothing in the beginning
+      tmp <- subset(time.grid,step == 1)
+      tmp <- mutate(tmp,
+                    age = x@renewal.data[1,4],
+                    number = 0,
+                    mean = x@renewal.data[1,6],
+                    stddev = x@renewal.data[1,7],
+                    alpha = x@renewal.data[1,8],
+                    beta = x@renewal.data[1,9])
+      tmp$number[1] <- 100
+      x@renewal.data <- tmp
+      x@doesspawn <- 0
+      
+      write(x,file=ypr)
+    }
   })
 
-  main$stockfiles <- sprintf('%s/%s',ypr,laply(stocks,function(x) x@stockname))
+  main$stockfiles <- sprintf('%s/%s',ypr,
+                             laply(stocks,function(x) x@stockname))
 
   main$likelihoodfiles <- ';'
   
@@ -1035,7 +1072,22 @@ gadget.ypr <- function(params.file = 'params.in',
   return(res)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param params.file 
+##' @param main.file 
+##' @param effort 
+##' @param begin 
+##' @param end 
+##' @param fleets 
+##' @param ypr 
+##' @param bs.wgts 
+##' @param bs.samples 
+##' @param .parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 gadget.bootypr <- function(params.file='params.final',
                            main.file = 'main.final',
                            effort = seq(0, 1, by=0.01),
@@ -1069,7 +1121,30 @@ gadget.bootypr <- function(params.file='params.final',
   return(bsypr)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param years 
+##' @param params.file 
+##' @param main.file 
+##' @param pre 
+##' @param num.trials 
+##' @param fleets 
+##' @param biomass 
+##' @param effort 
+##' @param spawnmodel 
+##' @param spawnvar 
+##' @param selectedstocks 
+##' @param biomasslevel 
+##' @param check.previous 
+##' @param save.results 
+##' @param stochastic 
+##' @param mat.par 
+##' @param rec.window 
+##' @param compact 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 gadget.forward <- function(years = 20,params.file = 'params.out',
                            main.file = 'main', pre = 'PRE', num.trials = 10,
                            fleets = data.frame(fleet='comm',ratio = 1),
@@ -1468,7 +1543,26 @@ gadget.forward <- function(years = 20,params.file = 'params.out',
   return(out)
 }
 
-
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param years 
+##' @param params.file 
+##' @param main.file 
+##' @param pre 
+##' @param effort 
+##' @param fleets 
+##' @param num.trials 
+##' @param bs.wgts 
+##' @param bs.samples 
+##' @param check.previous 
+##' @param rec.window 
+##' @param mat.par 
+##' @param stochastic 
+##' @param .parallel 
+##' @return 
+##' @author Bjarki Thor Elvarsson
 gadget.bootforward <- function(years = 20,
                                params.file='params.final',
                                main.file = 'main.final',
