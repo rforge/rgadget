@@ -70,7 +70,7 @@ catch <- function(N,
                   l)
 {
   #The suitability for the catch
-  temp<-suitability(salpha,sbeta,0,1,l)
+  temp<-suitability(params=c(salpha,sbeta,0,1),l)
   Sl<-temp[1,]
   Fy <- rep(Fy/numperyear,each=numobs)
   
@@ -171,7 +171,7 @@ eat <- function(PreyInArea,PredInArea,step,opt){
   ## The amount eaten
   Eat<-array(0,preydim[1:3])
   ## The suitability for the predation
-  Spred<-suitability(opt$spalpha,opt$spbeta,opt$spgamma,opt$spdelta,opt$lt,opt$lt)
+  Spred<-suitability(params=c(opt$spalpha,opt$spbeta,opt$spgamma,opt$spdelta),opt$lt,opt$lt)
   ## Food = S(L,l)*N_l
   Food<-array(0,c(numoflgroups,opt$numoflgroups,preydim[3]))
   
