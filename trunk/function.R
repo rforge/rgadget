@@ -51,7 +51,8 @@ adjustconsumption <- function(C,
 ##' \deqn{C_{fleet,prey}(l,a,t) = F_{l,t}N_{prey}(l,a,t)\Delta t}
 ##' with \eqn{F_{l,t} = S_{l}F_{y}} where \eqn{F_y} is constant for each year, 
 ##' \deqn{S_{l} = \frac{1}{1+e^{-\alpha-\beta l}}}
-##' is the suitability function and \eqn{\alpha} and \eqn{\beta} are constants. ##' @title Fleet catches 
+##' is the suitability function and \eqn{\alpha} and \eqn{\beta} are constants. 
+##' ##' @title Fleet catches 
 ##' @param N number of prey
 ##' @param timestep the timestep of the catch
 ##' @param Fy fishing yield
@@ -112,7 +113,7 @@ whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
 ##' length distribution for each age group
 ##' @title Length distribution
 ##' @param mu mean length for all ages
-##' @param sigma standart deviation of length for all ages
+##' @param sigma standard deviation of length for all ages
 ##' @param l lengthgroups
 ##' @return a matrix of dimension length(mu) X (length(l)-1)
 distr <- function(mu,sigma,l) {
@@ -269,7 +270,6 @@ firststep <- function(n,
 }
 
 
-
 ##' Growth is according to a von Bertalanffy equation 
 ##' \deqn{\mu_{a} = L_{\infty}(1-e^{-\kappa a})}
 ##' with the lengthvbsimple growth function from Gadget implemented.
@@ -290,7 +290,7 @@ firststep <- function(n,
 ##' \deqn{N_{l,a+1,t+\Delta t} = \sum_{l'\leq l}g_{l'l}N_{l,a,t}}
 ##' with \eqn{N_{l,a,t}} as described for the initial population for a >
 ##' min a .
-##' @title Growth probability
+##' @title Update length 
 ##' @param lt Vector of midpoints for the length groups.
 ##' @param beta Beta for the Von Bertanlanffy curve 
 ##' @param lsup \eqn{l_\infty}{l_infty} for the Von Bertanlanffy.

@@ -917,18 +917,21 @@ strip.comments <- function(file='main'){
 ##' @author Bjarki Thor Elvarsson
 read.gadget.model <- function(main.file='main'){
   gadget.model <-
-    within(list(),
-           main <- read.gadget.main(main.file),
-           time <- read.gadget.time(main$timefile),
-           area <- read.gadget.area(main$areafile),
-           print <- read.gadget.printfile(main$printfile),
-           stocks <- read.gadget.stockfiles(main$stockfiles),
-           tagging <- read.gadget.tagfiles(main$tagfiles),
-           otherfood <- read.gadget.otherfood(main$otherfoodfiles),
-           fleets <- read.gadget.fleet(main$fleetfiles),
-           likelihood <- read.gadget.likelihood(main$likelihoodfiles)
-           )
+    list(main = read.gadget.main(main.file),
+         time = read.gadget.time(main$timefile),
+         area = read.gadget.area(main$areafile),
+         print = ifelse(is.null(main$printfile),NA,
+                        read.gadget.printfile(main$printfile)),
+         stocks = read.gadget.stockfiles(main$stockfiles),
+         tagging = ifelse(is.null(main$tagfiles),NA,
+                          read.gadget.tagfiles(main$tagfiles)),
+         otherfood = ifelse(is.null(main$otherfoodfiles),NA,
+                            read.gadget.otherfood(main$otherfoodfiles)),
+         fleets = read.gadget.fleet(main$fleetfiles),
+         likelihood = read.gadget.likelihood(main$likelihoodfiles)
+    )
   class(gadget.model) <- c('gadget.model',class(gadget.model))
+  return(gadget.model)
 }
 
 ##' <description>
@@ -1418,7 +1421,7 @@ eval.gadget.formula <- function(gad.for,par){
           par.ind <- grep('#',x,fixed=TRUE)
           x <- gsub("*","'*'(",x,fixed=TRUE)
           x <- gsub("/","'/'(",x,fixed=TRUE)
-          x <- gsub("+","'+'(",x,fixed=TRUE)
+          x <- gsub("+ ","'+'(",x,fixed=TRUE)
           x <- gsub("- ","'-'(",x,fixed=TRUE)
           x <- gsub('exp','exp(',x,fixed = TRUE)
           x <- gsub('log','log(',x,fixed = TRUE)
@@ -1451,9 +1454,11 @@ read.gadget.table <- function(file,header=FALSE){
     header <- tail(comments,1)
     ## unfinised business
   }
-
+  
   return(gad.tab)
 }
+
+
 
 ##' <description>
 ##'

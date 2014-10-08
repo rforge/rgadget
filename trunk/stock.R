@@ -72,308 +72,195 @@
 ##' \item{matMort}{Natural mortality for the mature stock}
 ##' \item{opt}{Gadget options list used in the simulation}
 ##'  @author Bjarki Thor Elvarsson, Asta Jenny Sigurdardottir and Elinborg Ingunn Olafsdottir
+##'  @export
 ##' @examples
 ##' opt <- gadget.options()
-##' sim <- Rgadget(sim)
-gadget.simulate <- function(opt=gadget.options()){
-  ## initialize the necessary variables  
-  opt <- derivedOptions(opt)
-  ## what areas are commercially exploited
-  commAreas <- 1:opt$numofareas %in% opt$doescatchcomm
-  ## define survey areas 
-  surveyAreas <- 1:opt$numofareas %in% opt$doescatchsurv
+##' sim <- gadget.simulate(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
+gadget.simulate <- function(time,area,stocks,fleets,params=data.frame()){
+  ## model setup
+  gm <- gadget.setup(time,area,stocks,fleets)
 
-################################
-#
-# The stocks
-# preN(k)=[N_{i,1,j}] is a matrix where immN(k)_{i,1,j} 7is the number
-# of recruits in lengthgroup i at timestep j, area k
-#  stocks <- array(0,c(length(opt$stocks),
-#                      opt$
-  immNumRec <- array(0,c(opt$numofareas,
-                         opt$numoflgroups,
-                         opt$immmax,
-                         (opt$numobs*opt$numoftimesteps)))
-  dimnames(immNumRec) <- list(area=1:opt$numofareas,
-                              length=opt$minlen:(opt$maxlen-1),
-                              age=opt$immminage:opt$immmaxage,
-                              time=paste(sprintf('Year_%s',rep(1:opt$numobs,
-                                each=opt$numoftimesteps)
-                                ),
-                                sprintf('Step_%s',rep(1:opt$numoftimesteps,
-                                                      opt$numobs)),
-                                sep='_'))
-  matNumRec <- array(0,c(opt$numofareas,
-                         opt$numoflgroups,
-                         opt$matmax,
-                         (opt$numobs*opt$numoftimesteps)))
-  dimnames(matNumRec) <- list(area=1:opt$numofareas,
-                              length=opt$minlen:(opt$maxlen-1),
-                              age=opt$matminage:opt$matmaxage,
-                              time=paste(sprintf('Year_%s',rep(1:opt$numobs,
-                                each=opt$numoftimesteps)
-                                ),
-                                sprintf('Step_%s',rep(1:opt$numoftimesteps,
-                                                      opt$numobs)),
-                                sep='_'))
-
-################################
-#
-# Calculates natural mortality per timestep
-
-#preM is a survival matrix, same in both areas
-  M <- diag(exp(-opt$mort*opt$dt))
-  immMort <- M[opt$immminage:opt$immmaxage,
-               opt$immminage:opt$immmaxage]
-  matMort <- M[opt$matminage:opt$matmaxage,
-               opt$matminage:opt$matmaxage]
-
-################################
-#
-# Defines the catch matrices
-  catch.switch<- opt$doescatchcomm+opt$doescatchsurv
-  
-  if(sum(catch.switch)>0)
-    {
-      immCcomm <- array(0,c(opt$numofareas,
-                            opt$numoflgroups,
-                            opt$immmax,
-                            (opt$numobs*opt$numoftimesteps)))
-      dimnames(immCcomm) <- dimnames(immNumRec)
-      matCcomm <- array(0,c(opt$numofareas,
-                            opt$numoflgroups,
-                            opt$matmax,
-                            (opt$numobs*opt$numoftimesteps)))
-      dimnames(matCcomm) <- dimnames(matNumRec)
-      immCsurv <- array(0,c(opt$numofareas,
-                            opt$numoflgroups,
-                            opt$immmax,
-                            (opt$numobs*opt$numoftimesteps)))
-      dimnames(immCsurv) <- dimnames(immNumRec)
-      matCsurv <- array(0,c(opt$numofareas,
-                            opt$numoflgroups,
-                            opt$matmax,
-                            (opt$numobs*opt$numoftimesteps)))
-      dimnames(matCsurv) <- dimnames(matNumRec)
+  ## stock in numbers
+  stkArr <- llply(gm@stocks,function(x){    
+    tmp <- getTimeSteps(gm@time)
+    stk <- 
+      array(0,c(getNumOfAreas(gm),
+                getNumLengthGroups(x),
+                getMaxage(x),
+                nrow(tmp)),
+            dimnames = list(area = getAreas(gm),
+                            length = getLengthGroups(x),
+                            age = 1:getMaxage(x),
+                            time = sprintf('Year_%s_Step_%s',tmp$year,tmp$step))
+      )
+    ## initial data:
+    initData <- getInitData(x,params)
+    lg <- getLengthGroups(x)
+    lg <- c(min(lg)-x@dl,lg)
+    stk[getAreas(gm),,getMinage(x):getMaxage(x),1] <- 
+      acast(ddply(initData,~age+area,function(y){
+        data.frame(length = lg[-1],
+                   num=y$age.factor*distr(y$mean,y$stddev,lg))
+        }),
+        area~length~age,value.var='num')[getAreas(gm),,]
+    
+    ## recruitment
+    if(x@doesrenew == 1){
+      rec <- getRecruitment(x,params)
+      stk[getAreas(gm),,getMinage(x),
+          sprintf('Year_%s_Step_%s',rec$year,rec$step)] <- 
+        acast(ddply(rec,~year+step+area+age,function(y){
+          data.frame(length = lg[-1],
+                     num=y$number*distr(y$mean,y$stddev,lg))
+        }),
+        area~length~year+step,value.var='num')[getAreas(gm),,]
     }
+    return(stk)
+  })  
 
-
-#################################
-#
-# Predation
-#
-
-# The number eaten of immature by mature, the default is zero
-  Eat <- array(0,c(opt$numofareas,
-                   opt$numoflgroups,
-                   opt$immmax,
-                   opt$numobs*opt$numoftimesteps))
-  dimnames(Eat) <- dimnames(immNumRec)
+  dt <- (gm@time@notimesteps)/12
   
-#################################
-
-# Assume we have one pseudo stock which splits between the 2
-# areas in the portion probarea1 in area 1 and
-# (1-probarea1) in area 2.
-  Start<-firststep(opt$n,
-                   opt$mu,
-                   opt$sigma,
-                   opt$l,
-                   opt$z,
-                   opt$numofareas,
-                   opt$probarea,
-                   opt$minage,
-                   opt$maxage)
+  ## Natural (unexplained) mortality
+  M <- llply(gm@stocks, function(x){
+    mort <- getMortality(x,par=params)$V1
+    outer(diag(exp(-mort)),dt,'^')
+  })
   
-# preStart[i,j] is number in pseudo stock at the beginning of timestep 1,
-# (1 year olds are not included). We use Start to make initial
-# mature and immature stock such that the amount of i year old in the
-# mature/immmature stock is the same as in the pseudo stock.
-  immStart <- Start[,,(opt$immminage+1):opt$immmaxage]
-  matStart <- Start[,,(opt$matminage:opt$matmaxage)]
-  if(opt$numofareas==1){
-    ## ugly hack because of destroyed array dimension
-    dimnames(immStart) -> tmp
-    dim(immStart) <- c(1,dim(immStart))
-    dimnames(immStart) <- list(area=1,length=tmp[[1]],age=tmp[[2]])
-    dimnames(matStart) -> tmp
-    dim(matStart) <- c(1,dim(matStart))
-    dimnames(matStart) <- list(area=1,length=tmp[[1]],age=tmp[[2]])
-  }
-#Matrix of length divided recruits
-  Rec <- recruits(opt$n,opt$mu[opt$immminage],opt$sigma[opt$immminage],
-                  opt$l,opt$numofareas, opt$probarea,
-                  opt$numobs,opt$numoftimesteps)
 
-#G[i,j] is the probability of going from lengthgroup i to lengthgroup j
-#Same in both areas
-  G <- growthprob(opt$lt,
-                  opt$beta,
-                  opt$lsup,
-                  opt$k,
-                  opt$dt,
-                  opt$lengthgrouplen,
-                  opt$binn)
+  # Defines the catch matrices
+  fleetArr <- llply(stkArr, function(x){
+    tmp <- 0*((1:getNumFleets(gm))%o%x)
+    dimnames(tmp)[[1]] <- getFleetNames(gm)
+    names(dimnames(tmp))[1] <- 'fleet'
+    tmp
+  })
+  
+  fleetSuit <- getFleetSuitability(gm,params)
+  
+  
+  #################################
+  #
+  # Predation
+  #
+  
+  # Consumptions of other stocks
+  
+  if(getNumPredators(gm)>0){
+    EatArr <- llply(stkArr, function(x){
+      tmp <- (1:getNumStocks(gm))%o%x
+      dimnames(tmp)[[1]] <- getStockNames(gm)
+      names(dimnames(tmp))[1] <- 'Predator'
+      tmp
+    })    
+    predSuit <- getPredatorSelection(gm)
+  } else {
+    EatArr <- NULL
+    predSuit <- NULL
+  } 
+  
+  ## Length update matrix
+  stkG <- llply(gm@stocks,
+                  function(x){
+                    getGrowth(x,params)
+                  })
+  
+  ## migration matrix
+  stkMig <- llply(gm@stocks,
+                     function(x){
+                       if(x@doesmigrate == 1){
+                         getMigrationMatrix(x,params)
+                       } else {
+                         NA
+                       }
+                     })
 
-####################################
-#  Calculations for all timesteps  #
-####################################
-  for(i in 1:(opt$numobs*opt$numoftimesteps))
-    {
-      num<-i%%opt$numoftimesteps
-      if(num==0)
-        num <- opt$numoftimesteps
-      if(num!=1){      ############## if we are not in timestep 1  #########
-        immNumRec[,,,i] <- immNumRec[,,,i-1]
-        matNumRec[,,,i] <- matNumRec[,,,i-1]
-      } else if(i==1){ ### we have a special update in the 1st timestep ###
-        immNumRec[,,-1,1] <- immStart
-        matNumRec[,,,1] <- matStart
-      } else { ###### if we are in timestep 1 we have to update age ######
-        
-    #############
-    # Age update
-    # NOTE this is the last step of the
-    # calculations done in previous timestep
-
-    # Update age for immature upto age immmaxage-1
-          immNumRec[,,-1,i] <- immNumRec[,,-opt$immmax,i-1]
-    # Update age for mature
-          matNumRec[,,-1,i] <- matNumRec[,,-opt$matmax,i-1]
-    # Adding up the maxage ones
-           matNumRec[,,opt$matmax,i] <-
-             matNumRec[,,opt$matmax,i] + matNumRec[,,opt$matmax,i-1]
-
-          if(opt$doesmove==1){
-      ## Adding the ones which have moved between stocks
-            matimmdiff <- opt$immmaxage-opt$matminage+2
-            matNumRec[,,matimmdiff,i] <-
-              matNumRec[,,matimmdiff,i]+immNumRec[,,opt$immmax,i-1]
-          } else {
-      ## if they don't move between stocks we have
-      ## a + group for the immmaxage ones
-            immNumRec[,,opt$immmax,i] <-
-              immNumRec[,,opt$immmax,i]+immNumRec[,,opt$immmax,i-1]
-          }
-        }
-      ############
-      # Migration Assume only two areas atm
-      if(opt$doesmigrateimm==1){
-        immNumRec[,,,i] <- migrate(immNumRec[,,,i],opt$immMigration[,,num])
-#        immTemp<-migrate(immNumRec[1,,,i],immNumRec[2,,,i],
-#                         num,P=migrationProb(opt=opt),opt=opt)
-#        immNumRec[1,,,i] <- immTemp[,,1]
-#        immNumRec[2,,,i] <- immTemp[,,2]
+  
+  clock <- getTimeSteps(gm@time)
+  for(i in 1:nrow(clock))    {
+    curr.step <- clock$step[i]
+    curr.year <- clock$year[i]
+    
+    if(curr.step != 1){    
+      for(stock in getStockNames(gm)){ 
+        stkArr[[stock]][,,,i] <- stkArr[[stock]][,,,i-1]
       }
-      if(opt$doesmigratemat==1){
-        matNumRec[,,,i] <- migrate(matNumRec[,,,i],opt$matMigration[,,num])
-#        matTemp<-migrate(matNumRec[1,,,i],matNumRec[2,,,i],
-#                         num,P=migrationProb(opt=opt),opt=opt)
-#        matNumRec[1,,,i] <- matTemp[,,1]
-#        matNumRec[2,,,i] <- matTemp[,,2]
-      }
-
-
-  ############
-  # Consumption calculations
-      if(opt$doeseat==1){
-          Eat[,,,i] <- eat(immNumRec,matNumRec,i,opt)
-        }
+    } else if(i>1) { 
+      ###### if we are in timestep 1 we have to update age ######
       
-  ############
-  # Catch calculations
-      if(num %in% opt$commstep){
-        if(sum(opt$doescatchcomm) > 0)
-          {
-            if('imm' %in% opt$comm.catches){
-              immCcomm[commAreas,,,i] <-
-                catch(immNumRec[commAreas,,,i],
-                      i,
-                      opt$Fycomm,
-                      opt$salphacomm,
-                      opt$sbetacomm,
-                      opt$numoftimesteps,
-                      opt$numobs,
-                      opt$lt)
-            }
-            if('mat' %in% opt$comm.catches){
-              matCcomm[commAreas,,,i] <-
-                catch(matNumRec[commAreas,,,i],
-                      i,
-                      opt$Fycomm,
-                      opt$salphacomm,
-                      opt$sbetacomm,
-                      opt$numoftimesteps,
-                      opt$numobs,
-                      opt$lt)
-            }
-          }
-      }
-      if(num %in% opt$survstep) 
-        {
-          if(sum(opt$doescatchsurv) > 0)
-            {
-              if('imm' %in% opt$surv.catches){
-                immCsurv[surveyAreas,,,i] <-
-                  catch(immNumRec[surveyAreas,,,i],
-                        i,
-                        opt$Fysurv,
-                        opt$salphasurv,
-                        opt$sbetasurv,
-                        1,
-                        opt$numobs,
-                        opt$lt)
-              }
-              if('mat' %in% opt$surv.catches){
-                matCsurv[surveyAreas,,,i] <-
-                  catch(matNumRec[surveyAreas,,,i],
-                        i,
-                        opt$Fysurv,
-                        opt$salphasurv,
-                        opt$sbetasurv,
-                        1,
-                        opt$numobs,
-                        opt$lt)
-              }
-            }
+      for(stock in getStockNames(gm)){
+        stkArr[[stock]][,,-1,i] <- 
+          stkArr[[stock]][,,-getMaxage(gm@stocks[[stock]]),i-1]
+        if(gm@stocks[[stock]]@doesmove != 1){
+          stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i] <-
+            stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i] + 
+            stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]
         }
+      }
+      
+      for(stock in getStockNames(gm)){
+        if(gm@stocks[[stock]]@doesmove == 1){
+          tmp <- gm@stocks[[stock]]@transitionstockandratios
+          for(stkInd in 1:nrow(tmp)){
+            stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i] <-
+              stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i]*tmp[stkInd,2] + 
+              stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]
+          }
+        }
+      }
+    } 
+    
+    
+    for(stock in getStockNames(gm)){ 
+      stkArr[[stock]][,,,i] <- migrate(stkArr[[stock]][,,,i-1],
+                                       stkMig[[imm]][,,curr.step])
+    }
+    
+    
 
+    ############
+    # Consumption calculations
+    
+    if(getNumPredators(gm) > 0){
+      for(stock in getStockNames(gm)){ 
+        if(gm@stocks[[stock]]@doeseat == 1){
+          for(prey in names(predSuit[[stock]])){
+            EatArr[[prey]][stock,,,,i] <- eat(stkArr[[prey]],stkArr[[stock]],i,predSuit[[stock]][[prey]])
+          }
+          
+        }
+      } 
+    }
+    
+    for(fleet in getFleetNames(gm)){
+      tmp <- subset(gm@fleets[[fleet]]@amount,
+                    year==curr.year & step == curr.step)
+      
+      if(nrow(tmp)>0){
+        for(stock in getStockNames(gm)){
+          if(stock %in% gm@fleets[[fleet]]@suitability$prey){
+            fleetArr[[fleet]][stock,tmp$area,,,i] <- 
+              catch(stkArr[[stock]][tmp$area,,,i],i,
+                    tmp$Fy,
+                    fleetSuit[[fleet]][[stock]],
+                    dt[curr.step],
+                    getLengthGroups(gm@stocks[[stock]]))
+            
+          }
+        }    
+      }
   #############
   # Overconsumption check
-      tempimmC<-adjustconsumption(C=immCcomm[,,,i],
-                                  S=immCsurv[,,,i],
-                                  E=Eat[,,,i],
-                                  N=immNumRec[,,,i],
-                                  opt$maxratioconsumed,
-                                  opt$numofareas)
-      tempmatC<-adjustconsumption(C=matCcomm[,,,i],
-                                  S=matCsurv[,,,i],
-                                  ,
-                                  N=matNumRec[,,,i],
-                                  opt$maxratioconsumed,
-                                  opt$numofareas)
-
+  tempC<-adjustconsumption(predation = EatArr,
+                           catches = fleetArr,
+                           stocks = stkArr,
+                           time = i,
+                           maxratioconsumed),
+                                  
   #############
   # Subtract Consumption from stock
-      if(opt$doeseat==1)
-        {
-          immNumRec[,,,i] <- immNumRec[,,,i] - tempimmC$E[,,]
-        }
-
-  ##########
-  # Subtract Catch from stock
-      if(num==opt$survstep) # only have survey in one timestep of the year
-        {
-          surveyAreas <- 1:opt$numofareas %in% opt$doescatchsurv
-          immNumRec[surveyAreas,,,i] <- immNumRec[surveyAreas,,,i]-
-            tempimmC$S[surveyAreas,,]
-          matNumRec[surveyAreas,,,i] <- matNumRec[surveyAreas,,,i]-
-            tempmatC$S[surveyAreas,,]
-        }
-      immNumRec[commAreas,,,i] <- immNumRec[commAreas,,,i]-
-        tempimmC$C[commAreas,,]
-      matNumRec[commAreas,,,i] <- matNumRec[commAreas,,,i]-
-        tempmatC$C[commAreas,,]
+  for(stock in getStockNames(gm)){
+    stkArr[[stock]][,,,i] <- stkArr[[stock]][,,,i] - tempC[[stock]]      
+  }
 
 
 

@@ -1,3 +1,16 @@
+#' Gadget growth
+#' 
+#' @slot growthfunction 
+#' @slot growthimplementation
+#' @slot growthparameters 
+#' @slot wgrowthparameters
+#' @slot lgrowthparameters
+#' @slot weightgrowthdata
+#' @slot yeareffect
+#' @slot stepeffect
+#' @slot areaeffect
+#' @slot beta
+#' @slot maxlengthgroupgrowth
 setClass('gadget-growth',
          representation(growthfunction = 'character',
                         growthimplementation = 'character',
@@ -46,7 +59,7 @@ setClass('gadget-prey',
          ##package = 'rgadget')
 
 setClass('gadget-predator',
-         representation(suitability = 'list',
+         representation(suitability = 'data.frame',
                         preference = 'data.frame',
                         maxconsumption = 'numeric',
                         halffeedingvalue = 'numeric'))
@@ -57,7 +70,7 @@ setClass('gadget-fleet',
                         type = 'character',
                         livesonareas = 'numeric',
                         multiplicative = 'numeric',
-                        suitability = 'list',
+                        suitability = 'data.frame',
                         catchability = 'data.frame',
                         quotafunction = 'character',
                         biomasslevel = 'numeric',
@@ -66,7 +79,7 @@ setClass('gadget-fleet',
          prototype(name = 'fleet',
                  type = '',
                  multiplicative = 1,
-                 suitability = list(),
+                 suitability = data.frame(),
                  catchability = data.frame(),
                  quotafunction = '',
                  biomasslevel = 0,
@@ -82,14 +95,14 @@ setClass('gadget-time',
                         laststep = 'numeric', ## last step of last year
                         notimesteps = 'numeric'), ## vector of lengths of timeintervals
          ###package = 'rgadget',
-         validity = function(x){
-           if(x@firstyear > x@lastyear)
+         validity = function(object){
+           if(object@firstyear > object@lastyear)
              stop('Firstyear after lastyear')
-           if(sum(x@notimesteps) != 12)
+           if(sum(object@notimesteps) != 12)
              stop('notimesteps should sum up to 12')
-           if(!(x@firststep %in% seq(along = x@notimesteps)) )
+           if(!(object@firststep %in% seq(along = object@notimesteps)) )
              stop('firststep not in the range of timesteps')
-           if(!(x@laststep %in% seq(along = x@notimesteps)) )
+           if(!(object@laststep %in% seq(along = object@notimesteps)) )
              stop('laststep not in the range of timesteps')
            return(TRUE)
          }
@@ -100,10 +113,10 @@ setClass('gadget-area',
                         size = 'numeric', ## vector of area sizes
                         temperature = 'data.frame'),
          ###package = 'rgadget',
-         validity = function(x){
-           if(x@area < 1)
+         validity = function(object){
+           if(object@areas < 1)
              stop('illegal area')
-           if(x@size < 0)
+           if(object@size < 0)
              stop('negative size')
            return(TRUE)
          }
@@ -190,7 +203,7 @@ setClass('gadget-stock',
                         maturitylengths = 'numeric',
                         ## movement between stocks
                         doesmove = 'numeric',
-                        transitionstockandratios = 'list',
+                        transitionstockandratios = 'data.frame',
                         transitionstep = 'numeric',
                         ## renewal
                         doesrenew = 'numeric',
@@ -238,7 +251,7 @@ setClass('gadget-stock',
                         maturitylengths = 0,
                         ## movement between stocks
                         doesmove = 0,
-                        transitionstockandratios = list(),
+                        transitionstockandratios = data.frame(),
                         transitionstep = 0,
                         ## renewal
                         doesrenew = 0,

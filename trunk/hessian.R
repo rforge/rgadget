@@ -1,3 +1,13 @@
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param params.out 
+##' @param likelihood 
+##' @param quantiles 
+##' @param hess 
+##' @return 
+##' @author Bjarki Þór Elvarsson
 conf.gadget.hess <- function(params.out = 'params.out',
                              likelihood = 'likelihood',
                              quantiles = c(0.025,0.25,0.5,0.75,0.975),
