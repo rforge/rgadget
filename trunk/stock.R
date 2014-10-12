@@ -76,7 +76,8 @@
 ##' @examples
 ##' opt <- gadget.options()
 ##' sim <- gadget.simulate(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
-gadget.simulate <- function(time,area,stocks,fleets,params=data.frame()){
+gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
+                            maxratioconsumed = 0.95){
   ## model setup
   gm <- gadget.setup(time,area,stocks,fleets)
 
@@ -200,19 +201,22 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame()){
       for(stock in getStockNames(gm)){
         if(gm@stocks[[stock]]@doesmove == 1){
           tmp <- gm@stocks[[stock]]@transitionstockandratios
+          tmp$stock <- as.character(tmp$stock)
           for(stkInd in 1:nrow(tmp)){
             stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i] <-
-              stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i]*tmp[stkInd,2] + 
-              stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]
+              stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i] + 
+              stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]*tmp[stkInd,2]
           }
         }
       }
     } 
     
-    
-    for(stock in getStockNames(gm)){ 
-      stkArr[[stock]][,,,i] <- migrate(stkArr[[stock]][,,,i-1],
-                                       stkMig[[imm]][,,curr.step])
+    if(getNumOfAreas(gm)>1){
+      for(stock in getStockNames(gm)){
+        if(gm@stocks[[stock]]@doesmigrate==1)
+          stkArr[[stock]][,,,i] <- migrate(stkArr[[stock]][,,,i-1],
+                                           stkMig[[stock]][,,curr.step])
+      }
     }
     
     
@@ -238,61 +242,51 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame()){
       if(nrow(tmp)>0){
         for(stock in getStockNames(gm)){
           if(stock %in% gm@fleets[[fleet]]@suitability$prey){
-            fleetArr[[fleet]][stock,tmp$area,,,i] <- 
-              catch(stkArr[[stock]][tmp$area,,,i],i,
-                    tmp$Fy,
-                    fleetSuit[[fleet]][[stock]],
-                    dt[curr.step],
-                    getLengthGroups(gm@stocks[[stock]]))
-            
+            l <- getLengthGroups(gm@stocks[[stock]])
+            fleetArr[[stock]][fleet,tmp$area,,,i] <- 
+              tmp$Fy*dt[curr.step]*
+              stkArr[[stock]][tmp$area,,,i]*
+              as.numeric(fleetSuit[[fleet]][[stock]](l))
+              
           }
         }    
       }
+    }
+    
   #############
   # Overconsumption check
-  tempC<-adjustconsumption(predation = EatArr,
-                           catches = fleetArr,
+  tempC<-adjustconsumption(catches = fleetArr,
+                           predation = EatArr,
                            stocks = stkArr,
-                           time = i,
-                           maxratioconsumed),
+                           i = i,
+                           maxratioconsumed)
                                   
   #############
   # Subtract Consumption from stock
   for(stock in getStockNames(gm)){
     stkArr[[stock]][,,,i] <- stkArr[[stock]][,,,i] - tempC[[stock]]      
+    x <- gm@stocks[[stock]]
+    for(area in 1:getNumOfAreas(gm)){
+      stkArr[[stock]][area,,getMinage(x):getMaxage(x),i] <- 
+        t(stkG[[stock]](dt[curr.step]))%*%stkArr[[stock]][area,,getMinage(x):getMaxage(x),i]%*%M[[stock]][,,curr.step]    
+    }
   }
 
 
 
   ###########
   # Length update and natural mortality
-      for(area in 1:opt$numofarea){
-        immNumRec[area,,,i] <- t(G)%*%immNumRec[area,,,i]%*%immMort
-        matNumRec[area,,,i] <- t(G)%*%matNumRec[area,,,i]%*%matMort
-      }
+      
   ###########
   # Recruits
-      if(opt$doesmove!=1){
-        matNumRec[,,1,i]<-matNumRec[,,1,i]+Rec[,,i]
-      }
-      immNumRec[,,1,i]<-immNumRec[,,1,i]+Rec[,,i]
+     
     }
 
   
-  sim <- list(Rec=Rec,
-              immStart=immStart,
-              matStart=matStart,
-              immNumRec=immNumRec,
-              matNumRec=matNumRec,
-              immCsurv=immCsurv,
-              matCsurv=matCsurv,
-              immCcomm=immCcomm,
-              matCcomm=matCcomm,
-              Eat=Eat,
-              GrowthProb=G,
-              immMort=immMort,
-              matMort=matMort,
-              opt=opt)
+  sim <- list(gm=gm,
+              stkArr=stkArr,
+              fleetArr=fleetArr,
+              EatArr = EatArr)
   class(sim) <- c('gadget.sim',class(sim))
   return(sim)
 }

@@ -15,75 +15,55 @@
 ##' @param N is the total number of prey
 ##' @param opt gadget options list
 ##' @return a list with adjusted catches/consumption for C, S and E.
-adjustconsumption <- function(C,
-                              S=NULL,
-                              E=NULL,
-                              N,
-                              maxratioconsumed,
-                              numofareas)
-{
-  if(is.null(S))
-    S <- array(0,dim(C))
-  if(is.null(E))
-    E <- array(0,dim(C))
-  ## Nasty hack
-  if(numofareas==1){
-    dim(C) <- c(1,dim(C))
-    dim(S) <- c(1,dim(S))
-    dim(E) <- c(1,dim(E))
-    dim(N) <- c(1,dim(N))
+adjustconsumption <- function(catches,
+                              predation,
+                              stocks,
+                              i,
+                              maxratioconsumed){
+
+  totalCon <- list()
+  
+  for(stock in names(stocks)){
+    if(dim(stocks[[stock]])[1] == 1){
+      agg.ind <- 2:3
+    } else {
+      agg.ind <- 2:4
+    }
+  
+    fleetCon <- aaply(catches[[stock]][,,,,i],agg.ind,sum)
+    if(!is.null(predation)){
+      totalCon[[stock]] <- fleetCon + 
+        aaply(predation[[stock]][,,,,i],agg.ind,sum)
+    } else {
+      totalCon[[stock]] <- fleetCon
+    }
+    ratio <- totalCon[[stock]]/aaply(stocks[[stock]][,,,i],agg.ind-1,sum)
+    ratio <- ifelse(is.infinite(ratio)|is.nan(ratio),0,ratio)
+    index <- ratio > maxratioconsumed
+    if(sum(index)>0){
+      print(sprintf("Warning - understocking has occured in stock %s",stock))
+      totalCon[[stock]][index] <- (maxratioconsumed/ratio[index])*
+        totalCon[[stock]][index]
+      
+#      if(is.null(dim(index))){
+#        ind.dim <- c(1,length(index))
+#      } else {
+#        ind.dim <- dim(index)
+#      }
+#       index2 <- array(rep(index,each=dim(catches[[stock]])[1]),
+#                       c(dim(catches[[stock]])[1],ind.dim,
+#                         dim(catches[[stock]])[4]))
+#       catches[[stock]][,,,,i][index2] <- (maxratioconsumed/ratio[index])*
+#         catches[[stock]][,,,,i][index2]
+#       predation[[stock]][,,,,i][index2] <- (maxratioconsumed/ratio[index])*
+#         predation[[stock]][,,,,i][index2]      
+    }
+    
   }
-  ratio <- apply(C+S+E,c(1,2),sum)/apply(N,c(1,2),sum)
-  ratio <- ifelse(is.infinite(ratio)|is.nan(ratio),0,ratio)
-  index <- ratio > maxratioconsumed
-  if(sum(index)>0)
-    print("Warning - understocking has occured")
-  index2 <- array(index,c(dim(index),dim(C)[3]))
-  C[index2] <- (maxratioconsumed/ratio[index])*C[index2]
-  S[index2] <- (maxratioconsumed/ratio[index])*S[index2]
-  E[index2] <- (maxratioconsumed/ratio[index])*E[index2]
-  return(list(C=C,S=S,E=E))
+  
+  return(totalCon)
 }
 
-##' Catch is implemented to be similar to the 'Linearfleet' in Gadget. 
-##' Let \eqn{C_{fleet,prey}(l,a,t)} be the number of age \eqn{a} prey, in
-##' lengthgroup \eqn{l} caught at timestep \eqn{t}, then
-##' \deqn{C_{fleet,prey}(l,a,t) = F_{l,t}N_{prey}(l,a,t)\Delta t}
-##' with \eqn{F_{l,t} = S_{l}F_{y}} where \eqn{F_y} is constant for each year, 
-##' \deqn{S_{l} = \frac{1}{1+e^{-\alpha-\beta l}}}
-##' is the suitability function and \eqn{\alpha} and \eqn{\beta} are constants. 
-##' ##' @title Fleet catches 
-##' @param N number of prey
-##' @param timestep the timestep of the catch
-##' @param Fy fishing yield
-##' @param salpha suitability constant for the fleet
-##' @param sbeta suitability constant for the fleet
-##' @param numperyear number of catch timesteps
-##' @param numobs number of observation years
-##' @return Total catches of the fleet
-catch <- function(N,
-                  timestep,
-                  Fy,
-                  salpha,
-                  sbeta,
-                  numperyear,
-                  numobs,
-                  l)
-{
-  #The suitability for the catch
-  temp<-suitability(params=c(salpha,sbeta,0,1),l)
-  Sl<-temp[1,]
-  Fy <- rep(Fy/numperyear,each=numobs)
-  
-  #Proportion caught each year
-  
-  Fly<-Sl*Fy[timestep]
-  if(length(dimnames(N)$area)>0)
-    Fly <- rep(Fly,each=dim(N)[1]) 
-  C<-Fly*N 
-  
-  return(C)
-}
 
 whaleCatch <- function(N,NTagged,quota,salpha,sbeta){
   MaleS <- suitability(c(salpha['Male'],sbeta['Male'],

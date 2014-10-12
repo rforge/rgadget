@@ -108,7 +108,7 @@ stocks =
                 drifty = NULL,
                 lambda = NULL,
                 doesmove = 1,
-                transitionstockandratios = data.frame(stock='imm',ratio=1),
+                transitionstockandratios = data.frame(stock='mat',ratio=1),
                 transitionstep = 1,
                 doesspawn = 0,
                 livesonareas=1,
@@ -167,9 +167,7 @@ stocks =
                   driftx = NULL,
                   drifty = NULL,
                   lambda = NULL,
-                  doesmove = 1,
-                  transitionstockandratios = data.frame(stock='imm',ratio=1),
-                  transitionstep = 1,
+                  doesmove = 0,
                   doesspawn = 0,
                   livesonareas=1,
                   doesgrow = 1,
@@ -444,6 +442,8 @@ gadget.setup <- function(time,area,stocks,fleets){
           x$renewal.data <- data.frame()
         }
         
+        if(x$doesmove==0)
+          x$transitionstockandratios <- data.frame()
         
         stock <- new('gadget-stock',
                      stockname = x$name,
@@ -469,7 +469,10 @@ gadget.setup <- function(time,area,stocks,fleets){
                      doesspawn = x$doesspawn,
                      doesmigrate = x$doesmigrate,
                      doesrenew = x$doesrenew,
-                     renewal.data = x$renewal.data)
+                     renewal.data = x$renewal.data,
+                     doesmove = x$doesmove,
+                     transitionstockandratios = x$transitionstockandratios
+                     )
         
   })
   
