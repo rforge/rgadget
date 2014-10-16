@@ -750,6 +750,8 @@ gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PH
     write.gadget.parameters(params.in,sprintf('%s/params.%s',phase.dir,p))
     callGadget(l=1,main=main,i=sprintf('%s/params.%s',phase.dir,p),
                p=sprintf('%s/params.out.%s',phase.dir,p))
+    callGadget(s=1,main=main,o=sprintf('%s/lik.%s',phase.dir,p),
+               i=sprintf('%s/params.out.%s',phase.dir,p))
     params.in <- read.gadget.parameters(sprintf('%s/params.out.%s',phase.dir,p))
   }
   return(params.in)
