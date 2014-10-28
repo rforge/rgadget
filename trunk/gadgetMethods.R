@@ -563,7 +563,13 @@ setGeneric('getGrowth',def=function(object, par){standardGeneric("getGrowth")})
 setMethod('getGrowth', 'gadget-growth',
           function(object,par){
             if(tolower(object@growthfunction) == 'lengthvbsimple'){
-              params <- eval.gadget.formula(object@growthparameters,par)$V1
+              if(class(object@growthparameters) == 'numeric' |
+                   class(object@growthparameters) == 'integer'){
+                tmp <- object@growthparameters
+              } else {
+                tmp <- merge.formula(unlist(strsplit(object@growthparameters,' ')))
+              }
+              params <- eval.gadget.formula(tmp,par)$V1
 
               beta <- eval.gadget.formula(object@beta,par)$V1
               nbin <- eval.gadget.formula(object@maxlengthgroupgrowth,par)$V1
@@ -600,16 +606,48 @@ setMethod('getGrowth', 'gadget-main',
           })
 
 
+setGeneric('getWeight',def=function(object, l, par){standardGeneric("getWeight")})
+setMethod('getWeight', 'gadget-growth',
+          function(object,l,par){
+          
+            
+            if(tolower(object@growthfunction) == 'lengthvbsimple'){
+              if(class(object@growthparameters) == 'numeric' |
+                   class(object@growthparameters) == 'integer'){
+                tmp <- object@growthparameters
+              } else {
+                tmp <- merge.formula(unlist(strsplit(object@growthparameters,' ')))
+              }
+              params <- eval.gadget.formula(tmp,par)$V1[3:4]
+              
+              return(params[1]*l^params[2])
+            } else {
+              stop(sprintf('Error in Growth -- Only lengthvbsimple is supported, %s was supplied',
+                           object@growthfunction))
+            }
+          })
+setMethod('getWeight','gadget-stock',
+          function(object, l, par){
+            getWeight(object@growth,l,par)
+            #subset(object@refweight,V1 %in% l)$V2
+          })
+
+
+
+
 setGeneric('getFleetSuitability',
            def=function(object, par){standardGeneric("getFleetSuitability")})
 setMethod('getFleetSuitability','gadget-fleet',
           function(object,par=data.frame()){
-            dlply(object@suitability,~prey,function(x){
-              function(l){
-                suitability(eval.gadget.formula(as.numeric(x[1,-(1:2)]),par)$V1,
+            dlply(object@suitability,~stock,function(x){
+              function(l){                
+                tmp <- 
+                  merge.formula(unlist(strsplit(as.character(x[1,-(1:3)]),
+                                                ' ')))
+                suitability(eval.gadget.formula(tmp,par)$V1,
                             l,
                             0,
-                            type = x$func[1])
+                            type = x$suitability[1])
               }
             })
           }
@@ -642,6 +680,7 @@ setMethod('getInitData','gadget-stock',
                                   eval.gadget.formula(x,par)
                                 }))
             names(tmp) <- names(object@initialdata)
+            tmp$age.factor <- 1e4*tmp$age.factor
             return(tmp)
           }
 )
@@ -663,6 +702,7 @@ setMethod('getRecruitment','gadget-stock',
                                          eval.gadget.formula(x,par)
                                        }))
             names(tmp) <- names(object@renewal.data)
+            tmp$number <- 1e4*tmp$number
             return(tmp)
           }
 )

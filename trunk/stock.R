@@ -75,39 +75,42 @@
 ##'  @export
 ##' @examples
 ##' opt <- gadget.options()
-##' sim <- gadget.simulate(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
-gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
+##' gm <- gadget.setup(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
+##' sim <- gadget.simulate(gm)
+gadget.simulate <- function(gm, params=data.frame(),
                             maxratioconsumed = 0.95){
-  ## model setup
-  gm <- gadget.setup(time,area,stocks,fleets)
-
+  
   ## stock in numbers
   stkArr <- llply(gm@stocks,function(x){    
-    tmp <- getTimeSteps(gm@time)
+    tm <- getTimeSteps(gm@time)
     stk <- 
       array(0,c(getNumOfAreas(gm),
                 getNumLengthGroups(x),
                 getMaxage(x),
-                nrow(tmp)),
+                nrow(tm)),
             dimnames = list(area = getAreas(gm),
                             length = getLengthGroups(x),
                             age = 1:getMaxage(x),
-                            time = sprintf('Year_%s_Step_%s',tmp$year,tmp$step))
+                            time = sprintf('Year_%s_Step_%s',tm$year,tm$step))
       )
     ## initial data:
-    initData <- getInitData(x,params)
+    initData <- subset(getInitData(x,params),
+                       age %in% (getMinage(x)+1):getMaxage(x))
     lg <- getLengthGroups(x)
     lg <- c(min(lg)-x@dl,lg)
-    stk[getAreas(gm),,getMinage(x):getMaxage(x),1] <- 
+    stk[getAreas(gm),,(getMinage(x)+1):getMaxage(x),1] <- 
       acast(ddply(initData,~age+area,function(y){
         data.frame(length = lg[-1],
-                   num=y$age.factor*distr(y$mean,y$stddev,lg))
+                   num=y$age.factor*
+                     distr(y$mean,y$stddev,lg))
         }),
         area~length~age,value.var='num')[getAreas(gm),,]
     
     ## recruitment
     if(x@doesrenew == 1){
-      rec <- getRecruitment(x,params)
+      rec <- subset(getRecruitment(x,params),
+                    year <= tail(tm$year,1) &
+                      step <= tail(tm$step,1))
       stk[getAreas(gm),,getMinage(x),
           sprintf('Year_%s_Step_%s',rec$year,rec$step)] <- 
         acast(ddply(rec,~year+step+area+age,function(y){
@@ -124,7 +127,8 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
   ## Natural (unexplained) mortality
   M <- llply(gm@stocks, function(x){
     mort <- getMortality(x,par=params)$V1
-    outer(diag(exp(-mort)),dt,'^')
+    ## if getMinage(x)>1
+    outer(diag(c(rep(0,getMinage(x)-1),exp(-mort))),dt,'^')
   })
   
 
@@ -189,12 +193,17 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
       ###### if we are in timestep 1 we have to update age ######
       
       for(stock in getStockNames(gm)){
-        stkArr[[stock]][,,-1,i] <- 
-          stkArr[[stock]][,,-getMaxage(gm@stocks[[stock]]),i-1]
+        minage <- getMinage(gm@stocks[[stock]])  
+        maxage <- getMaxage(gm@stocks[[stock]])
+        
+        stkArr[[stock]][,,-(1:minage),i] <- 
+          stkArr[[stock]][,,minage:(maxage-1),i-1]
+        
+        ## plus groups
         if(gm@stocks[[stock]]@doesmove != 1){
-          stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i] <-
-            stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i] + 
-            stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]
+          stkArr[[stock]][,,maxage,i] <-
+            stkArr[[stock]][,,maxage,i] + 
+            stkArr[[stock]][,,maxage,i-1]
         }
       }
       
@@ -241,13 +250,24 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
       
       if(nrow(tmp)>0){
         for(stock in getStockNames(gm)){
-          if(stock %in% gm@fleets[[fleet]]@suitability$prey){
+          if(stock %in% gm@fleets[[fleet]]@suitability$stock){
             l <- getLengthGroups(gm@stocks[[stock]])
-            fleetArr[[stock]][fleet,tmp$area,,,i] <- 
-              tmp$Fy*dt[curr.step]*
-              stkArr[[stock]][tmp$area,,,i]*
-              as.numeric(fleetSuit[[fleet]][[stock]](l))
+            suit <- array(as.numeric(fleetSuit[[fleet]][[stock]](l)),
+                          dim = c(length(l),getMaxage(gm@stocks[[stock]])))
+            if(gm@fleets[[fleet]]@type == 'linearfleet'){
+              fleetArr[[stock]][fleet,tmp$area,,age,i] <- 
+                as.numeric(tmp$Fy)*dt[curr.step]*
+                stkArr[[stock]][tmp$area,,age,i]*suit
               
+            } else if (gm@fleets[[fleet]]@type == 'totalfleet'){
+              w  <- getWeight(gm@stocks[[stock]],l,params)
+              harv.biomass <- 
+                sum(stkArr[[stock]][tmp$area,,,i]*suit*w)
+              fleetArr[[stock]][fleet,tmp$area,,,i] <- 
+                (as.numeric(tmp$amount)*
+                   stkArr[[stock]][tmp$area,,,i]*suit)/harv.biomass
+                                    
+            }            
           }
         }    
       }
@@ -267,8 +287,12 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
     stkArr[[stock]][,,,i] <- stkArr[[stock]][,,,i] - tempC[[stock]]      
     x <- gm@stocks[[stock]]
     for(area in 1:getNumOfAreas(gm)){
-      stkArr[[stock]][area,,getMinage(x):getMaxage(x),i] <- 
-        t(stkG[[stock]](dt[curr.step]))%*%stkArr[[stock]][area,,getMinage(x):getMaxage(x),i]%*%M[[stock]][,,curr.step]    
+      for(age in getMinage(x):getMaxage(x)){
+        stkArr[[stock]][area,,age,i] <- 
+          t(stkG[[stock]](dt[curr.step]))%*%
+          stkArr[[stock]][area,,age,i]%*%
+          M[[stock]][age,age,curr.step]    
+      }
     }
   }
 
@@ -286,7 +310,9 @@ gadget.simulate <- function(time,area,stocks,fleets,params=data.frame(),
   sim <- list(gm=gm,
               stkArr=stkArr,
               fleetArr=fleetArr,
-              EatArr = EatArr)
+              EatArr = EatArr,
+              params = params)
   class(sim) <- c('gadget.sim',class(sim))
   return(sim)
 }
+

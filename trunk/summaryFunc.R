@@ -360,6 +360,25 @@ summary.gadget.options <- function(opt){
 ##' @param sim the results from RGadget
 ##' @return A dataframe 
 as.data.frame.gadget.sim <- function(sim){
+  weights <- ldply(sim$gm@stocks,function(x) {
+    l <- getLengthGroups(x)
+    data.frame(length=l,mean.weight=getWeight(x,l,sim$params))
+  })
+  stocks <- mutate(ldply(sim$stkArr,as.data.frame.table,responseName = "number", stringsAsFactors = FALSE),
+                   length = as.numeric(length),
+                   age = as.numeric(age),
+                   year = gsub('_Step_[0-9]','',gsub('Year_','',time)),
+                   step = gsub('Year_[0-9]+_Step_','',time))
+  stocks <- arrange(merge(stocks,weights,all.x=TRUE),time,age,length)
+  
+  catches <- mutate(ldply(sim$fleetArr,as.data.frame.table,responseName = "number", stringsAsFactors = FALSE),
+                    length = as.numeric(length),
+                    age = as.numeric(age),                  
+                    year = gsub('_Step_[0-9]','',gsub('Year_','',time)),
+                    step = gsub('Year_[0-9]+_Step_','',time))
+  catches <- arrange(merge(catches,weights,all.x=TRUE),time,age,length)
+  
+  
   imm <- as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE)
   names(imm)[length(names(imm))] <- 'Num.indiv'
   catch.C.imm <- as.data.frame.table(sim$immCcomm,stringsAsFactors=FALSE)

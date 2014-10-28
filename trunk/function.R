@@ -22,7 +22,6 @@ adjustconsumption <- function(catches,
                               maxratioconsumed){
 
   totalCon <- list()
-  
   for(stock in names(stocks)){
     if(dim(stocks[[stock]])[1] == 1){
       agg.ind <- 2:3
@@ -41,7 +40,7 @@ adjustconsumption <- function(catches,
     ratio <- ifelse(is.infinite(ratio)|is.nan(ratio),0,ratio)
     index <- ratio > maxratioconsumed
     if(sum(index)>0){
-      print(sprintf("Warning - understocking has occured in stock %s",stock))
+      print(sprintf("Warning - understocking has occured in stock %s at step %s",stock,i))
       totalCon[[stock]][index] <- (maxratioconsumed/ratio[index])*
         totalCon[[stock]][index]
       

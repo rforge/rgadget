@@ -212,7 +212,7 @@ time = list(numobs=20,
             firstyear = 1,
             lastyear = 20,
             # numoftimesteps is a number of timesteps in each year
-            numoftimesteps=c(3,3,3,3),
+            notimesteps=c(3,3,3,3),
             firststep = 1,
             laststep = 4
 ),
@@ -362,7 +362,7 @@ gadget.setup <- function(time,area,stocks,fleets){
               firststep = time$firststep,
               lastyear = time$lastyear,
               laststep = time$laststep,
-              notimesteps = time$numoftimesteps)
+              notimesteps = time$notimesteps)
   
   ## area definitions
   area.temp <- getTimeSteps(time)
