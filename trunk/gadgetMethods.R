@@ -486,7 +486,15 @@ setMethod('getNumLengthGroups', 'gadget-main',
 
 setGeneric('getLengthGroups',def=function(object){standardGeneric("getLengthGroups")})
 setMethod('getLengthGroups', 'gadget-stock',
-          function(object) tail(seq(object@minlength, object@maxlength,by=object@dl),-1))
+          function(object){
+            if((object@maxlength-object@minlength)%%object@dl==0){
+              tail(seq(object@minlength, object@maxlength,by=object@dl),-1)
+            } else {
+              # is this the proper way of dealing with this?
+              seq(object@minlength, object@maxlength,by=object@dl)+
+                (object@maxlength-object@minlength)%%object@dl 
+            }
+            })
 setMethod('getLengthGroups', 'gadget-main',
           function(object) llply(object@stocks,getLengthGroups))
 

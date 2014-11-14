@@ -79,201 +79,175 @@
 ##' opt <- gadget.options
 ##' ## change the length of the simulation to 13 years
 ##' opt$numobs <- 13
-gadget.options <- function(){
+gadget.options <- function(type=c('simple2stock','spawning')){
   opt <- list(
 #############################################################
 #
 # This file contains all variables and switches
 # for a 2 stock 1 area Gadget model.
 #
-stocks = 
-  list(imm=list(name='imm',
-                init.abund = 1e6*exp(-(1:3)*0.2),
-                minage = 1,
-                maxage = 3,
-                minlen = 5,
-                maxlen = 90,
-                dl = 1,
-                M=0.2,
-                doeseat = 0,
-                iseaten = 1,
-                doesmigrate = 1,
-                Migration = array(c(1,0,.4,.6,.6,.4,0,1,
-                                    .6,.4,0,1,1,0,.4,.6),
-                                  c(2,2,4)),
-                ## density dependent migration
-                doesfuncmigrate = 0,
-                diffusion = NULL,
-                driftx = NULL,
-                drifty = NULL,
-                lambda = NULL,
-                doesmove = 1,
-                transitionstockandratios = data.frame(stock='mat',ratio=1),
-                transitionstep = 1,
-                doesspawn = 0,
-                livesonareas=1,
-                doesgrow = 1,
-                growth = c(linf=115,
-                           k=0.09,
-                           # binn is maximum updating length
-                           binn=15,
-                           # Beta for beta-binomial
-                           beta=200),
-                weight = c(a=10^(-5),
-                           b=3),
-                doesrenew = 1,
-                doesspawn = 0,
-                renewal.step = 1,
-                # The standard deviation of length at i years old
-                # This vector must the same length as the number of ages.
-                sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
-                        5.5404, 5.8072, 6.0233, 8, 9, 9),
-                ## number of recruits
-                n = 1e6,
-                ## Meanlength for the recruits
-                murec=NULL
-                ),
-       mat = list(name='mat',
-                  init.abund = 1e6*exp(-(4:10)*0.2),
-                  minage = 4,
-                  maxage = 10,
-                  minlen = 5,
-                  maxlen = 90,
-                  dl = 1,
-                  M=0.2,
-                  doeseat = 1,
-                  # alpha and beta for the predation suitability function
-                  spalpha = 4.5,
-                  spbeta = -0.2,
-                  spgamma = -0.3,
-                  spdelta = 1,
-                  
-                  # For the maximum consumption
-                  m0=10^(-2),
-                  m3=3,
-                  H=4*10^3,
-                  
-                  # otherfrac is the fraction of otherfood that is eaten
-                  otherfrac=0.8,
-                  otherfood=50000,
-                  iseaten = 1,
-                  doesmigrate = 1,
-                  Migration = array(c(1,0,.4,.6,.6,.4,0,1,
-                                      .6,.4,0,1,1,0,.4,.6),
-                                    c(2,2,4)),
-                  ## density dependent migration
-                  doesfuncmigrate = 0,
-                  diffusion = NULL,
-                  driftx = NULL,
-                  drifty = NULL,
-                  lambda = NULL,
-                  doesmove = 0,
-                  doesspawn = 0,
-                  livesonareas=1,
-                  doesgrow = 1,
-                  growth = c(linf=115,
-                             k=0.09,
-                             # binn is maximum updating length
-                             binn=15,
-                             # Beta for beta-binomial
-                             beta=200),
-                  weight = c(a=10^(-5),
-                             b=3),
-                  doesrenew = 0,
-                  doesspawn = 0,
-                  # The standard deviation of length at i years old
-                  # This vector must the same length as the number of ages.
-                  sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
-                          5.5404, 5.8072, 6.0233, 8, 9, 9)
-       )),
-
-
+    stocks = 
+    list(imm=list(name='imm',
+           init.abund = 1e6*exp(-(1:3)*0.2),
+           minage = 1,
+           maxage = 3,
+           minlen = 5,
+           maxlen = 90,
+           dl = 1,
+           M=0.2,
+           doeseat = 0,
+           iseaten = 1,
+           doesmigrate = 1,
+           Migration = array(c(1,0,.4,.6,.6,.4,0,1,
+             .6,.4,0,1,1,0,.4,.6),
+             c(2,2,4)),
+           ## density dependent migration
+           doesfuncmigrate = 0,
+           diffusion = NULL,
+           driftx = NULL,
+           drifty = NULL,
+           lambda = NULL,
+           doesmove = 1,
+           transitionstockandratios = data.frame(stock='mat',ratio=1),
+           transitionstep = 1,
+           doesspawn = 0,
+           livesonareas=1,
+           doesgrow = 1,
+           growth = c(linf=115,
+             k=0.09,
+             ## binn is maximum updating length
+             binn=15,
+             ## Beta for beta-binomial
+             beta=200),
+           weight = c(a=10^(-5),
+             b=3),
+           doesrenew = 1,
+           doesspawn = 0,
+           renewal.step = 1,
+           ## The standard deviation of length at i years old
+           ## This vector must the same length as the number of ages.
+           sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
+             5.5404, 5.8072, 6.0233, 8, 9, 9),
+           ## number of recruits
+           n = 1e6,
+           ## Meanlength for the recruits
+           murec=NULL
+           ),
+         mat = list(name='mat',
+           init.abund = 1e6*exp(-(4:10)*0.2),
+           minage = 4,
+           maxage = 10,
+           minlen = 5,
+           maxlen = 90,
+           dl = 1,
+           M=0.2,
+           doeseat = 1,
+           ## alpha and beta for the predation suitability function
+           spalpha = 4.5,
+           spbeta = -0.2,
+           spgamma = -0.3,
+           spdelta = 1,
            
-#############################################################
-#
-# Set the switch to 1 if you want to catch, else set it to 0
-#
-  area = list(
-# Number of areas (cannot currently be more than 2)
-    numofareas = 1,
-    #The portion of the stock in area 1.
-    probarea=1,
-    # The temperature of the area
-    area.temperature=5,
-    # areas assumed to be of equal size
-    areasize=2*10^5
-  ),
+           ## For the maximum consumption
+           m0=10^(-2),
+           m3=3,
+           H=4*10^3,
+           
+           ## otherfrac is the fraction of otherfood that is eaten
+           otherfrac=0.8,
+           otherfood=50000,
+           iseaten = 1,
+           doesmigrate = 1,
+           Migration = array(c(1,0,.4,.6,.6,.4,0,1,
+             .6,.4,0,1,1,0,.4,.6),
+             c(2,2,4)),
+           ## density dependent migration
+           doesfuncmigrate = 0,
+           diffusion = NULL,
+           driftx = NULL,
+           drifty = NULL,
+           lambda = NULL,
+           doesmove = 0,
+           doesspawn = 0,
+           livesonareas=1,
+           doesgrow = 1,
+           growth = c(linf=115,
+             k=0.09,
+             ## binn is maximum updating length
+             binn=15,
+             ## Beta for beta-binomial
+             beta=200),
+           weight = c(a=10^(-5),
+             b=3),
+           doesrenew = 0,
+           doesspawn = 0,
+           ## The standard deviation of length at i years old
+           ## This vector must the same length as the number of ages.
+           sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
+             5.5404, 5.8072, 6.0233, 8, 9, 9)
+           )),
+       
+    area = list(
+      ## Number of areas (cannot currently be more than 2)
+      numofareas = 1,
+      ## The portion of the stock in area 1.
+      probarea=1,
+      ## The temperature of the area
+      area.temperature=5,
+      ## areas assumed to be of equal size
+      areasize=2*10^5
+      ),
 
-#################################
-# Variables for time and area
-#
-# number of years observed
-time = list(numobs=20,
-            firstyear = 1,
-            lastyear = 20,
-            # numoftimesteps is a number of timesteps in each year
-            notimesteps=c(3,3,3,3),
-            firststep = 1,
-            laststep = 4
-),
+    time = list(numobs=20,
+      firstyear = 1,
+      lastyear = 20,
+      ## numoftimesteps is a number of timesteps in each year
+      notimesteps=c(3,3,3,3),
+      firststep = 1,
+      laststep = 4
+      ),
 
-#################################
-#
-# Variables for the the initial stock
-#
+    ## Variables for the catch
+    ## Fleet operations              
+    fleets = list(surv=list(name = 'surv',
+                    livesonareas = 1,                    
+                    catchstep = 2,
+                    suitability = 
+                    data.frame(stock = c('imm','mat'),
+                               suitability = rep('exponential',2),
+                               alpha= rep(-4.5,2),
+                               beta= rep(0.3,2),
+                               gamma = 0,
+                               delta = 1,
+                               stringsAsFactors = FALSE),
+                    type='linearfleet',
+                    multiplicative='1',
+                    Fy=1e-6),
+      comm=list(name = 'comm',
+        livesonareas = 1,
+        catchstep = 1:4,
+        suitability = 
+        data.frame(stock = c('imm','mat'),
+                   suitability = rep('exponential',2),
+                   alpha= rep(-8,2),
+                   beta= rep(0.22,2),
+                   gamma = 0,
+                   delta = 1,
+                   stringsAsFactors = FALSE),
+        type='linearfleet',
+        multiplicative='1',
+        Fy=0.2)))
 
-# z is the natural mortality constant used to calculate the size of
-# the initial population for age 2 +
-              z=0.2,
-
-
-#################################
-#
-# Variables for the predation
-#
-
-# The maximum portion consumed, in Gadget it is 0.95
-# this is known as understaocking in Gadget
-              maxratioconsumed=0.95,
-
-#################################
-#
-# Variables for the catch
-#
-
-## Fleet operations              
-fleets = list(surv=list(name = 'surv',
-                        livesonareas = 1,
-                        
-                        catchstep = 2,
-                        suitability = 
-                          data.frame(prey = c('imm','mat'),
-                                     func = rep('exponential',2),
-                                     alpha= rep(-4.5,2),
-                                     beta= rep(0.3,2),
-                                     gamma = 0,
-                                     delta = 1,
-                                     stringsAsFactors = FALSE),
-                        type='linearfleet',
-                        multiplicative='1',
-                        Fy=1e-6),
-              comm=list(name = 'comm',
-                        livesonareas = 1,
-                        catchstep = 1:4,
-                        suitability = 
-                          data.frame(prey = c('imm','mat'),
-                                     func = rep('exponential',2),
-                                     alpha= rep(-8,2),
-                                     beta= rep(0.22,2),
-                                     gamma = 0,
-                                     delta = 1,
-                                     stringsAsFactors = FALSE),
-                        type='linearfleet',
-                        multiplicative='1',
-                        Fy=0.2))
-              
-
-              )
+  if(type=='spawning'){
+    opt$stocks$imm$doesrenew <- 0
+    opt$stocks$mat$doesspawn <- 1
+    opt$stocks$mat$spawnsteps <- 1
+    opt$stocks$mat$spawnareas <- 1
+    opt$stocks$mat$firstspawnyear <- opt$time$firstyear
+    opt$stocks$mat$lastspawnyear <- opt$time$lastyear
+    opt$stocks$mat$spawnmu <- 0.36 ## warning this is based on number of spawners not biomass as in Gadget
+  }
+  
   class(opt) <- c('gadget.options',class(opt))
   return(opt)
 }
@@ -354,8 +328,21 @@ derivedOptions <- function(opt){
     time$dt <- 1/time$numoftimesteps
   })
 }
-
-gadget.setup <- function(time,area,stocks,fleets){
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title Gadget skeleton
+##' @param time list describing the time step of the model
+##' @param area list describing the spatial grid of the model
+##' @param stocks list describing the stocks of the model
+##' @param fleets list describing the fleets
+##' @return gadget-model class
+##' @author Bjarki Þór Elvarsson
+##' @examples
+##' opt <- gadget.options()
+##' gm <- gadget.skeleton(time=opt$time,area=opt$area,
+##'                       stocks=opt$stocks,fleets=opt$fleets)
+gadget.skeleton <- function(time,area,stocks,fleets){
   ## Definition of time
   time <- new('gadget-time',
               firstyear = time$firstyear,
@@ -391,7 +378,7 @@ gadget.setup <- function(time,area,stocks,fleets){
                       beta = x$growth['beta'], 
                       maxlengthgroupgrowth = x$growth['binn'])
         
-        mu <- x$growth['linf'] * (1 - exp(-x$growth['k'] * x$minage:x$maxage))
+        mu <- x$growth['linf'] * (1 - exp(-x$growth['k'] * 1:x$maxage))
         
         refweight <- mutate(data.frame(length = seq(x$minlen,x$maxlen,by=x$dl)),
                             weight =  x$weight['a']*length^x$weight['b'])
@@ -420,7 +407,8 @@ gadget.setup <- function(time,area,stocks,fleets){
                                       each = x$maxage - x$minage + 1), 
                            age.factor = alive,               
                            area.factor = 1, 
-                           mean =  rep(mu,getNumOfAreas(area)), 
+                           mean =  rep(mu[x$minage:x$maxage],
+                             getNumOfAreas(area)), 
                            stddev = x$sigma[x$minage:x$maxage],
                            relcond = 1)
         if(x$doesrenew==1){ 
@@ -437,14 +425,31 @@ gadget.setup <- function(time,area,stocks,fleets){
                      relcond = 1)
                      #a = x$weight['a'],
                      #b = x$weight['b'])
-          }
+          }          
         }else {
           x$renewal.data <- data.frame()
         }
         
         if(x$doesmove==0)
           x$transitionstockandratios <- data.frame()
-        
+
+        if(x$doesspawn==1){
+          spawndata <- new('gadget-spawning',
+                           spawnsteps = x$spawnsteps,
+                           spawnareas = x$spawnareas,
+                           firstspawnyear = x$firstspawnyear,
+                           lastspawnyear = x$lastspawnyear,
+                           spawnstocksandratio = data.frame(stock = 'imm',ratio = 1),
+                           proportionfunction = c(func = 'constant', alpha = 1),
+                           mortalityfunction = c(func = 'constant', alpha = 0),
+                           weightlossfunction = c(func = 'constant', alpha = 0),
+                           recruitment = data.frame(func = 'simplessb', mu = x$spawnmu),
+                           stockparameters = data.frame(mean = mu[x$minage],
+                             sttdev = x$sigma[x$minage], 
+                             alpha = x$weight['a'], beta = x$weight['b']))
+        } else {
+          spawndata <- new('gadget-spawning')
+        }
         stock <- new('gadget-stock',
                      stockname = x$name,
                      livesonareas = x$livesonareas,
@@ -467,6 +472,7 @@ gadget.setup <- function(time,area,stocks,fleets){
                                               sdev = 1),
                      initialdata = init,
                      doesspawn = x$doesspawn,
+                     spawning = spawndata,
                      doesmigrate = x$doesmigrate,
                      doesrenew = x$doesrenew,
                      renewal.data = x$renewal.data,
@@ -478,20 +484,26 @@ gadget.setup <- function(time,area,stocks,fleets){
   
   
   ## fleet operations
+
   
-  fleets <- llply(fleets,
+  fleets <- llply(opt$fleets,
                   function(x){
                     fleetdat <- 
                       mutate(area.temp[c('year','step','area')],
                              fleet=x$name,
                              Fy=x$Fy)
-                    
+                    tmp <- ddply(x$suitability,~stock,function(x)
+                                 c(params=paste(x[,-(1:2)],collapse=' ')))
+                    fleet.suit <- data.frame(fleet=x$name,
+                                             stock=x$suitability$stock,
+                                             suitability = x$suitability$suitability,
+                                             params = tmp$params)
                     new('gadget-fleet',
                         name = x$name,
                         type = x$type,
                         livesonareas = x$livesonareas,
                         multiplicative = 1,
-                        suitability = x$suitability,
+                        suitability = fleet.suit,
                         amount = subset(fleetdat,step==x$catchstep)
                     )
                   }

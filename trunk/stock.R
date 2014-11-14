@@ -74,8 +74,8 @@
 ##'  @author Bjarki Thor Elvarsson, Asta Jenny Sigurdardottir and Elinborg Ingunn Olafsdottir
 ##'  @export
 ##' @examples
-##' opt <- gadget.options()
-##' gm <- gadget.setup(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
+##' opt <- gadget.options('simple2stock')
+##' gm <- gadget.skeleton(time=opt$time,area=opt$area,stock=opt$stocks,opt$fleets)
 ##' sim <- gadget.simulate(gm)
 gadget.simulate <- function(gm, params=data.frame(),
                             maxratioconsumed = 0.95){
@@ -94,11 +94,18 @@ gadget.simulate <- function(gm, params=data.frame(),
                             time = sprintf('Year_%s_Step_%s',tm$year,tm$step))
       )
     ## initial data:
+    if(x@doesrenew==1){
+      tmp <- 1
+    } else {
+      tmp <- 0
+    }
+
     initData <- subset(getInitData(x,params),
-                       age %in% (getMinage(x)+1):getMaxage(x))
+                       age %in% (getMinage(x)+tmp):getMaxage(x))
     lg <- getLengthGroups(x)
     lg <- c(min(lg)-x@dl,lg)
-    stk[getAreas(gm),,(getMinage(x)+1):getMaxage(x),1] <- 
+#    print(x@stockname)
+    stk[getAreas(gm),,(getMinage(x)+tmp):getMaxage(x),1] <- 
       acast(ddply(initData,~age+area,function(y){
         data.frame(length = lg[-1],
                    num=y$age.factor*
@@ -168,6 +175,7 @@ gadget.simulate <- function(gm, params=data.frame(),
                   function(x){
                     getGrowth(x,params)
                   })
+
   
   ## migration matrix
   stkMig <- llply(gm@stocks,
@@ -182,6 +190,7 @@ gadget.simulate <- function(gm, params=data.frame(),
   
   clock <- getTimeSteps(gm@time)
   for(i in 1:nrow(clock))    {
+#    print(i)
     curr.step <- clock$step[i]
     curr.year <- clock$year[i]
     
@@ -208,6 +217,24 @@ gadget.simulate <- function(gm, params=data.frame(),
       }
       
       for(stock in getStockNames(gm)){
+        ## hack for one area
+        if(gm@stocks[[stock]]@doesspawn == 1){
+          if(curr.step %in% gm@stocks[[stock]]@spawning@spawnsteps){
+            tmp <- gm@stocks[[stock]]@spawning@spawnstocksandratio
+            tmp$stock <- as.character(tmp$stock)
+            for(stkInd in 1:nrow(tmp)){
+              lg <- getLengthGroups(gm@stocks[[tmp[stkInd,1]]])
+              total.num <- gm@stocks[[stock]]@spawning@recruitment$mu[1]*
+                sum(stkArr[[stock]][,,,i-1])*tmp[stkInd,2]
+              y <- gm@stocks[[stock]]@spawning@stockparameters
+              stkArr[[tmp[stkInd,1]]][,,getMinage(gm@stocks[[tmp[stkInd,1]]]),i] <-
+                 acast(data.frame(length = lg[-1],
+                                  num=total.num*distr(y$mean,y$stddev,lg)),
+                       area~length,value.var='num')
+            }
+          }
+        }
+      
         if(gm@stocks[[stock]]@doesmove == 1){
           tmp <- gm@stocks[[stock]]@transitionstockandratios
           tmp$stock <- as.character(tmp$stock)
@@ -217,17 +244,18 @@ gadget.simulate <- function(gm, params=data.frame(),
               stkArr[[stock]][,,getMaxage(gm@stocks[[stock]]),i-1]*tmp[stkInd,2]
           }
         }
+        
       }
-    } 
+     
     
-    if(getNumOfAreas(gm)>1){
-      for(stock in getStockNames(gm)){
-        if(gm@stocks[[stock]]@doesmigrate==1)
-          stkArr[[stock]][,,,i] <- migrate(stkArr[[stock]][,,,i-1],
-                                           stkMig[[stock]][,,curr.step])
+      if(getNumOfAreas(gm)>1){
+        for(stock in getStockNames(gm)){
+          if(gm@stocks[[stock]]@doesmigrate==1)
+            stkArr[[stock]][,,,i] <- migrate(stkArr[[stock]][,,,i-1],
+                                             stkMig[[stock]][,,curr.step])
+        }
       }
     }
-    
     
 
     ############
@@ -255,9 +283,9 @@ gadget.simulate <- function(gm, params=data.frame(),
             suit <- array(as.numeric(fleetSuit[[fleet]][[stock]](l)),
                           dim = c(length(l),getMaxage(gm@stocks[[stock]])))
             if(gm@fleets[[fleet]]@type == 'linearfleet'){
-              fleetArr[[stock]][fleet,tmp$area,,age,i] <- 
+              fleetArr[[stock]][fleet,tmp$area,,,i] <- 
                 as.numeric(tmp$Fy)*dt[curr.step]*
-                stkArr[[stock]][tmp$area,,age,i]*suit
+                stkArr[[stock]][tmp$area,,,i]*suit
               
             } else if (gm@fleets[[fleet]]@type == 'totalfleet'){
               w  <- getWeight(gm@stocks[[stock]],l,params)

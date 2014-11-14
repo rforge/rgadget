@@ -4,39 +4,73 @@
 ##' @param sigma sigma for a log-normal noise for the indicies
 ##' @return Dataframe with the survey indices 
 ##' @author Bjarki Þór Elvarsson
-survey.index <- function(sim,sigma=0){
+survey.index <- function(stock.dat,split,sigma=0,alpha=1,beta=1){
   ##Calculates the total catch  
-  opt <- sim$opt
-  Index <- rbind(as.data.frame.table(sim$immNumRec,stringsAsFactors=FALSE),
-                 as.data.frame.table(sim$matNumRec,stringsAsFactors=FALSE))
-  Index$year <- sapply(strsplit(Index$time,'_'),
-                       function(x) as.numeric(x[2]))
-  Index$step <- sapply(strsplit(Index$time,'_'),
-                          function(x) as.numeric(x[4]))
-  Index <- Index[Index$step==opt$survstep,]
-  SurveyAgg <- aggregate(Index$Freq,
-                         by=list(
-                           year=Index$year,
-                           step=Index$step,
-                           area=sprintf('area%s',Index$area),
-                           age=ifelse(Index$age==1,'age1','ageother')),
-                         sum)
   
-  names(SurveyAgg)[5] <- 'index'
-  temp <- exp(rnorm(opt$numobs,0,sigma^2)-sigma^2/2)
-  SurveyAgg$index <- SurveyAgg$index*temp
-  
-  SurveyAgg$time <- SurveyAgg$year+(SurveyAgg$step - 1)/opt$numoftimesteps
-  
-  class(SurveyAgg) <- c('Rgadget',class(SurveyAgg))
-  attr(SurveyAgg,'formula') <- index~time|area
-  attr(SurveyAgg,'plotGroups') <- 'age'
-  attr(SurveyAgg,'plotType') <- 'l'
-  attr(SurveyAgg,'xaxis') <- 'Year'
-  attr(SurveyAgg,'yaxis') <- 'Survey Index'
-  attr(SurveyAgg,'plotFun') <- 'xyplot'  
-  return(SurveyAgg)
+  stock.dat$SIgroup <- cut(stock.dat$length,split)
+  sidat <- stock.dat %>%
+    group_by(SIgroup,year,step) %>%
+    summarise(SI=sum(num))
+  if(sigma!=0){
+    sidat$SI <- sidat$SI*exp(rnorm(nrow(sidat),0,sigma^2)-sigma^2/2)
+  }
+  return(sidat)
 }
+
+ldist <- function(stock.dat,sigma=0,dl=1){
+  stock.dat$lgroup <- cut(stock.dat$length,
+                          seq(min(stock.dat$length),
+                              max(stock.dat$length),
+                              by=dl))
+  ldist <- stock.dat %>%
+    group_by(lgroup,year,step) %>%
+      summarise(num=sum(num))
+  if(sigma!=0){
+    ldist$num <- ldist$num*exp(rnorm(nrow(ldist),0,sigma^2)-sigma^2/2)
+  }
+  ldist <- ldist %>%
+    group_by(year,step,add=FALSE) %>%
+    mutate(p=num/sum(num))
+  return(ldist)
+}
+
+aldist <- function(stock.dat,sigma=0,dl=1){
+  stock.dat$lgroup <- cut(stock.dat$length,
+                          seq(min(stock.dat$length),
+                              max(stock.dat$length)+1,
+                              by=dl))
+  aldist <- stock.dat %>%
+    group_by(age,lgroup,year,step) %>%
+      summarise(num=sum(num))
+  if(sigma!=0){
+    aldist$num <- aldist$num*exp(rnorm(nrow(aldist),0,sigma^2)-sigma^2/2)
+  }
+  aldist <- aldist %>%
+    group_by(year,step,add=FALSE) %>%
+    mutate(p=num/sum(num))
+  return(aldist)
+}
+
+toDataFrame <- function(sim){
+  worker.fun <- function(x){
+    tmp <- as.data.frame.table(x,responseName='num',
+                               stringsAsFactors=FALSE)
+    tmp$length <- as.numeric(tmp$length)
+    tmp$age <- as.numeric(tmp$age)
+    tmp$year <- sapply(strsplit(tmp$time,'_'),
+                       function(y) as.numeric(y[2]))
+    tmp$step <- sapply(strsplit(tmp$time,'_'),
+                       function(y) as.numeric(y[4]))
+
+    return(tmp)
+  }
+  stocks <- ldply(sim$stkArr,worker.fun)
+  fleets <- ldply(sim$fleetArr,worker.fun)
+  return(list(stocks=data.table(stocks),fleets=data.table(fleets)))
+}
+  
+
+
 ##' Calculate the survey length index based on the provided lengthgroups
 ##' @title Survey length index
 ##' @param sim Results from a Rgadget simulation

@@ -1071,7 +1071,7 @@ read.gadget.stockfiles <- function(stock.files){
                       })
         tmp <- new('gadget-predator',
                    suitability = suit,
-                   preferene = pref,
+                   preference = pref,
                    maxconsumption = as.numeric(tmp[[maxcon.loc]][2]),
                    halffeedingvalue = as.numeric(tmp[[half.loc]][2]))
       }
