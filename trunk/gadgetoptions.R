@@ -91,8 +91,8 @@ gadget.options <- function(type=c('simple2stock','spawning')){
            init.abund = 1e6*exp(-(1:3)*0.2),
            minage = 1,
            maxage = 3,
-           minlen = 5,
-           maxlen = 90,
+           minlength = 5,
+           maxlength = 90,
            dl = 1,
            M=0.2,
            doeseat = 0,
@@ -137,8 +137,8 @@ gadget.options <- function(type=c('simple2stock','spawning')){
            init.abund = 1e6*exp(-(4:10)*0.2),
            minage = 4,
            maxage = 10,
-           minlen = 5,
-           maxlen = 90,
+           minlength = 5,
+           maxlength = 90,
            dl = 1,
            M=0.2,
            doeseat = 1,
@@ -184,7 +184,7 @@ gadget.options <- function(type=c('simple2stock','spawning')){
            ## The standard deviation of length at i years old
            ## This vector must the same length as the number of ages.
            sigma=c(2.2472, 2.8982, 4.0705, 4.9276,
-             5.5404, 5.8072, 6.0233, 8, 9, 9)
+             5.5404, 5.8072, 6.0233, 8, 9, 9,9,9,9,9,9,9,9,9,9)
            )),
        
     area = list(
@@ -372,15 +372,18 @@ gadget.skeleton <- function(time,area,stocks,fleets){
   ## stock definitions
   stocks <- 
     llply(stocks,function(x){
+      print(x$name)
         Growth <- new('gadget-growth',
                       growthfunction = 'lengthvbsimple',
                       growthparameters = c(x$growth[c('linf','k')],x$weight),
                       beta = x$growth['beta'], 
                       maxlengthgroupgrowth = x$growth['binn'])
         
-        mu <- x$growth['linf'] * (1 - exp(-x$growth['k'] * 1:x$maxage))
+        mu <- sprintf('( * %s (-  1 (exp (* (* -1 %s) %s))))',
+                      x$growth['linf'],x$growth['k'],1:x$maxage)
+#                      x$growth['linf'] * (1 - exp(-x$growth['k'] * 1:x$maxage))
         
-        refweight <- mutate(data.frame(length = seq(x$minlen,x$maxlen,by=x$dl)),
+        refweight <- mutate(data.frame(length = seq(x$minlength,x$maxlength,by=x$dl)),
                             weight =  x$weight['a']*length^x$weight['b'])
         lengths <- refweight$length
         lenAgg <- data.frame(length = paste('len',tail(lengths,-1), sep = ''),
@@ -388,19 +391,28 @@ gadget.skeleton <- function(time,area,stocks,fleets){
                              max = tail(lengths,-1))
         
         info <- new('gadget-prey',
-                    name = 'minke',
+                    name = x$name,
                     preylengths = lenAgg,
                     energycontent = 1)
         
         if(length(x$init.abund)==1){
-          tmp <- exp(-(x$minage:x$maxage)*x$M)
-          alive <- (tmp*x$init.abund)/sum(tmp)
+          tmp <- sprintf('(exp (* -1 (* %s %s)))',
+                         x$minage:x$maxage,
+                         x$M)
+#            exp(-(x$minage:x$maxage)*x$M)
+          alive <- sprintf('(/ (* %s %s) (+ %s))',
+                           tmp,x$init.abund,sum(tmp))
         } else if(length(x$init.abund)==(x$maxage - x$minage + 1)*
                     getNumOfAreas(area)){
           alive <- x$init.abund
         } else if(length(x$init.abund)==(x$maxage - x$minage + 1)){
           alive <- rep(x$probarea,each=length(x$init.abund))*
             rep(x$init.abund,getNumOfAreas(area))  
+        } else {
+          warning('length init.abund is not a multiple of num. stock agegroups')
+          alive <- tryCatch(rep(x$init.abund[1:(x$maxage - x$minage + 1)],getNumOfAreas(area)),
+                            error = rep(x$init.abund[1],getNumOfAreas(area)*
+                              (x$maxage - x$minage + 1)))
         }
         init <- data.frame(age = x$minage:x$maxage, 
                            area = rep(1:getNumOfAreas(area),
@@ -410,21 +422,21 @@ gadget.skeleton <- function(time,area,stocks,fleets){
                            mean =  rep(mu[x$minage:x$maxage],
                              getNumOfAreas(area)), 
                            stddev = x$sigma[x$minage:x$maxage],
-                           relcond = 1)
+                           alpha = x$weight['a'],
+                           beta = x$weight['b'])
         if(x$doesrenew==1){ 
           if(is.null(x$renewal.data)){
             x$renewal.data <- 
               mutate(subset(getTimeSteps(time), 
                             step == x$renewal.step),
                      area = 1:getNumOfAreas(area),
-                            
+                     
                      age = x$minage,
                      number = x$n,
                      mean = mu[x$minage],
                      stddev = x$sigma[x$minage],
-                     relcond = 1)
-                     #a = x$weight['a'],
-                     #b = x$weight['b'])
+                     a = x$weight['a'],
+                     b = x$weight['b'])
           }          
         }else {
           x$renewal.data <- data.frame()
@@ -450,24 +462,46 @@ gadget.skeleton <- function(time,area,stocks,fleets){
         } else {
           spawndata <- new('gadget-spawning')
         }
+
+        if(x$doesmature==1){
+          maturityfunction <- x$maturityfunction
+          maturestocksandratios <- x$maturestocksandratios
+          coefficients <- x$maturity.coefficients
+          maturitysteps <- x$maturitysteps
+        } else {
+          maturityfunction <- ''
+          maturestocksandratios <- list()
+          coefficients <- list()
+          maturitysteps <- 0
+        }
+         
+      if(length(x$M)==1){
+        M <- rep(x$M,x$maxage - x$minage + 1)
+      } else if(length(x$M)==x$maxage - x$minage + 1){
+        M <- x$M
+      } else {
+        stop(sprintf('Length M of stock %s not equal to maxage - minage + 1', x$name))
+      }
+      
+        
         stock <- new('gadget-stock',
                      stockname = x$name,
                      livesonareas = x$livesonareas,
                      minage = x$minage,
                      maxage = x$maxage,
-                     minlength = x$minlen,
-                     maxlength = x$maxlen,
+                     minlength = x$minlength,
+                     maxlength = x$maxlength,
                      dl = x$dl,
                      refweight = refweight,
                      doesgrow = x$doesgrow,
                      growth = Growth,
-                     naturalmortality = rep(x$M,x$maxage - x$minage + 1),
+                     naturalmortality = M,
                      iseaten = x$iseaten,
                      preyinfo = info, 
                      initialconditions = list(minage = x$minage,
                                               maxage = x$maxage,
-                                              minlength = x$minlen,
-                                              maxlength = x$maxlen,
+                                              minlength = x$minlength,
+                                              maxlength = x$maxlength,
                                               dl = x$dl,
                                               sdev = 1),
                      initialdata = init,
@@ -477,7 +511,12 @@ gadget.skeleton <- function(time,area,stocks,fleets){
                      doesrenew = x$doesrenew,
                      renewal.data = x$renewal.data,
                      doesmove = x$doesmove,
-                     transitionstockandratios = x$transitionstockandratios
+                     transitionstockandratios = x$transitionstockandratios,
+                     doesmature = x$doesmature,
+                     maturityfunction = maturityfunction,
+                     maturestocksandratios = maturestocksandratios,
+                     coefficients = coefficients,
+                     maturitysteps = maturitysteps
                      )
         
   })
@@ -488,10 +527,16 @@ gadget.skeleton <- function(time,area,stocks,fleets){
   
   fleets <- llply(opt$fleets,
                   function(x){
-                    fleetdat <- 
-                      mutate(area.temp[c('year','step','area')],
-                             fleet=x$name,
-                             Fy=x$Fy)
+                    if(x$type %in% c('linearfleet','effortfleet')){
+                      fleetdat <- 
+                        mutate(area.temp[c('year','step','area')],
+                               fleet=x$name,
+                               Fy=x$Fy)
+                      fleetdat <- subset(fleetdat,step==x$catchstep)
+                    } else {
+                      fleetdat <- x$amount
+                    }
+                      
                     tmp <- ddply(x$suitability,~stock,function(x)
                                  c(params=paste(x[,-(1:2)],collapse=' ')))
                     fleet.suit <- data.frame(fleet=x$name,
@@ -504,7 +549,7 @@ gadget.skeleton <- function(time,area,stocks,fleets){
                         livesonareas = x$livesonareas,
                         multiplicative = 1,
                         suitability = fleet.suit,
-                        amount = subset(fleetdat,step==x$catchstep)
+                        amount = fleetdat
                     )
                   }
                   )

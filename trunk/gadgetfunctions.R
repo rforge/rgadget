@@ -9,7 +9,7 @@ library(parallel)
 ##' This function sets up all necessary switches and calls gadget from R
 ##' and attempts to read the runtime output from gadget. This has currently
 ##' only been tested on unix based platforms (but should in principle work on
-##' windows).
+##' windows, given that gadget can be compiled).
 ##' The source code for gadget can be obtained from http://www.hafro.is/gadget
 ##'
 ##' Gadget is a flexible and powerful tool for creating ecosystem models.
@@ -362,7 +362,8 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
   ## degrees of freedom approximated by the number of datapoints
   lik.dat <- read.gadget.data(likelihood)
   restr <- !(likelihood$weights$type %in%
-             c('penalty','understocking','migrationpenalty'))
+             c('penalty','understocking','migrationpenalty',
+               'catchinkilos'))
   SS <- read.gadget.lik.out(paste(wgts,'lik.init',
                                   sep='/'))$data[likelihood$weights$name[restr]]
   ##' Survey indices get special treatment
@@ -582,13 +583,15 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 
 
 
-##' This function implements a crude sensitivity analysis of a gadget simulation
-##' The test is run by changing each of the variables in your model
-##' by up to +/- some percentage of the initial value. Often 
-##' a higher resolution near the optimum is desired than is requried elsewhere.
+##' This function implements a crude sensitivity analysis of a gadget
+##' simulation The test is run by changing each of the variables in
+##' your model by up to +/- some percentage of the initial
+##' value. Often a higher resolution near the optimum is desired than
+##' is requried elsewhere.
 ##' @title Gadget sensitivity
 ##' @param file name of the input file with the initial point
-##' @param outer.range The outer ranges of the parameter value considered, defined in terms of percentages.
+##' @param outer.range The outer ranges of the parameter value
+##' considered, defined in terms of percentages.
 ##' @param outer.stepsize The increments/stepsize within in the outer range. 
 ##' @param inner.range Inner range where the finer mesh should be used
 ##' @param inner.stepsize Inner stepsize.
@@ -607,7 +610,9 @@ gadget.iterative <- function(main.file='main',gadget.exe='gadget',
 ##' @param sens.dir a string naming the folder where the result and
 ##' temporary files are stored. The funciton will create the folder if
 ##' it has not already been created.
-##' @param calc.full (USE WITH CARE) should the the full hypercube of function values be calculated. Using this switch will increase the computation time required exponentially.
+##' @param calc.full (USE WITH CARE) should the the full hypercube of
+##' function values be calculated. Using this switch will increase the
+##' computation time required exponentially.
 ##' @param range The range of the sensitivity check
 ##' @param stepsize The stepsize used
 ##' @return results from lik.out
@@ -731,30 +736,37 @@ plot.gadget.sens <- function(sens,comp='score',ylimit=NULL,ncol=10,nrow=4){
 ##' @title Gadget Phasing 
 ##' @param phase a dataframe where the columns indicate the parameters
 ##' that are to be optimised in that particular phase
-##' @param params.in either a filename or gadget.parameters objecet
+##' @param params.in either a filename or gadget.parameters object
 ##' containing the initial value for the optimisation. 
 ##' @param main name of the main file used in the optimisation.
 ##' @param phase.dir output directory
+##' @param optinfofile 
 ##' @return final optimised parameter values
 ##' @author Bjarki Thor Elvarsson
-gadget.phasing <- function(phase,params.in='params.in',main='main',phase.dir='PHASING'){
+gadget.phasing <- function(phase,params.in='params.in',main='main',
+                           phase.dir='PHASING', optinfofile='optinfofile'){
   dir.create(phase.dir, showWarnings = FALSE)
   if(class(params.in)=='character'){
     params.in <- read.gadget.parameters(params.in)
   } else if(!('gadget.parameters' %in% class(params.in))) {
     stop('params.in is not a valid gadget.parameters object')
   }
-  tmp <- params.in$optimise
+  #tmp <- params.in$optimise
+
   for(p in names(phase)){
-    params.in$optimise <- phase[[p]]
+    print(sprintf('In phase %s',p))
+    params.in$optimise <- NULL
+    params.in <- merge(params.in,phase[[p]],all.x=TRUE)
+    params.in$optimise[is.na(params.in$optimise)] <- 0
     write.gadget.parameters(params.in,sprintf('%s/params.%s',phase.dir,p))
     callGadget(l=1,main=main,i=sprintf('%s/params.%s',phase.dir,p),
-               p=sprintf('%s/params.out.%s',phase.dir,p))
+               p=sprintf('%s/params.out.%s',phase.dir,p),
+               opt=optinfofile)
     callGadget(s=1,main=main,o=sprintf('%s/lik.%s',phase.dir,p),
                i=sprintf('%s/params.out.%s',phase.dir,p))
     params.in <- read.gadget.parameters(sprintf('%s/params.out.%s',phase.dir,p))
   }
-  return(params.in)
+  invisible(params.in)
 }
 
 

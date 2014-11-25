@@ -135,13 +135,20 @@ setMethod("write",
                     quote=FALSE,sep='\t',row.names=FALSE)
         
         ## initial data
-        init.head <- paste(sprintf('; initial (normalcond) file for %s created using rgadget at %s',
-                                  x@stockname,Sys.Date()),
+        if(ncol(x@initialdata)==7){
+          init.type <- 'normalcond'
+        } else if(ncol(x@initialdata)==8){
+          init.type <- 'normalparam'
+        } else if(ncol(x@initialdata)==5){
+          init.type <- 'number'
+        }
+        init.head <- paste(sprintf('; initial (%s) file for %s created using rgadget at %s',
+                                  init.type,x@stockname,Sys.Date()),
                           paste(c('; ',names(x@initialdata)),collapse = '\t'),
                           sep = '\n')
-        write(init.head,file = sprintf('%s/Data/%s.normalcond',file,x@stockname))
+        write(init.head,file = sprintf('%s/Data/%s.%s',file,x@stockname,init.type))
         write.table(x@initialdata,
-                    file = sprintf('%s/Data/%s.normalcond',file,x@stockname),
+                    file = sprintf('%s/Data/%s.%s',file,x@stockname,init.type),
                     col.names=FALSE,append=TRUE,
                     quote=FALSE,sep='\t',row.names=FALSE)
         
@@ -170,7 +177,7 @@ setMethod("write",
             paste(c('minage', 'maxage', 'minlength',
                     'maxlength', 'dl', 'sdev'),
                   x@initialconditions,sep ='\t',collapse = '\n'),
-            sprintf('normalcondfile\t%s/Data/%s.normalcond',file,x@stockname),
+            sprintf('%sfile\t%s/Data/%s.%1$s',init.type,file,x@stockname),
             sprintf('doesmigrate\t%s',x@doesmigrate),
             migration = ';',
             sprintf('doesmature\t%s',x@doesmature),
@@ -223,13 +230,20 @@ setMethod("write",
         }
 
         if(x@doesrenew == 1){
+          if(ncol(x@renewal.data==7)){
+            rec.type <- 'normalcond'
+          } else if(ncol(x@renewal.data==8)){
+            rec.type <- 'normalparam'
+          } else if(ncol(x@renewal.data==5)){
+            rec.type <- 'number'
+          }
           stock.text['renewal'] <-
             paste(paste(names(x@renewal),
                         laply(x@renewal,
                               function(x)
                               paste(x,collapse=' ')),
                         sep='\t',collapse = '\n'),
-                  sprintf('normalparamfile\t%s/Data/%s.rec',file,x@stockname),
+                  sprintf('%sfile\t%s/Data/%s.rec',rec.type,file,x@stockname),
                   sep='\n')
           write.table(x@renewal.data,
                       file = sprintf('%s/Data/%s.rec',
@@ -238,7 +252,16 @@ setMethod("write",
                       col.names = FALSE,
                       quote=FALSE)
         }
-        
+
+        if(x@doesmature == 1){
+          maturity <- sprintf('maturityfunction\t%s\nmaturityfile\t%s/maturity',
+                              x@maturityfunction,loc)
+
+
+        }
+        if(x@doesmove == 1){
+            movement = ';',        
+          }
         write(paste(stock.text,collapse = '\n'),
               file = sprintf('%s/%s',file,x@stockname))
     }
@@ -368,12 +391,12 @@ setMethod("write",
       main.text <-
         paste(sprintf('; main file for the %s model',x@model.name),
               sprintf('; created using rgadget at %s',Sys.Date()),
-              'timefile\ttime',
-              'areafile\tarea',
+              sprintf('timefile\t%s/time',loc),
+              sprintf('areafile\t%s/area',loc),
               sprintf('printfiles\t%s',
                       ifelse(length(x@print)>0,'printfile',';')),
               '[stock]',
-              sprintf('stockfiles\t%s',
+              sprintf('stockfiles\t%s/%s',loc,
                       paste(sapply(x@stocks,function(x) x@stockname),
                             collapse='\t')),
               '[tagging]',
@@ -381,10 +404,10 @@ setMethod("write",
               '[otherfood]',
               ifelse(length(x@otherfood)>0,'otherfoodfiles\totherfood',';'),
               '[fleet]',
-              ifelse(length(x@fleets)>0,'fleetfiles\tfleets',';'),
+              ifelse(length(x@fleets)>0,sprintf('fleetfiles\t%s/fleets',loc),';'),
               '[likelihood]',
               ifelse(length(x@likelihood)>0,
-                     'likelihoodfiles\tlikelihood',';'),
+                     sprinft('likelihoodfiles\t%s/likelihood',loc),';'),
               sep='\n'
               )
       write(main.text,file=sprintf('%s/main',loc))

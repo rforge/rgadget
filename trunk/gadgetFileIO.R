@@ -222,6 +222,7 @@ merge.gadget.likelihood <- function(lik1,lik2){
                          unique(rbind.fill(lik1[[comp]],lik2[[comp]])))
                 })
   class(tmp) <- c('gadget.likelihood',class(tmp))
+  tmp$comp <- NULL
   return(tmp)
 }
 
@@ -836,7 +837,7 @@ write.gadget.optinfo<-function(optinfo,file='optinfofile'){
 ##' @return a list containing the swicthes (names of variable), weigths
 ##' (l?kelihood components) and data (dataframe with the parameter values,
 ##' likelihood component values and the final score.
-##' @author Bjarki Thor Elvarsson
+##' @author Bjarki Thor Elvarsson, Hoskuldur Bjornsson
 read.gadget.lik.out <- function(file='lik.out',suppress=FALSE){
   if(!file.exists(file)){
     return(NULL)
@@ -1480,14 +1481,15 @@ eval.gadget.formula <- function(gad.for,par){
         function(x){
           x <- x[!x=='']
           par.ind <- grep('#',x,fixed=TRUE)
-          x <- gsub("*","'*'(",x,fixed=TRUE)
+          x <- gsub("*","prod(",x,fixed=TRUE)
           x <- gsub("/","'/'(",x,fixed=TRUE)
-          x <- gsub("+ ","'+'(",x,fixed=TRUE)
+          x <- gsub("+ ","sum(",x,fixed=TRUE)
           x <- gsub("- ","'-'(",x,fixed=TRUE)
           x <- gsub('exp','exp(',x,fixed = TRUE)
           x <- gsub('log','log(',x,fixed = TRUE)
           x <- gsub('sqrt','sqrt(',x,fixed = TRUE)
-          x <- gsub('[0-9]+.[0-9]+#|[0-9]+#','#',x)
+          ## remove initial values
+          x <- gsub('[0-9]+.[0-9]+#|[0-9]+#','#',x) 
           x[par.ind] <- par[gsub('#','',x[par.ind],fixed=TRUE),'value']
           x <- gsub(',)',')',gsub('(,','(',paste(x,collapse=','),fixed=TRUE),
                     fixed=TRUE)
@@ -1928,6 +1930,7 @@ gadget.fit <- function(wgts = 'WGTS', main.file = 'main',
               suitability = gss.suit, stock.growth = stock.growth,
               stock.recruiment = stock.recruitment,
               res.by.year = res.by.year,
+              likelihoodsummary = out$likelihoodsummary,
               catchdist.fleets = catchdist.fleets, stockdist = stockdist)
 
   save(out,file=sprintf('%s/WGTS.Rdata',wgts))
