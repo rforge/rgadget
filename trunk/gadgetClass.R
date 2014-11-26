@@ -203,7 +203,7 @@ setClass('gadget-stock',
                         maturitylengths = 'numeric',
                         ## movement between stocks
                         doesmove = 'numeric',
-                        transitionstockandratios = 'data.frame',
+                        transitionstocksandratios = 'data.frame',
                         transitionstep = 'numeric',
                         ## renewal
                         doesrenew = 'numeric',
@@ -251,7 +251,7 @@ setClass('gadget-stock',
                         maturitylengths = 0,
                         ## movement between stocks
                         doesmove = 0,
-                        transitionstockandratios = data.frame(),
+                        transitionstocksandratios = data.frame(),
                         transitionstep = 0,
                         ## renewal
                         doesrenew = 0,

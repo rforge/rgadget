@@ -108,7 +108,7 @@ gadget.options <- function(type=c('simple2stock','spawning')){
            drifty = NULL,
            lambda = NULL,
            doesmove = 1,
-           transitionstockandratios = data.frame(stock='mat',ratio=1),
+           transitionstocksandratios = data.frame(stock='mat',ratio=1),
            transitionstep = 1,
            doesspawn = 0,
            livesonareas=1,
@@ -122,6 +122,7 @@ gadget.options <- function(type=c('simple2stock','spawning')){
            weight = c(a=10^(-5),
              b=3),
            doesrenew = 1,
+           renewal=list(minage=4,maxage=30),
            doesspawn = 0,
            renewal.step = 1,
            ## The standard deviation of length at i years old
@@ -440,11 +441,13 @@ gadget.skeleton <- function(time,area,stocks,fleets){
           }          
         }else {
           x$renewal.data <- data.frame()
+          x$renewal <- list()
         }
         
-        if(x$doesmove==0)
-          x$transitionstockandratios <- data.frame()
-
+        if(x$doesmove==0){
+          x$transitionstocksandratios <- data.frame()
+          x$transitionstep <- 0
+        }
         if(x$doesspawn==1){
           spawndata <- new('gadget-spawning',
                            spawnsteps = x$spawnsteps,
@@ -509,9 +512,11 @@ gadget.skeleton <- function(time,area,stocks,fleets){
                      spawning = spawndata,
                      doesmigrate = x$doesmigrate,
                      doesrenew = x$doesrenew,
+                     renewal = x$renewal,
                      renewal.data = x$renewal.data,
                      doesmove = x$doesmove,
-                     transitionstockandratios = x$transitionstockandratios,
+                     transitionstocksandratios = x$transitionstocksandratios,
+                     transitionstep = x$transitionstep,
                      doesmature = x$doesmature,
                      maturityfunction = maturityfunction,
                      maturestocksandratios = maturestocksandratios,

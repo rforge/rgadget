@@ -230,12 +230,15 @@ setMethod("write",
         }
 
         if(x@doesrenew == 1){
-          if(ncol(x@renewal.data==7)){
-            rec.type <- 'normalcond'
-          } else if(ncol(x@renewal.data==8)){
+          if(ncol(x@renewal.data==9)){
             rec.type <- 'normalparam'
-          } else if(ncol(x@renewal.data==5)){
+
+          } else if(ncol(x@renewal.data==8)){
+            rec.type <- 'normalcond'
+
+          } else if(ncol(x@renewal.data==6)){
             rec.type <- 'number'
+
           }
           stock.text['renewal'] <-
             paste(paste(names(x@renewal),
@@ -254,14 +257,29 @@ setMethod("write",
         }
 
         if(x@doesmature == 1){
-          maturity <- sprintf('maturityfunction\t%s\nmaturityfile\t%s/maturity',
-                              x@maturityfunction,loc)
-
+          stock.text['maturity'] <-
+            sprintf('maturityfunction\t%s\nmaturityfile\t%s/maturity',
+                    x@maturityfunction,file)
+          maturityfile <-
+            paste(sprintf('; maturityfile for stock %s',x@stockname),
+                  sprintf('maturestocksandratios %s %s',
+                          names(x@maturestocksandratios),
+                          x@maturestocksandratios),
+                  sprintf('coefficients %s',
+                          paste(x@coefficients,collapse='\t')),
+                  sep='\n')
+          write(maturityfile,file=sprintf('%s/maturity',file)) 
 
         }
         if(x@doesmove == 1){
-            movement = ';',        
-          }
+          stock.text['movement'] <-
+            paste(sprintf('transitionstocksandratios %s',
+                          paste(x@maturestocksandratios$stock,
+                                x@maturestocksandratios$ratio,
+                                collapse='\t')),
+                  sprintf('transitionstep %s',x@transitionstep),
+                  collapse='\n')
+        }
         write(paste(stock.text,collapse = '\n'),
               file = sprintf('%s/%s',file,x@stockname))
     }
@@ -321,14 +339,15 @@ setMethod("write",
         c(header = header,
           name = sprintf('%s\t%s',x@type,x@name),
           area = sprintf('livesonareas\t%s',x@livesonareas),
-          mulit = sprintf('multiplicative\t%s',x@multiplicative),
+          multi = sprintf('multiplicative\t%s',x@multiplicative),
           suit = sprintf('suitability\n%s',
-                  paste(x@suitability$preyname,
+                  paste(x@suitability$stock,
                         'function',
-                        x@suitability$func,
-                        paste(x@suitability$parameters,collapse = '\t'))),
+                        x@suitability$suitability,
+                        x@suitability$params,
+                        collapse='\n')),
           empty = '; empty space -- move along nothing to see here',
-          amount = sprintf('amount\tData/%s.amount',x@name),
+          amount = sprintf('amount\t%s/Data/%s.amount',file,x@name),
           ';')
 
       if(tolower(x@type) == 'quotafleet')
@@ -396,11 +415,11 @@ setMethod("write",
               sprintf('printfiles\t%s',
                       ifelse(length(x@print)>0,'printfile',';')),
               '[stock]',
-              sprintf('stockfiles\t%s/%s',loc,
-                      paste(sapply(x@stocks,function(x) x@stockname),
+              sprintf('stockfiles\t%s',
+                      paste(sapply(x@stocks,function(x) paste(loc,x@stockname,sep='/')),
                             collapse='\t')),
               '[tagging]',
-              ifelse(length(x@tags)>0,'tagfiles\ttags',';'),
+              ifelse(nrow(x@tags@tag.experiments)>0,'tagfiles\ttags',';'),
               '[otherfood]',
               ifelse(length(x@otherfood)>0,'otherfoodfiles\totherfood',';'),
               '[fleet]',
